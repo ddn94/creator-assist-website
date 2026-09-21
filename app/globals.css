@@ -1,1 +1,71 @@
 @import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-urbanist);
+  --font-mono: var(--font-geist-mono);
+}
+
+@theme {
+  --color-background: #faf5ea;
+  --color-card: #ffffff;
+  --color-card-border: #eff0ef;
+  --color-ink: #20252b;
+  --color-muted: #6b7280;
+  --color-placeholder: #979ca6;
+  --color-border: #e3ddcc;
+
+  --color-primary: #6f9a86;
+  --color-primary-hover: #5d8471;
+  --color-on-primary: #ffffff;
+  --color-danger: #d9695a;
+
+  --color-organic: #fce8e1;
+  --color-organic-pill: #f2a48c;
+  --color-idea: #fdf1dc;
+  --color-idea-pill: #f6cb77;
+  --color-collab: #e4eee9;
+  --color-payment: #edeefb;
+  --color-payment-pill: #abb0e8;
+
+  --text-xxs: 0.625rem;
+  --text-xxs--line-height: 0.875rem;
+
+  --radius-card: 1.5rem;
+  --radius-input: 0.75rem;
+  --shadow-card:
+    0 1px 2px rgba(32, 37, 43, 0.05), 0 3px 10px rgba(32, 37, 43, 0.04);
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-ink);
+}
+
+input,
+select,
+textarea,
+button {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+}
+
+:focus,
+:focus-visible {
+  outline: none;
+}
+
+button,
+a,
+input,
+select,
+textarea,
+summary {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::placeholder {
+  color: var(--color-placeholder);
+  opacity: 1;
+}
