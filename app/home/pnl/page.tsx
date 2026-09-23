@@ -1,11 +1,10 @@
-import { PageWrapper } from "@/components/PageWrapper";
+import { TalentFrame } from "@/components/TalentFrame";
 import { TalentPnlDashboard } from "@/components/TalentPnlDashboard";
-import { talentNav, talentShell } from "@/lib/home";
 
 export default function TalentPnlPage() {
   return (
-    <PageWrapper {...talentShell} navItems={talentNav}>
+    <TalentFrame>
       <TalentPnlDashboard />
-    </PageWrapper>
+    </TalentFrame>
   );
 }

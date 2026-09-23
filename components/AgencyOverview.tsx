@@ -2,27 +2,52 @@
 
 import { NeedsAttentionList } from "@/components/NeedsAttentionList";
 import { PageWrapper } from "@/components/PageWrapper";
-import { RosterList } from "@/components/RosterList";
+import { RosterList, type RosterItem } from "@/components/RosterList";
 import { StatCard } from "@/components/StatCard";
 import { Text } from "@/components/Text";
 import { useAgencyOverviewData } from "@/lib/useMockDb";
-import { workspaceNav, workspaceShell } from "@/lib/workspace";
+import { workspaceNav } from "@/lib/workspace";
 
-export function AgencyOverview() {
-  const { stats, roster, attention } = useAgencyOverviewData();
+type AgencyOverviewProps = {
+  userName: string;
+  userEmail?: string;
+  brand: string;
+  avatarUrl?: string | null;
+  description: string;
+  talentCount: number;
+  talentFooter: string;
+  roster: RosterItem[];
+};
+
+export function AgencyOverview({
+  userName,
+  userEmail,
+  brand,
+  avatarUrl,
+  description,
+  talentCount,
+  talentFooter,
+  roster,
+}: AgencyOverviewProps) {
+  const { stats, attention } = useAgencyOverviewData();
 
   return (
     <PageWrapper
-      {...workspaceShell}
+      brand={brand}
+      brandMeta="Agency workspace"
+      userName={userName}
+      userEmail={userEmail}
+      avatarUrl={avatarUrl}
+      profileHref="/workspace/profile"
       navItems={workspaceNav}
       title="Overview"
-      description={stats.description}
+      description={description}
     >
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Talent"
-          value={String(stats.talentCount)}
-          footer={stats.talentFooter}
+          value={String(talentCount)}
+          footer={talentFooter}
           tone="collab"
         />
         <StatCard

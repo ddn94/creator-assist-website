@@ -10,18 +10,19 @@ import { JUMP_TILES, greeting } from "@/lib/home";
 import { useTalentOverviewData } from "@/lib/useMockDb";
 
 type TalentOverviewProps = {
-  userName?: string;
+  userName: string;
+  avatarUrl?: string | null;
 };
 
-export function TalentOverview({ userName }: TalentOverviewProps) {
-  const { stats, feed, profile } = useTalentOverviewData();
-  const displayName = profile.name || userName || "Fatima";
-  const firstName = displayName.trim().split(/\s+/)[0] || displayName;
+export function TalentOverview({ userName, avatarUrl }: TalentOverviewProps) {
+  const { stats, feed } = useTalentOverviewData();
+  const displayName = userName.trim() || "there";
+  const firstName = displayName.split(/\s+/)[0] || displayName;
 
   return (
     <div>
       <div className="mb-5 flex items-center gap-3.5">
-        <Avatar name={displayName} size="lg" />
+        <Avatar name={displayName} size="lg" src={avatarUrl} />
         <div className="min-w-0">
           <Text variant="heading" className="truncate text-2xl md:text-3xl">
             {greeting()}, {firstName}

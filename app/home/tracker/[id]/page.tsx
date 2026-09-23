@@ -1,6 +1,5 @@
 import { ContentDetailView } from "@/components/ContentDetailView";
-import { PageWrapper } from "@/components/PageWrapper";
-import { talentNav, talentShell } from "@/lib/home";
+import { TalentFrame } from "@/components/TalentFrame";
 
 export default async function ContentDetailPage({
   params,
@@ -14,8 +13,8 @@ export default async function ContentDetailPage({
   const backHref = from === "payments" ? "/home/payments" : "/home/tracker";
 
   return (
-    <PageWrapper {...talentShell} navItems={talentNav}>
+    <TalentFrame>
       <ContentDetailView id={id} backHref={backHref} />
-    </PageWrapper>
+    </TalentFrame>
   );
 }

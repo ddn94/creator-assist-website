@@ -1,14 +1,17 @@
 import { PlusIcon } from "@phosphor-icons/react/dist/ssr";
+import { AgencyFrame } from "@/components/AgencyFrame";
 import { Button } from "@/components/Button";
-import { PageWrapper } from "@/components/PageWrapper";
 import { TalentTable } from "@/components/TalentTable";
-import { workspaceNav, workspaceShell } from "@/lib/workspace";
+import { requireProfile } from "@/lib/auth/session";
+import { listTalentRecords, toTalentItem } from "@/lib/auth/talentRecords";
 
-export default function WorkspaceTalentPage() {
+export default async function WorkspaceTalentPage() {
+  const profile = await requireProfile("agency");
+  const items = (await listTalentRecords()).map(toTalentItem);
+
   return (
-    <PageWrapper
-      {...workspaceShell}
-      navItems={workspaceNav}
+    <AgencyFrame
+      profile={profile}
       title="Talent"
       description="Everyone you manage, on or off Creator Assist"
       action={
@@ -23,7 +26,7 @@ export default function WorkspaceTalentPage() {
         </Button>
       }
     >
-      <TalentTable />
-    </PageWrapper>
+      <TalentTable items={items} />
+    </AgencyFrame>
   );
 }

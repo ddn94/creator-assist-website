@@ -5,8 +5,7 @@ import { FilterPills } from "@/components/FilterPills";
 import { Pagination } from "@/components/Pagination";
 import { TalentRow } from "@/components/TalentRow";
 import { Text } from "@/components/Text";
-import type { TalentStatus } from "@/lib/talent";
-import { useAgencyTalent } from "@/lib/useMockDb";
+import type { TalentStatus, TalentItem } from "@/lib/talent";
 
 const PAGE_SIZE = 8;
 
@@ -20,14 +19,14 @@ const FILTERS = [
 type TalentFilter = (typeof FILTERS)[number]["id"];
 
 type TalentTableProps = {
+  items: TalentItem[];
   className?: string;
 };
 
 const COLUMNS =
   "grid-cols-[minmax(12rem,1.6fr)_7.5rem_minmax(6rem,1fr)_4.5rem_4.5rem_5.5rem_minmax(6rem,1fr)_1.5rem]";
 
-export function TalentTable({ className = "" }: TalentTableProps) {
-  const items = useAgencyTalent();
+export function TalentTable({ items, className = "" }: TalentTableProps) {
   const [filter, setFilter] = useState<TalentFilter>("all");
   const [page, setPage] = useState(0);
 
@@ -90,7 +89,11 @@ export function TalentTable({ className = "" }: TalentTableProps) {
           visible.map((talent) => <TalentRow key={talent.id} talent={talent} />)
         ) : (
           <div className="px-4 py-8 text-center">
-            <Text variant="description">No talent in this filter.</Text>
+            <Text variant="description">
+              {items.length === 0
+                ? "No talent yet. Add a record, or invite someone onto Creator Assist."
+                : "No talent in this filter."}
+            </Text>
           </div>
         )}
       </div>
@@ -102,12 +105,6 @@ export function TalentTable({ className = "" }: TalentTableProps) {
         onPageChange={setPage}
         className="mt-3"
       />
-
-      <Text variant="caption" className="mt-4 max-w-3xl leading-relaxed">
-        A <span className="font-semibold text-ink">record</span> is a talent you
-        track before they join — no account, no shared data. Invite them and the
-        record becomes their own Creator Assist account, which they own.
-      </Text>
     </div>
   );
 }

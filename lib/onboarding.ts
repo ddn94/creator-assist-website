@@ -20,3 +20,10 @@ export const AGE_BRACKETS = [
 ] as const;
 
 export type AgeBracket = (typeof AGE_BRACKETS)[number]["value"];
+
+export const ROSTER_OPTIONS = [
+  { value: "1-10", label: "1–10 talent" },
+  { value: "11-25", label: "11–25 talent" },
+  { value: "26-50", label: "26–50 talent" },
+  { value: "50+", label: "50+ talent" },
+] as const;

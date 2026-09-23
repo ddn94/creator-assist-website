@@ -1,11 +1,18 @@
-import { PageWrapper } from "@/components/PageWrapper";
+import { TalentFrame } from "@/components/TalentFrame";
 import { TalentOverview } from "@/components/TalentOverview";
-import { talentNav, talentShell } from "@/lib/home";
+import { avatarPublicUrl } from "@/lib/auth/avatar";
+import { displayName } from "@/lib/auth/onboarding";
+import { requireProfile } from "@/lib/auth/session";
 
-export default function TalentHomePage() {
+export default async function TalentHomePage() {
+  const profile = await requireProfile("talent");
+
   return (
-    <PageWrapper {...talentShell} navItems={talentNav}>
-      <TalentOverview userName={talentShell.userName} />
-    </PageWrapper>
+    <TalentFrame profile={profile}>
+      <TalentOverview
+        userName={displayName(profile)}
+        avatarUrl={avatarPublicUrl(profile.avatar_path, profile.updated_at)}
+      />
+    </TalentFrame>
   );
 }

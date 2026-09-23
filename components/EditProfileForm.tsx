@@ -6,24 +6,18 @@ import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { Checkbox } from "@/components/Checkbox";
 import { Field } from "@/components/Field";
+import { FormAlert } from "@/components/FormAlert";
 import { Select } from "@/components/Select";
 import { Text } from "@/components/Text";
 import { TextField } from "@/components/TextField";
-import {
-  platformCategoryFor,
-  platformIdFor,
-  updateSelfPlatforms,
-  updateSelfProfile,
-  type MockCreatorPlatform,
-} from "@/lib/mockStore";
+import { saveProfileAnswers } from "@/lib/auth/actions";
+import type { PlatformAnswer } from "@/lib/auth/onboarding";
+import { COUNTRY_OPTIONS } from "@/lib/countries";
 import {
   AGE_BRACKETS,
   ONBOARDING_PLATFORMS,
   fmtFollowers,
-  type AgeBracket,
 } from "@/lib/onboarding";
-import type { TalentProfileData } from "@/lib/profile";
-import { useSelfProfile } from "@/lib/useMockDb";
 
 type PlatformRow = {
   key: string;
@@ -35,12 +29,16 @@ type PlatformRow = {
 };
 
 type EditProfileFormProps = {
+  name: string;
+  ageBracket: string;
+  country: string;
+  platforms: PlatformAnswer[];
   className?: string;
 };
 
-function buildRows(profile: TalentProfileData): PlatformRow[] {
+function buildRows(platforms: PlatformAnswer[]): PlatformRow[] {
   const preset = ONBOARDING_PLATFORMS.map((platform) => {
-    const account = profile.platforms.find((p) => p.platform === platform);
+    const account = platforms.find((p) => p.platform === platform);
     return {
       key: platform,
       platform,
@@ -52,13 +50,12 @@ function buildRows(profile: TalentProfileData): PlatformRow[] {
     };
   });
 
-  const custom = profile.platforms
+  const custom = platforms
     .filter(
-      (p) =>
-        !(ONBOARDING_PLATFORMS as readonly string[]).includes(p.platform),
+      (p) => !(ONBOARDING_PLATFORMS as readonly string[]).includes(p.platform),
     )
     .map((p) => ({
-      key: p.id,
+      key: p.platform,
       platform: p.platform,
       preset: false,
       enabled: true,
@@ -69,27 +66,33 @@ function buildRows(profile: TalentProfileData): PlatformRow[] {
   return [...preset, ...custom];
 }
 
-export function EditProfileForm({ className = "" }: EditProfileFormProps) {
+export function EditProfileForm({
+  name: initialName,
+  ageBracket: initialAge,
+  country: initialCountry,
+  platforms,
+  className = "",
+}: EditProfileFormProps) {
   const router = useRouter();
-  const profile = useSelfProfile();
-  const [name, setName] = useState(profile.name);
-  const [ageBracket, setAgeBracket] = useState(profile.ageBracket);
-  const [rows, setRows] = useState<PlatformRow[]>(() => buildRows(profile));
+  const [name, setName] = useState(initialName);
+  const [ageBracket, setAgeBracket] = useState(initialAge || "25_34");
+  const [country, setCountry] = useState(initialCountry);
+  const [rows, setRows] = useState<PlatformRow[]>(() => buildRows(platforms));
   const [other, setOther] = useState({
     enabled: false,
     platform: "",
     handle: "",
     followers: "",
   });
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
 
   const communitySummary = useMemo(() => {
     const enabled = rows.filter((row) => row.enabled);
-    const otherCount =
-      other.enabled && other.platform.trim() ? 1 : 0;
-    const totalFollowers = enabled.reduce(
-      (sum, row) => sum + (Number(row.followers) || 0),
-      0,
-    ) + (other.enabled ? Number(other.followers) || 0 : 0);
+    const otherCount = other.enabled && other.platform.trim() ? 1 : 0;
+    const totalFollowers =
+      enabled.reduce((sum, row) => sum + (Number(row.followers) || 0), 0) +
+      (other.enabled ? Number(other.followers) || 0 : 0);
     const platformCount = enabled.length + otherCount;
     return { totalFollowers, platformCount };
   }, [rows, other]);
@@ -102,25 +105,22 @@ export function EditProfileForm({ className = "" }: EditProfileFormProps) {
 
   function goBack() {
     router.push("/home/profile");
+    router.refresh();
   }
 
-  function collectPlatforms(): MockCreatorPlatform[] {
+  function collectPlatforms(): PlatformAnswer[] {
     const fromRows = rows
       .filter((row) => row.enabled)
       .map((row) => ({
-        id: row.preset ? platformIdFor(row.platform) : row.key,
         platform: row.platform,
         followers: Number(row.followers) || 0,
-        category: platformCategoryFor(row.platform),
         handle: row.handle.trim() || "",
       }));
 
     if (other.enabled && other.platform.trim()) {
       fromRows.push({
-        id: `other-${Date.now()}`,
         platform: other.platform.trim(),
         followers: Number(other.followers) || 0,
-        category: platformCategoryFor(other.platform.trim()),
         handle: other.handle.trim() || "",
       });
     }
@@ -152,13 +152,21 @@ export function EditProfileForm({ className = "" }: EditProfileFormProps) {
         </Text>
         <form
           className="space-y-3"
-          onSubmit={(event) => {
+          onSubmit={async (event) => {
             event.preventDefault();
             if (!name.trim()) return;
-            updateSelfProfile({
+            setPending(true);
+            setError(null);
+            const result = await saveProfileAnswers({
               name: name.trim(),
-              ageBracket: ageBracket as AgeBracket,
+              ageBracket,
+              country,
             });
+            if (result.error) {
+              setError(result.error);
+              setPending(false);
+              return;
+            }
             goBack();
           }}
         >
@@ -178,16 +186,27 @@ export function EditProfileForm({ className = "" }: EditProfileFormProps) {
               id="edit-age"
               name="ageBracket"
               value={ageBracket}
-              onChange={(value) =>
-                setAgeBracket(value as typeof ageBracket)
-              }
+              onChange={setAgeBracket}
               options={[...AGE_BRACKETS]}
               size="sm"
               full
             />
           </Field>
-          <Button type="submit" size="sm">
-            Save
+          <Field id="edit-country" label="Where are you based?">
+            <Select
+              id="edit-country"
+              name="country"
+              value={country}
+              onChange={setCountry}
+              options={COUNTRY_OPTIONS}
+              placeholder="Select a country"
+              size="sm"
+              full
+            />
+          </Field>
+          <FormAlert error={error} />
+          <Button type="submit" size="sm" disabled={pending}>
+            {pending ? "Saving…" : "Save"}
           </Button>
         </form>
       </Card>
@@ -198,9 +217,18 @@ export function EditProfileForm({ className = "" }: EditProfileFormProps) {
         </Text>
         <form
           className="space-y-3"
-          onSubmit={(event) => {
+          onSubmit={async (event) => {
             event.preventDefault();
-            updateSelfPlatforms(collectPlatforms());
+            setPending(true);
+            setError(null);
+            const result = await saveProfileAnswers({
+              platforms: collectPlatforms(),
+            });
+            if (result.error) {
+              setError(result.error);
+              setPending(false);
+              return;
+            }
             goBack();
           }}
         >
@@ -316,8 +344,8 @@ export function EditProfileForm({ className = "" }: EditProfileFormProps) {
             ) : null}
           </div>
 
-          <Button type="submit" size="sm" className="mt-1">
-            Save platforms
+          <Button type="submit" size="sm" className="mt-1" disabled={pending}>
+            {pending ? "Saving…" : "Save platforms"}
           </Button>
         </form>
       </Card>

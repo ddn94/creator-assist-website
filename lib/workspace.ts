@@ -8,8 +8,7 @@ export const workspaceNav: NavItem[] = [
 ];
 
 export const workspaceShell = {
-  brand: "Bright Talent",
+  brand: "Workspace",
   brandMeta: "Agency workspace",
-  userName: "Priya Raman",
-  userEmail: "priya@brighttalent.com",
+  userName: "You",
 } as const;

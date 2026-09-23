@@ -1,15 +1,23 @@
 import { BackLink } from "@/components/BackLink";
 import { EditProfileForm } from "@/components/EditProfileForm";
-import { PageWrapper } from "@/components/PageWrapper";
-import { talentNav, talentShell } from "@/lib/home";
+import { TalentFrame } from "@/components/TalentFrame";
+import { readPlatforms, readString } from "@/lib/auth/onboarding";
+import { requireProfile } from "@/lib/auth/session";
 
-export default function EditProfilePage() {
+export default async function EditProfilePage() {
+  const profile = await requireProfile("talent");
+
   return (
-    <PageWrapper {...talentShell} navItems={talentNav}>
+    <TalentFrame profile={profile}>
       <div className="mb-4">
         <BackLink href="/home/profile" label="Back to profile" />
       </div>
-      <EditProfileForm />
-    </PageWrapper>
+      <EditProfileForm
+        name={profile.display_name ?? ""}
+        ageBracket={readString(profile.onboarding, "ageBracket")}
+        country={profile.country ?? ""}
+        platforms={readPlatforms(profile.onboarding)}
+      />
+    </TalentFrame>
   );
 }

@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import { ContentTracker } from "@/components/ContentTracker";
-import { PageWrapper } from "@/components/PageWrapper";
-import { talentNav, talentShell } from "@/lib/home";
+import { TalentFrame } from "@/components/TalentFrame";
 
 export default async function TrackerPage({
   searchParams,
@@ -11,14 +10,10 @@ export default async function TrackerPage({
   const { add } = await searchParams;
 
   return (
-    <PageWrapper
-      {...talentShell}
-      navItems={talentNav}
-      title="Content Tracker"
-    >
+    <TalentFrame title="Content Tracker">
       <Suspense fallback={null}>
         <ContentTracker defaultAddOpen={add === "1"} />
       </Suspense>
-    </PageWrapper>
+    </TalentFrame>
   );
 }
