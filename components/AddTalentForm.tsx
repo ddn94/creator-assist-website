@@ -1,64 +1,58 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { Button } from "@/components/Button";
 import { Field } from "@/components/Field";
+import { FormAlert } from "@/components/FormAlert";
 import { Text } from "@/components/Text";
 import { TextArea } from "@/components/TextArea";
 import { TextField } from "@/components/TextField";
-import { addAgencyTalent } from "@/lib/mockStore";
+import { addTalent } from "@/lib/auth/talentActions";
+import { EMPTY_AUTH_STATE } from "@/lib/auth/types";
 
 type AddTalentFormProps = {
   className?: string;
 };
 
-function parseFollowers(raw: string): number {
-  const digits = raw.replace(/[^0-9]/g, "");
-  return digits ? Number(digits) : 0;
-}
-
-function readForm(form: HTMLFormElement) {
-  const data = new FormData(form);
-  return {
-    name: String(data.get("name") ?? "").trim(),
-    email: String(data.get("email") ?? "").trim(),
-    platform: String(data.get("platform") ?? "").trim(),
-    handle: String(data.get("handle") ?? "").trim(),
-    followers: parseFollowers(String(data.get("community") ?? "")),
-    niche: String(data.get("niche") ?? "").trim(),
-  };
+function SaveButton({
+  status,
+  children,
+  variant = "primary",
+}: {
+  status: "invited" | "record";
+  children: string;
+  variant?: "primary" | "secondary";
+}) {
+  const { pending, data } = useFormStatus();
+  const submitting = pending && data?.get("status") === status;
+  return (
+    <Button
+      type="submit"
+      name="status"
+      value={status}
+      size="sm"
+      variant={variant}
+      className="w-full sm:w-auto"
+      disabled={pending}
+    >
+      {submitting ? "Saving…" : children}
+    </Button>
+  );
 }
 
 export function AddTalentForm({ className = "" }: AddTalentFormProps) {
-  const router = useRouter();
-
-  function save(status: "invited" | "record", form: HTMLFormElement) {
-    const values = readForm(form);
-    if (!values.name) return;
-    addAgencyTalent({
-      name: values.name,
-      email: values.email || null,
-      status,
-      platform: values.platform || undefined,
-      handle: values.handle || null,
-      followers: values.followers,
-      niche: values.niche || null,
-    });
-    router.push("/workspace/talent");
-  }
+  const [state, action] = useActionState(addTalent, EMPTY_AUTH_STATE);
 
   return (
     <form
+      action={action}
       className={[
         "rounded-card border border-card-border bg-card p-4 shadow-card sm:p-6",
         className,
       ]
         .filter(Boolean)
         .join(" ")}
-      onSubmit={(event) => {
-        event.preventDefault();
-        save("invited", event.currentTarget);
-      }}
     >
       <div className="space-y-4">
         <Field id="name" label="Name">
@@ -141,24 +135,13 @@ export function AddTalentForm({ className = "" }: AddTalentFormProps) {
         </Field>
       </div>
 
+      <FormAlert error={state.error} />
+
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        <Button type="submit" size="sm" className="w-full sm:w-auto">
-          Save and send invite
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          className="w-full sm:w-auto"
-          onClick={(event) => {
-            const form = event.currentTarget.form;
-            if (!form) return;
-            if (!form.reportValidity()) return;
-            save("record", form);
-          }}
-        >
+        <SaveButton status="invited">Save and send invite</SaveButton>
+        <SaveButton status="record" variant="secondary">
           Save as a record
-        </Button>
+        </SaveButton>
         <Text variant="caption" className="sm:ml-1">
           You can invite a record later
         </Text>

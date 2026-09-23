@@ -5,6 +5,7 @@ import { RosterCard } from "@/components/RosterCard";
 import type { StatusTagTone } from "@/components/StatusTag";
 
 export type RosterItem = {
+  id?: string;
   name: string;
   platforms: string;
   status: string;
@@ -16,7 +17,7 @@ export function RosterList({ items }: { items: RosterItem[] }) {
   return (
     <PaginatedList
       items={items}
-      getKey={(item) => item.name}
+      getKey={(item) => item.id ?? item.name}
       renderItem={(item) => <RosterCard {...item} />}
     />
   );
