@@ -1,11 +1,17 @@
-import { PageWrapper } from "@/components/PageWrapper";
-import { TalentProfile } from "@/components/TalentProfile";
-import { talentNav, talentShell } from "@/lib/home";
+import { AccountProfile } from "@/components/AccountProfile";
+import { TalentFrame } from "@/components/TalentFrame";
+import { requireProfile } from "@/lib/auth/session";
 
-export default function TalentProfilePage() {
+export default async function TalentProfilePage() {
+  const profile = await requireProfile("talent");
+
   return (
-    <PageWrapper {...talentShell} navItems={talentNav}>
-      <TalentProfile />
-    </PageWrapper>
+    <TalentFrame profile={profile}>
+      <AccountProfile
+        profile={profile}
+        editHref="/home/profile/edit"
+        showAppLinks
+      />
+    </TalentFrame>
   );
 }
