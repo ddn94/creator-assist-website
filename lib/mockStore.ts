@@ -2,6 +2,7 @@
  * Session-scoped mutable mock DB.
  * Changes persist in sessionStorage until logout (resetMockDb).
  */
+import { countryName, currencyForCountry } from "@/lib/countries";
 import type { AgeBracket } from "@/lib/onboarding";
 import type { IdeaItem } from "@/lib/talentMock";
 import type { Category } from "@/lib/ui";
@@ -32,10 +33,27 @@ export type MockCreator = {
   ageBracket?: AgeBracket;
 };
 
+export type MockAgency = {
+  agencyName: string;
+  name: string;
+  email: string;
+  location: string;
+  currency: string;
+};
+
+export const DEFAULT_AGENCY: MockAgency = {
+  agencyName: "Bright Talent",
+  name: "Priya Raman",
+  email: "priya@brighttalent.com",
+  location: "United Kingdom",
+  currency: "GBP",
+};
+
 export type MockDbState = {
   content: TrackerDetail[];
   ideas: IdeaItem[];
   creators: MockCreator[];
+  agency: MockAgency;
 };
 
 type SeedBundle = MockDbState;
@@ -54,19 +72,38 @@ function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+function agencyProfile(agency?: Partial<MockAgency> | null): MockAgency {
+  return {
+    agencyName: agency?.agencyName?.trim() || DEFAULT_AGENCY.agencyName,
+    name: agency?.name?.trim() || DEFAULT_AGENCY.name,
+    email: agency?.email?.trim() || DEFAULT_AGENCY.email,
+    location: agency?.location?.trim() || DEFAULT_AGENCY.location,
+    currency: agency?.currency?.trim() || DEFAULT_AGENCY.currency,
+  };
+}
+
 function emptyState(): MockDbState {
-  return { content: [], ideas: [], creators: [] };
+  return { content: [], ideas: [], creators: [], agency: { ...DEFAULT_AGENCY } };
 }
 
 function normalizeState(partial: Partial<MockDbState> | null): MockDbState {
   const base = seed ? clone(seed) : emptyState();
   if (!partial) return base;
+  const creators = Array.isArray(partial.creators) ? partial.creators : base.creators;
+  const content = Array.isArray(partial.content) ? partial.content : base.content;
+  const restoreSeed =
+    Boolean(seed && seed.creators.length > 0) &&
+    creators.length === 0 &&
+    content.length === 0;
   return {
-    content: Array.isArray(partial.content) ? partial.content : base.content,
-    ideas: Array.isArray(partial.ideas) ? partial.ideas : base.ideas,
-    creators: Array.isArray(partial.creators)
-      ? partial.creators
-      : base.creators,
+    content: restoreSeed ? clone(seed!.content) : content,
+    ideas: restoreSeed
+      ? clone(seed!.ideas)
+      : Array.isArray(partial.ideas)
+        ? partial.ideas
+        : base.ideas,
+    creators: restoreSeed ? clone(seed!.creators) : creators,
+    agency: agencyProfile(partial.agency ?? base.agency),
   };
 }
 
@@ -124,13 +161,32 @@ export function hydrateMockDbFromSession() {
   }
 }
 
-export function bindMockSeeds(bundle: SeedBundle) {
-  if (seed) return;
-  seed = {
-    content: clone(bundle.content),
-    ideas: clone(bundle.ideas),
-    creators: clone(bundle.creators),
-  };
+export function bindMockSeeds(
+  bundle: Omit<SeedBundle, "agency"> & { agency?: MockAgency },
+) {
+  if (!seed) {
+    seed = {
+      content: clone(bundle.content),
+      ideas: clone(bundle.ideas),
+      creators: clone(bundle.creators),
+      agency: agencyProfile(bundle.agency),
+    };
+  }
+
+  // Onboarding can save the agency before this module loads, which stores an
+  // empty roster. Put the seed data back and keep the agency they just saved.
+  if (
+    state &&
+    seed.creators.length > 0 &&
+    state.creators.length === 0 &&
+    state.content.length === 0
+  ) {
+    state = {
+      ...clone(seed),
+      agency: agencyProfile({ ...seed.agency, ...state.agency }),
+    };
+    notify();
+  }
 }
 
 export function subscribeMockDb(listener: () => void) {
@@ -156,6 +212,30 @@ export function getMockIdeas(): IdeaItem[] {
 
 export function getMockCreators(): MockCreator[] {
   return ensureState().creators;
+}
+
+export function getAgencyProfile(): MockAgency {
+  return agencyProfile(ensureState().agency);
+}
+
+export function saveAgencyOnboarding(payload: {
+  agencyName: string;
+  name: string;
+  country: string;
+}) {
+  hydrateMockDbFromSession();
+  const db = ensureState();
+  const current = agencyProfile(db.agency);
+  setState({
+    ...db,
+    agency: {
+      ...current,
+      agencyName: payload.agencyName.trim() || current.agencyName,
+      name: payload.name.trim() || current.name,
+      location: countryName(payload.country),
+      currency: currencyForCountry(payload.country),
+    },
+  });
 }
 
 export function resetMockDb() {
@@ -358,15 +438,21 @@ export function markContentInvoiced(contentId: string, terms: PaymentTerms) {
   });
 }
 
-/** Agency payment edit — set invoice date + terms on a deal. */
+/** Agency payment edit — set invoice date, terms, and paid date on a deal. */
 export function updateContentInvoice(
   contentId: string,
-  payload: { dateInvoiced: string; paymentTerms: PaymentTerms },
+  payload: {
+    dateInvoiced: string;
+    paymentTerms: PaymentTerms;
+    datePaid: string | null;
+  },
 ) {
   hydrateMockDbFromSession();
   const db = ensureState();
   const invoiced = payload.dateInvoiced.slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(invoiced)) return;
+  const paid = payload.datePaid?.slice(0, 10) || null;
+  if (paid && !/^\d{4}-\d{2}-\d{2}$/.test(paid)) return;
 
   setState({
     ...db,
@@ -380,6 +466,7 @@ export function updateContentInvoice(
           paymentTerms: payload.paymentTerms,
           dateInvoiced: invoiced,
           dateDelivered: row.deal.dateDelivered ?? invoiced,
+          datePaid: paid,
         },
       };
     }),
@@ -421,13 +508,17 @@ export function updateSelfPlatforms(platforms: MockCreatorPlatform[]) {
 export function saveSelfOnboarding(payload: {
   name: string;
   ageBracket: AgeBracket;
+  country: string;
   platforms: MockCreatorPlatform[];
 }) {
+  hydrateMockDbFromSession();
   patchSelfCreator((creator) => ({
     ...creator,
     name: payload.name.trim() || creator.name,
     ageBracket: payload.ageBracket,
     platforms: payload.platforms,
+    location: countryName(payload.country),
+    currency: currencyForCountry(payload.country),
     lastActivity: "Today",
   }));
 }
@@ -468,6 +559,7 @@ export function addAgencyTalent(payload: {
   const platformName = payload.platform?.trim() || "Instagram";
   const niche = payload.niche?.trim() || "";
   const email = payload.email?.trim() || null;
+  const agency = getAgencyProfile();
   const creator: MockCreator = {
     id: `talent-${Date.now()}`,
     name: payload.name.trim(),
@@ -484,8 +576,8 @@ export function addAgencyTalent(payload: {
       },
     ],
     niches: niche ? [niche] : [],
-    location: "Remote, USD",
-    currency: "USD",
+    location: agency.location,
+    currency: agency.currency,
     lastActivity:
       payload.status === "invited" ? "Invite pending" : "Added today",
   };

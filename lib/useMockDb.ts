@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import {
+  getAgencyProfile,
   getMockRevision,
   hydrateMockDbFromSession,
   subscribeMockDb,
@@ -11,6 +12,7 @@ import {
   getAgencyPnlBrands,
   getAgencyPnlCurrencies,
   getAgencyPnlTalent,
+  getAgencyAttention,
   getAgencyOverviewStats,
   getAgencyPayments,
   getAgencyRoster,
@@ -100,6 +102,11 @@ export function useSelfProfile() {
   return useMemo(() => getSelfProfile(), [rev]);
 }
 
+export function useAgencyProfile() {
+  const rev = useMockRevision();
+  return useMemo(() => getAgencyProfile(), [rev]);
+}
+
 export function useSelfContentPlatformOptions(extra?: string | null) {
   const rev = useMockRevision();
   return useMemo(
@@ -136,6 +143,7 @@ export function useAgencyOverviewData() {
     () => ({
       stats: getAgencyOverviewStats(),
       roster: getAgencyRoster(),
+      attention: getAgencyAttention(),
     }),
     [rev],
   );

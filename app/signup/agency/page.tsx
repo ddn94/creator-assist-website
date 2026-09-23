@@ -28,7 +28,7 @@ export default function AgencySignupPage() {
           className="space-y-2.5"
           onSubmit={(e) => {
             e.preventDefault();
-            router.push("/workspace");
+            router.push("/onboarding/agency");
           }}
         >
           <div className="space-y-0.5">
@@ -42,32 +42,6 @@ export default function AgencySignupPage() {
               autoCapitalize="none"
               spellCheck={false}
               placeholder="From your early access email"
-              size="sm"
-              full
-            />
-          </div>
-
-          <div className="space-y-0.5">
-            <Text as="label" variant="label" htmlFor="agencyName">
-              Agency name
-            </Text>
-            <TextField
-              id="agencyName"
-              name="agencyName"
-              placeholder="Bright Talent"
-              size="sm"
-              full
-            />
-          </div>
-
-          <div className="space-y-0.5">
-            <Text as="label" variant="label" htmlFor="yourName">
-              Your name
-            </Text>
-            <TextField
-              id="yourName"
-              name="yourName"
-              placeholder="Priya Raman"
               size="sm"
               full
             />

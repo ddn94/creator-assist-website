@@ -16,6 +16,7 @@ import {
   saveSelfOnboarding,
   type MockCreatorPlatform,
 } from "@/lib/mockStore";
+import { COUNTRY_OPTIONS } from "@/lib/countries";
 import {
   AGE_BRACKETS,
   ONBOARDING_PLATFORMS,
@@ -41,6 +42,7 @@ export function TalentOnboarding({
   const [step, setStep] = useState<1 | 2>(1);
   const [name, setName] = useState(initialName);
   const [ageBracket, setAgeBracket] = useState("25_34");
+  const [country, setCountry] = useState("");
   const [platforms, setPlatforms] = useState<Record<string, PlatformDraft>>(
     () =>
       Object.fromEntries(
@@ -123,7 +125,7 @@ export function TalentOnboarding({
             className="mt-4 space-y-4"
             onSubmit={(event) => {
               event.preventDefault();
-              if (!name.trim()) return;
+              if (!name.trim() || !country) return;
               setStep(2);
             }}
           >
@@ -152,7 +154,27 @@ export function TalentOnboarding({
               />
             </Field>
 
-            <Button type="submit" size="md" full iconRight="→" className="h-10">
+            <Field id="onboarding-country" label="Where are you based?">
+              <Select
+                id="onboarding-country"
+                name="country"
+                value={country}
+                onChange={setCountry}
+                options={COUNTRY_OPTIONS}
+                placeholder="Select a country"
+                size="sm"
+                full
+              />
+            </Field>
+
+            <Button
+              type="submit"
+              size="md"
+              full
+              iconRight="→"
+              className="h-10"
+              disabled={!country}
+            >
               Continue
             </Button>
           </form>
@@ -173,6 +195,7 @@ export function TalentOnboarding({
               saveSelfOnboarding({
                 name: name.trim(),
                 ageBracket: ageBracket as AgeBracket,
+                country,
                 platforms: collectPlatforms(),
               });
               router.push("/home");

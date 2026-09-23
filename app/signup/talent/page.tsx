@@ -39,12 +39,6 @@ export default function TalentSignupPage() {
             />
           </div>
           <div className="space-y-0.5">
-            <Text as="label" variant="label" htmlFor="name">
-              Your name
-            </Text>
-            <TextField id="name" name="name" placeholder="Your name" size="sm" full />
-          </div>
-          <div className="space-y-0.5">
             <Text as="label" variant="label" htmlFor="email">
               Email
             </Text>
