@@ -1,27 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { Checkbox } from "@/components/Checkbox";
 import { Field } from "@/components/Field";
+import { FormAlert } from "@/components/FormAlert";
 import { OnboardingProgress } from "@/components/OnboardingProgress";
 import { Select } from "@/components/Select";
 import { Text } from "@/components/Text";
 import { TextField } from "@/components/TextField";
-import {
-  platformCategoryFor,
-  platformIdFor,
-  saveSelfOnboarding,
-  type MockCreatorPlatform,
-} from "@/lib/mockStore";
+import { saveProfileAnswers } from "@/lib/auth/actions";
+import type { PlatformAnswer } from "@/lib/auth/onboarding";
 import { COUNTRY_OPTIONS } from "@/lib/countries";
-import {
-  AGE_BRACKETS,
-  ONBOARDING_PLATFORMS,
-  type AgeBracket,
-} from "@/lib/onboarding";
+import { AGE_BRACKETS, ONBOARDING_PLATFORMS } from "@/lib/onboarding";
 
 type PlatformDraft = {
   enabled: boolean;
@@ -38,7 +30,6 @@ export function TalentOnboarding({
   initialName = "",
   className = "",
 }: TalentOnboardingProps) {
-  const router = useRouter();
   const [step, setStep] = useState<1 | 2>(1);
   const [name, setName] = useState(initialName);
   const [ageBracket, setAgeBracket] = useState("25_34");
@@ -58,6 +49,8 @@ export function TalentOnboarding({
     handle: "",
     followers: "",
   });
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
 
   function updatePlatform(
     platform: string,
@@ -69,26 +62,22 @@ export function TalentOnboarding({
     }));
   }
 
-  function collectPlatforms(): MockCreatorPlatform[] {
-    const selected: MockCreatorPlatform[] = ONBOARDING_PLATFORMS.filter(
+  function collectPlatforms(): PlatformAnswer[] {
+    const selected: PlatformAnswer[] = ONBOARDING_PLATFORMS.filter(
       (platform) => platforms[platform]?.enabled,
     ).map((platform) => {
       const row = platforms[platform];
       return {
-        id: platformIdFor(platform),
         platform,
         followers: Number(row.followers) || 0,
-        category: platformCategoryFor(platform),
         handle: row.handle.trim() || "",
       };
     });
 
     if (other.enabled && other.platform.trim()) {
       selected.push({
-        id: `other-${Date.now()}`,
         platform: other.platform.trim(),
         followers: Number(other.followers) || 0,
-        category: platformCategoryFor(other.platform.trim()),
         handle: other.handle.trim() || "",
       });
     }
@@ -190,15 +179,23 @@ export function TalentOnboarding({
 
           <form
             className="mt-4 space-y-3"
-            onSubmit={(event) => {
+            onSubmit={async (event) => {
               event.preventDefault();
-              saveSelfOnboarding({
-                name: name.trim(),
-                ageBracket: ageBracket as AgeBracket,
-                country,
-                platforms: collectPlatforms(),
-              });
-              router.push("/home");
+              setError(null);
+              setPending(true);
+              const result = await saveProfileAnswers(
+                {
+                  name: name.trim(),
+                  ageBracket,
+                  country,
+                  platforms: collectPlatforms(),
+                },
+                true,
+              );
+              if (result?.error) {
+                setError(result.error);
+                setPending(false);
+              }
             }}
           >
             {ONBOARDING_PLATFORMS.map((platform) => {
@@ -322,6 +319,7 @@ export function TalentOnboarding({
               ) : null}
             </div>
 
+            <FormAlert error={error} />
             <div className="flex flex-col gap-2 pt-2 sm:flex-row">
               <Button
                 type="button"
@@ -337,8 +335,9 @@ export function TalentOnboarding({
                 size="md"
                 className="h-10 sm:flex-1"
                 iconRight="→"
+                disabled={pending}
               >
-                Finish setup
+                {pending ? "Saving…" : "Finish setup"}
               </Button>
             </div>
           </form>
