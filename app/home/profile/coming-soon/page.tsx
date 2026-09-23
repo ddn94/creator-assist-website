@@ -1,7 +1,6 @@
 import { Button } from "@/components/Button";
-import { PageWrapper } from "@/components/PageWrapper";
+import { TalentFrame } from "@/components/TalentFrame";
 import { Text } from "@/components/Text";
-import { talentNav, talentShell } from "@/lib/home";
 
 export default async function ProfileComingSoonPage({
   searchParams,
@@ -12,7 +11,7 @@ export default async function ProfileComingSoonPage({
   const feature = f || "This section";
 
   return (
-    <PageWrapper {...talentShell} navItems={talentNav}>
+    <TalentFrame>
       <div className="mx-auto max-w-md py-12 text-center sm:py-16">
         <Text as="h1" variant="heading" className="text-2xl sm:text-2xl">
           {feature}
@@ -24,6 +23,6 @@ export default async function ProfileComingSoonPage({
           Back to profile
         </Button>
       </div>
-    </PageWrapper>
+    </TalentFrame>
   );
 }

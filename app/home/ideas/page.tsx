@@ -1,16 +1,13 @@
 import { IdeasBoard } from "@/components/IdeasBoard";
-import { PageWrapper } from "@/components/PageWrapper";
-import { talentNav, talentShell } from "@/lib/home";
+import { TalentFrame } from "@/components/TalentFrame";
 
 export default function IdeasPage() {
   return (
-    <PageWrapper
-      {...talentShell}
-      navItems={talentNav}
+    <TalentFrame
       title="Ideas"
       description="Brain dump · jot it down, organize later"
     >
       <IdeasBoard />
-    </PageWrapper>
+    </TalentFrame>
   );
 }

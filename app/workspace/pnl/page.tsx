@@ -1,16 +1,10 @@
-import { PageWrapper } from "@/components/PageWrapper";
+import { AgencyFrame } from "@/components/AgencyFrame";
 import { PnlDashboard } from "@/components/PnlDashboard";
-import { workspaceNav, workspaceShell } from "@/lib/workspace";
 
 export default function WorkspacePnlPage() {
   return (
-    <PageWrapper
-      {...workspaceShell}
-      navItems={workspaceNav}
-      title="P&L"
-      description="Deal value across the roster"
-    >
+    <AgencyFrame title="P&L" description="Deal value across the roster">
       <PnlDashboard />
-    </PageWrapper>
+    </AgencyFrame>
   );
 }

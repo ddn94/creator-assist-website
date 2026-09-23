@@ -16,8 +16,7 @@ export const talentNav: NavItem[] = [
 
 export const talentShell = {
   brand: "Creator Assist",
-  userName: "Fatima",
-  userEmail: "fatimawhd.dev@gmail.com",
+  userName: "You",
 } as const;
 
 export type JumpTile = {

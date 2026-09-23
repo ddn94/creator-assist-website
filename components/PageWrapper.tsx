@@ -12,6 +12,8 @@ type PageWrapperProps = {
   brandMeta?: string;
   userName: string;
   userEmail?: string;
+  avatarUrl?: string | null;
+  profileHref?: string;
   navItems: NavItem[];
   children: ReactNode;
 };
@@ -25,6 +27,8 @@ export function PageWrapper({
   brandMeta,
   userName,
   userEmail,
+  avatarUrl,
+  profileHref = "/home/profile",
   navItems,
   children,
 }: PageWrapperProps) {
@@ -38,6 +42,8 @@ export function PageWrapper({
         items={navItems}
         userName={userName}
         userEmail={userEmail}
+        avatarUrl={avatarUrl}
+        profileHref={profileHref}
         hideMobileMenu={talentMobileNav}
       />
       <main
