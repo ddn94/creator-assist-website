@@ -20,8 +20,10 @@ import type {
 } from "@/lib/pnl";
 import type { PaymentItem } from "@/lib/payments";
 import type { TalentProfileData } from "@/lib/profile";
+import { convertAmount } from "@/lib/fx";
 import {
   bindMockSeeds,
+  getAgencyProfile,
   getMockContent,
   getMockCreators,
   getMockIdeas,
@@ -182,13 +184,42 @@ const CURRENCY_SYMBOL: Record<CurrencyCode, string> = {
   EUR: "€",
 };
 
-function fmtCurrency(amount: number, currency: CurrencyCode): string {
-  const abs = Math.abs(amount).toLocaleString("en-US", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  });
-  const sign = amount < 0 ? "-" : "";
-  return `${sign}${CURRENCY_SYMBOL[currency]}${abs}`;
+function homeCurrency(): string {
+  return getAgencyProfile().currency || "GBP";
+}
+
+function currencyName(code: string): string {
+  try {
+    return new Intl.DisplayNames("en", { type: "currency" }).of(code) ?? code;
+  } catch {
+    return code;
+  }
+}
+
+function fmtAgency(amount: number, sourceCurrency: string): string {
+  const home = homeCurrency();
+  return fmtCurrency(convertAmount(amount, sourceCurrency, home), home);
+}
+
+function fmtCurrency(amount: number, currency: string): string {
+  const symbol = CURRENCY_SYMBOL[currency as CurrencyCode];
+  if (symbol) {
+    const abs = Math.abs(amount).toLocaleString("en-US", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    });
+    const sign = amount < 0 ? "-" : "";
+    return `${sign}${symbol}${abs}`;
+  }
+  try {
+    return new Intl.NumberFormat("en", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  } catch {
+    return `${currency} ${amount}`;
+  }
 }
 
 function fmtCommunity(followers: number): string {
@@ -1079,7 +1110,18 @@ function fmtMemberSince(iso?: string): string {
 }
 
 export function getSelfProfile(): TalentProfileData {
-  const self = creatorById(SELF_CREATOR_ID)!;
+  const self = creatorById(SELF_CREATOR_ID);
+  if (!self) {
+    return {
+      name: "",
+      email: null,
+      ageBracket: "25_34",
+      memberSince: fmtMemberSince(),
+      communityLabel: "0 community",
+      niches: "no platforms yet",
+      platforms: [],
+    };
+  }
   return {
     name: self.name,
     email: self.email,
@@ -1129,8 +1171,7 @@ function toTalentItem(creator: Creator): TalentItem {
     niches: creator.niches.join(", "),
     location: creator.location,
     liveDeals: hasDeals || live > 0 ? String(live) : null,
-    outstanding:
-      outstanding > 0 ? fmtCurrency(outstanding, creator.currency) : null,
+    outstanding: outstanding > 0 ? fmtAgency(outstanding, creator.currency) : null,
     lastActivity: creator.lastActivity,
   };
 }
@@ -1151,7 +1192,7 @@ function toTalentDeal(
     brand: item.brandName,
     platform: item.platform,
     fee: item.deal
-      ? fmtCurrency(
+      ? fmtAgency(
           item.deal.feeAgreed,
           creatorById(item.creatorId)?.currency ?? "USD",
         )
@@ -1173,17 +1214,17 @@ function toInvoicing(
 ): TalentInvoicing | null {
   if (!item.deal) return null;
   const due = computeDueDate(item.deal);
-  const fee = fmtCurrency(item.deal.feeAgreed, creator.currency);
+  const fee = fmtAgency(item.deal.feeAgreed, creator.currency);
   const delivered = item.deal.dateDelivered
     ? formatLiveDate(item.deal.dateDelivered)
     : "—";
   return {
+    contentId: item.id,
     dealTitle: item.title,
     summary: `${fee} · delivered ${delivered}`,
     dateInvoiced: item.deal.dateInvoiced ?? "",
-    paymentTerms: TERM_LABELS[item.deal.paymentTerms],
-    datePaid: item.deal.datePaid ? formatLiveDate(item.deal.datePaid) : "Not yet",
-    datePaidHint: `${creator.name.split(" ")[0]} confirms this`,
+    paymentTerms: item.deal.paymentTerms,
+    datePaid: item.deal.datePaid ?? "",
     dueNote: due
       ? `Due ${formatLiveDate(due)}${
           computeDealStatus(item.deal, today) === "overdue"
@@ -1243,10 +1284,11 @@ export function getAgencyPayments(today = new Date()): PaymentItem[] {
         content: item.title,
         brand: item.brandName ?? "—",
         platform: item.platform,
-        fee: fmtCurrency(deal.feeAgreed, creator.currency),
+        fee: fmtAgency(deal.feeAgreed, creator.currency),
         terms: TERM_LABELS[deal.paymentTerms],
         paymentTerms: deal.paymentTerms,
         dateInvoicedIso: deal.dateInvoiced,
+        datePaidIso: deal.datePaid,
         delivered: displayShortDate(deal.dateDelivered),
         invoiced: displayShortDate(deal.dateInvoiced),
         due: displayShortDate(dueIso),
@@ -1274,28 +1316,30 @@ export function getAgencyPnlTalent(
         i.type === "paid_collab" &&
         dealInPnlRange(i, start, end),
     );
-    const billed = items.reduce((s, i) => s + (i.deal?.feeAgreed ?? 0), 0);
+    const home = homeCurrency();
+    const toHome = (fee: number) => convertAmount(fee, creator.currency, home);
+    const billed = items.reduce((s, i) => s + toHome(i.deal?.feeAgreed ?? 0), 0);
     if (billed === 0) continue;
     const received = items
       .filter(
         (i) =>
           i.deal?.datePaid && dateInPnlRange(i.deal.datePaid, start, end),
       )
-      .reduce((s, i) => s + (i.deal?.feeAgreed ?? 0), 0);
+      .reduce((s, i) => s + toHome(i.deal?.feeAgreed ?? 0), 0);
     const outstanding = billed - received;
     const overdue = items
       .filter(
         (i) => i.deal && computeDealStatus(i.deal, today) === "overdue",
       )
-      .reduce((s, i) => s + (i.deal?.feeAgreed ?? 0), 0);
+      .reduce((s, i) => s + toHome(i.deal?.feeAgreed ?? 0), 0);
     rows.push({
       id: creator.id,
       name: creator.name,
-      currency: creator.currency,
-      billed: fmtCurrency(billed, creator.currency),
-      received: fmtCurrency(received, creator.currency),
-      outstanding: fmtCurrency(outstanding, creator.currency),
-      overdue: overdue > 0 ? fmtCurrency(overdue, creator.currency) : null,
+      currency: home,
+      billed: fmtCurrency(billed, home),
+      received: fmtCurrency(received, home),
+      outstanding: fmtCurrency(outstanding, home),
+      overdue: overdue > 0 ? fmtCurrency(overdue, home) : null,
     });
   }
   return rows;
@@ -1303,18 +1347,15 @@ export function getAgencyPnlTalent(
 
 export function getAgencyPnlBrands(filter?: PnlDateFilter): PnlBrandRow[] {
   const { start, end } = resolvePnlBounds(filter);
-  const map = new Map<string, { name: string; amount: number; currency: CurrencyCode }>();
+  const home = homeCurrency();
+  const map = new Map<string, { name: string; amount: number }>();
   for (const item of agencyContent()) {
     if (!item.deal || !item.brandName) continue;
     if (!dealInPnlRange(item, start, end)) continue;
     const creator = creatorById(item.creatorId)!;
     const key = item.brandName.toLowerCase();
-    const cur = map.get(key) ?? {
-      name: item.brandName,
-      amount: 0,
-      currency: creator.currency,
-    };
-    cur.amount += item.deal.feeAgreed;
+    const cur = map.get(key) ?? { name: item.brandName, amount: 0 };
+    cur.amount += convertAmount(item.deal.feeAgreed, creator.currency, home);
     map.set(key, cur);
   }
   return [...map.entries()]
@@ -1322,13 +1363,12 @@ export function getAgencyPnlBrands(filter?: PnlDateFilter): PnlBrandRow[] {
       id,
       name: value.name,
       amount: value.amount,
-      currency: value.currency,
     }))
     .sort((a, b) => b.amount - a.amount)
-    .map(({ id, name, amount, currency }) => ({
+    .map(({ id, name, amount }) => ({
       id,
       name,
-      value: fmtCurrency(amount, currency),
+      value: fmtCurrency(amount, home),
     }));
 }
 
@@ -1339,10 +1379,11 @@ export function getAgencyPnlCurrencies(
   const { start, end } = resolvePnlBounds(
     filter ? { ...filter, today } : undefined,
   );
-  const byCurrency = new Map<
-    CurrencyCode,
-    { talentIds: Set<string>; billed: number; received: number; overdue: number }
-  >();
+  const home = homeCurrency();
+  const talentIds = new Set<string>();
+  let billed = 0;
+  let received = 0;
+  let overdue = 0;
 
   for (const creator of agencyCreators()) {
     const items = contentForCreator(creator.id).filter(
@@ -1352,76 +1393,53 @@ export function getAgencyPnlCurrencies(
         dealInPnlRange(i, start, end),
     );
     if (items.length === 0) continue;
-    const bucket = byCurrency.get(creator.currency) ?? {
-      talentIds: new Set<string>(),
-      billed: 0,
-      received: 0,
-      overdue: 0,
-    };
-    bucket.talentIds.add(creator.id);
+    talentIds.add(creator.id);
     for (const item of items) {
-      const fee = item.deal!.feeAgreed;
-      bucket.billed += fee;
+      const fee = convertAmount(item.deal!.feeAgreed, creator.currency, home);
+      billed += fee;
       if (
         item.deal!.datePaid &&
         dateInPnlRange(item.deal!.datePaid, start, end)
       ) {
-        bucket.received += fee;
+        received += fee;
       }
       if (computeDealStatus(item.deal!, today) === "overdue") {
-        bucket.overdue += fee;
+        overdue += fee;
       }
     }
-    byCurrency.set(creator.currency, bucket);
   }
 
-  const order: CurrencyCode[] = ["GBP", "USD", "EUR"];
-  const names: Record<CurrencyCode, string> = {
-    GBP: "Pound sterling",
-    USD: "US dollar",
-    EUR: "Euro",
-  };
-
-  return order
-    .filter((code) => byCurrency.has(code))
-    .map((code) => {
-      const bucket = byCurrency.get(code)!;
-      const outstanding = bucket.billed - bucket.received;
-      return {
-        id: code.toLowerCase(),
-        name: names[code],
-        talentCount: bucket.talentIds.size,
-        metrics: [
-          {
-            label: "Billed",
-            value: fmtCurrency(bucket.billed, code),
-            tone: "idea" as const,
-          },
-          {
-            label: "Received",
-            value: fmtCurrency(bucket.received, code),
-            tone: "collab" as const,
-          },
-          {
-            label: "Outstanding",
-            value: fmtCurrency(outstanding, code),
-            tone: "payment" as const,
-          },
-          {
-            label: "Overdue",
-            value:
-              bucket.overdue > 0
-                ? fmtCurrency(bucket.overdue, code)
-                : "—",
-            tone:
-              bucket.overdue > 0
-                ? ("organic" as const)
-                : ("background" as const),
-            emphasize: bucket.overdue > 0,
-          },
-        ],
-      };
-    });
+  const outstanding = billed - received;
+  return [
+    {
+      id: home.toLowerCase(),
+      name: currencyName(home),
+      talentCount: talentIds.size,
+      metrics: [
+        {
+          label: "Billed",
+          value: fmtCurrency(billed, home),
+          tone: "idea" as const,
+        },
+        {
+          label: "Received",
+          value: fmtCurrency(received, home),
+          tone: "collab" as const,
+        },
+        {
+          label: "Outstanding",
+          value: fmtCurrency(outstanding, home),
+          tone: "payment" as const,
+        },
+        {
+          label: "Overdue",
+          value: overdue > 0 ? fmtCurrency(overdue, home) : "—",
+          tone: overdue > 0 ? ("organic" as const) : ("background" as const),
+          emphasize: overdue > 0,
+        },
+      ],
+    },
+  ];
 }
 
 export function getAgencyAttention(today = new Date()): AttentionItem[] {
@@ -1431,11 +1449,12 @@ export function getAgencyAttention(today = new Date()): AttentionItem[] {
     if (!item.deal || item.type !== "paid_collab") continue;
     const creator = creatorById(item.creatorId)!;
     const status = computeDealStatus(item.deal, today);
-    const fee = fmtCurrency(item.deal.feeAgreed, creator.currency);
+    const fee = fmtAgency(item.deal.feeAgreed, creator.currency);
     const due = computeDueDate(item.deal);
 
     if (status === "overdue" && due) {
       items.push({
+        id: item.id,
         name: creator.name,
         project: item.title,
         detail: `${daysBetween(due, today)} days overdue`,
@@ -1445,6 +1464,7 @@ export function getAgencyAttention(today = new Date()): AttentionItem[] {
     } else if (status === "awaiting_payment" && due) {
       const days = -daysBetween(due, today);
       items.push({
+        id: item.id,
         name: creator.name,
         project: item.title,
         detail: days >= 0 ? `Due in ${days} days` : `Due ${displayShortDate(due)}`,
@@ -1453,6 +1473,7 @@ export function getAgencyAttention(today = new Date()): AttentionItem[] {
       });
     } else if (status === "not_invoiced" && item.deal.dateDelivered) {
       items.push({
+        id: item.id,
         name: creator.name,
         project: item.title,
         detail: `Delivered ${displayShortDate(item.deal.dateDelivered)} · Not invoiced`,
@@ -1480,10 +1501,10 @@ export function getAgencyRoster(): RosterItem[] {
     if (creator.status === "record") meta = "Not on Creator Assist";
     else if (creator.status === "invited") meta = creator.lastActivity;
     else if (outstanding > 0)
-      meta = `${fmtCurrency(outstanding, creator.currency)} outstanding`;
+      meta = `${fmtAgency(outstanding, creator.currency)} outstanding`;
     else if (notInvoiced.length > 0) {
       const sum = notInvoiced.reduce((s, i) => s + (i.deal?.feeAgreed ?? 0), 0);
-      meta = `${fmtCurrency(sum, creator.currency)} to invoice`;
+      meta = `${fmtAgency(sum, creator.currency)} to invoice`;
     }
 
     return {
@@ -1510,59 +1531,41 @@ export function getAgencyOverviewStats(
   const record = roster.filter((c) => c.status === "record").length;
   const liveDeals = unpaidDeals(agencyContent(), today).length;
 
-  const byCurrency = new Map<CurrencyCode, { outstanding: number; overdue: number; received: number }>();
+  const home = homeCurrency();
+  let outstanding = 0;
+  let overdue = 0;
+  let received = 0;
   for (const creator of roster) {
     const items = contentForCreator(creator.id);
-    const bucket = byCurrency.get(creator.currency) ?? {
-      outstanding: 0,
-      overdue: 0,
-      received: 0,
-    };
     for (const item of items) {
       if (!item.deal || item.type !== "paid_collab") continue;
+      const fee = convertAmount(item.deal.feeAgreed, creator.currency, home);
       if (item.deal.datePaid) {
-        // only count "this month" roughly — paid in Sep 2026 for demo; Marcus lumen paid Jun so not this month
         const paidMonth = item.deal.datePaid.slice(0, 7);
         const thisMonth = today.toISOString().slice(0, 7);
-        if (paidMonth === thisMonth) bucket.received += item.deal.feeAgreed;
+        if (paidMonth === thisMonth) received += fee;
       } else {
-        bucket.outstanding += item.deal.feeAgreed;
-        if (computeDealStatus(item.deal, today) === "overdue") {
-          bucket.overdue += item.deal.feeAgreed;
-        }
+        outstanding += fee;
+        if (computeDealStatus(item.deal, today) === "overdue") overdue += fee;
       }
     }
-    byCurrency.set(creator.currency, bucket);
   }
 
-  const gbp = byCurrency.get("GBP") ?? { outstanding: 0, overdue: 0, received: 0 };
-  const usd = byCurrency.get("USD") ?? { outstanding: 0, overdue: 0, received: 0 };
-  const overdueGbp = gbp.overdue;
-  const overdueUsd = usd.overdue;
   const overdueItems = getAgencyAttention(today).filter((i) => i.overdue);
-  const overduePrimary =
-    overdueGbp > 0
-      ? fmtCurrency(overdueGbp, "GBP")
-      : overdueUsd > 0
-        ? fmtCurrency(overdueUsd, "USD")
-        : fmtCurrency(0, "GBP");
 
   return {
     talentCount: roster.length,
     talentFooter: `${active} active · ${invited} invited · ${record} record`,
-    outstanding: fmtCurrency(gbp.outstanding, "GBP"),
-    outstandingFooter:
-      usd.outstanding > 0
-        ? `+ ${fmtCurrency(usd.outstanding, "USD")} · two currencies`
-        : "GBP roster",
-    overdue: overduePrimary,
+    outstanding: fmtCurrency(outstanding, home),
+    outstandingFooter: "Across the roster",
+    overdue: fmtCurrency(overdue, home),
     overdueFooter:
       overdueItems.length > 0
         ? `${overdueItems.length} deal${overdueItems.length === 1 ? "" : "s"}, ${overdueItems[0]?.detail ?? ""}`
         : "None",
-    received: fmtCurrency(gbp.received, "GBP"),
+    received: fmtCurrency(received, home),
     receivedFooter: "confirmed by talent",
-    description: `Bright Talent · ${roster.length} talent · ${liveDeals} live deals`,
+    description: `${getAgencyProfile().agencyName} · ${roster.length} talent · ${liveDeals} live deals`,
   };
 }
 

@@ -115,10 +115,10 @@ export function PnlDashboard({ className = "" }: PnlDashboardProps) {
         </div>
       ) : null}
 
-      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5">
-        {currencies.map((summary) => (
-          <CurrencySummaryCard key={summary.id} summary={summary} />
-        ))}
+      <div className="mt-4">
+        {currencies[0] ? (
+          <CurrencySummaryCard summary={currencies[0]} />
+        ) : null}
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(16rem,1fr)] lg:gap-5">

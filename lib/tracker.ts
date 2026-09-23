@@ -1,4 +1,5 @@
 import type { StatusTagTone } from "@/components/StatusTag";
+import { getMockCreators } from "@/lib/mockStore";
 import type { Category } from "@/lib/ui";
 
 export const STAGES = [
@@ -165,14 +166,26 @@ export function formatLiveDate(isoDate: string): string {
   });
 }
 
-export function fmtMoney(amount: number): string {
-  return (
-    "$" +
-    amount.toLocaleString("en-US", {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    })
-  );
+export function fmtMoney(amount: number, currency = selfCurrencyCode()): string {
+  const code = currency || "USD";
+  const whole = Math.round(amount * 100) % 100 === 0;
+  try {
+    return new Intl.NumberFormat("en", {
+      style: "currency",
+      currency: code,
+      minimumFractionDigits: whole ? 0 : 2,
+      maximumFractionDigits: whole ? 0 : 2,
+    }).format(amount);
+  } catch {
+    return `${code} ${amount}`;
+  }
+}
+
+export function selfCurrencyCode(): string {
+  const code = getMockCreators()
+    .find((creator) => creator.id === "fatima")
+    ?.currency?.trim();
+  return code || "USD";
 }
 
 export function deliverablesTotal(

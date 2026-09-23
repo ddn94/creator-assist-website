@@ -8,7 +8,7 @@ export default function WorkspacePnlPage() {
       {...workspaceShell}
       navItems={workspaceNav}
       title="P&L"
-      description="Deal value across the roster, grouped by currency"
+      description="Deal value across the roster"
     >
       <PnlDashboard />
     </PageWrapper>
