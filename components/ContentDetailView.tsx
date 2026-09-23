@@ -33,6 +33,7 @@ import {
   deliverablesTotal,
   formatLiveDate,
   fmtMoney,
+  selfCurrencyCode,
   type TrackerDetail,
   type TrackerDeliverable,
   type TrackerExpense,
@@ -40,9 +41,13 @@ import {
 
 type ContentDetailViewProps = {
   id: string;
+  backHref?: string;
 };
 
-export function ContentDetailView({ id }: ContentDetailViewProps) {
+export function ContentDetailView({
+  id,
+  backHref = "/home/tracker",
+}: ContentDetailViewProps) {
   const stored = useTrackerDetail(id);
 
   if (!stored) {
@@ -54,25 +59,59 @@ export function ContentDetailView({ id }: ContentDetailViewProps) {
         <Text variant="description" className="mt-2">
           This item may have been deleted.
         </Text>
-        <Button href="/home/tracker" className="mt-6" size="sm">
-          Back to tracker
+        <Button href={backHref} className="mt-6" size="sm">
+          Back
         </Button>
       </div>
     );
   }
 
-  return <ContentDetailEditor key={stored.id} initial={stored} />;
+  return (
+    <ContentDetailEditor
+      key={stored.id}
+      initial={stored}
+      backHref={backHref}
+    />
+  );
 }
 
-function ContentDetailEditor({ initial }: { initial: TrackerDetail }) {
+function ContentDetailEditor({
+  initial,
+  backHref,
+}: {
+  initial: TrackerDetail;
+  backHref: string;
+}) {
   const router = useRouter();
   const stored = useTrackerDetail(initial.id);
   const [item, setItem] = useState(initial);
   const platformOptions = useSelfContentPlatformOptions(item.platform);
+  const currency = selfCurrencyCode();
 
   useEffect(() => {
     if (stored) setItem(stored);
   }, [stored]);
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("section") !== "deal") {
+      return;
+    }
+
+    let cancelled = false;
+
+    const timer = window.setTimeout(() => {
+      if (cancelled) return;
+      const node = document.getElementById("deal");
+      if (!node) return;
+      const top = window.scrollY + node.getBoundingClientRect().top - 24;
+      window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+    }, 100);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [item.id]);
 
   const isPaid = item.type === "paid_collab";
   const totalExpenses = item.expenses.reduce((sum, e) => sum + e.amount, 0);
@@ -119,7 +158,7 @@ function ContentDetailEditor({ initial }: { initial: TrackerDetail }) {
   return (
     <div className="mx-auto max-w-3xl">
       <div className="mb-3 flex items-center justify-between">
-        <BackLink href="/home/tracker" label="Back" />
+        <BackLink href={backHref} label="Back" />
         <button
           type="button"
           aria-label="Delete content item"
@@ -168,13 +207,13 @@ function ContentDetailEditor({ initial }: { initial: TrackerDetail }) {
               deal:
                 type === "paid_collab"
                   ? item.deal ?? {
-                      feeAgreed: 0,
-                      paymentTerms: "net_30",
-                      dateDelivered: null,
-                      dateInvoiced: null,
-                      datePaid: null,
-                      deliverables: [],
-                    }
+                    feeAgreed: 0,
+                    paymentTerms: "net_30",
+                    dateDelivered: null,
+                    dateInvoiced: null,
+                    datePaid: null,
+                    deliverables: [],
+                  }
                   : null,
             });
           }}
@@ -277,7 +316,11 @@ function ContentDetailEditor({ initial }: { initial: TrackerDetail }) {
       </Card>
 
       {isPaid && item.deal ? (
-        <CategoryCard category="payment" className="mb-5 p-6 sm:p-8">
+        <CategoryCard
+          id="deal"
+          category="payment"
+          className="mb-5 scroll-mt-6 p-6 sm:p-8"
+        >
           <div className="mb-3 flex items-center justify-between gap-3">
             <Text variant="title" className="text-base">
               Deal
@@ -310,7 +353,7 @@ function ContentDetailEditor({ initial }: { initial: TrackerDetail }) {
               });
             }}
           >
-            <Field id="feeAgreed" label="Fee agreed">
+            <Field id="feeAgreed" label={`Fee agreed (${currency})`}>
               <TextField
                 id="feeAgreed"
                 name="feeAgreed"
@@ -385,7 +428,7 @@ function ContentDetailEditor({ initial }: { initial: TrackerDetail }) {
               variant="plain"
             />
             {item.deal.deliverables.length > 0 &&
-            deliverableSum !== item.deal.feeAgreed ? (
+              deliverableSum !== item.deal.feeAgreed ? (
               <Text
                 variant="caption"
                 className="mb-3 rounded-lg border border-idea-pill/40 bg-idea px-2.5 py-1.5 text-xxs text-ink"
@@ -444,7 +487,7 @@ function ContentDetailEditor({ initial }: { initial: TrackerDetail }) {
                   full
                 />
               </Field>
-              <Field id="rate" label="Rate (per unit)" className="min-w-0">
+              <Field id="rate" label={`Rate (${currency} per unit)`} className="min-w-0">
                 <TextField
                   id="rate"
                   name="rate"
@@ -519,7 +562,7 @@ function ContentDetailEditor({ initial }: { initial: TrackerDetail }) {
               full
             />
           </Field>
-          <Field id="expenseAmount" label="Amount" className="min-w-0">
+          <Field id="expenseAmount" label={`Amount (${currency})`} className="min-w-0">
             <TextField
               id="expenseAmount"
               name="amount"

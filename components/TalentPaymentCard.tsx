@@ -32,7 +32,7 @@ export function TalentPaymentCard({
     <CategoryCard category="payment" className="p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <Link
-          href={`/home/tracker/${payment.contentId}`}
+          href={`/home/tracker/${payment.contentId}?section=deal&from=payments`}
           className="min-w-0 font-display text-base font-bold leading-snug text-ink hover:underline"
         >
           {payment.content}

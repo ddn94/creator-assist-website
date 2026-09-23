@@ -35,6 +35,7 @@ export function PaymentEditModal({
 }: PaymentEditModalProps) {
   const [invoiced, setInvoiced] = useState("");
   const [terms, setTerms] = useState<PaymentTerms>("net_30");
+  const [paid, setPaid] = useState("");
 
   useEffect(() => {
     if (!payment || !open) return;
@@ -42,6 +43,7 @@ export function PaymentEditModal({
     setTerms(
       (payment.paymentTerms as PaymentTerms | null) ?? "net_30",
     );
+    setPaid(payment.datePaidIso ?? "");
   }, [payment, open]);
 
   if (!payment) return null;
@@ -49,9 +51,11 @@ export function PaymentEditModal({
   function save() {
     if (!payment) return;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(invoiced)) return;
+    if (paid && !/^\d{4}-\d{2}-\d{2}$/.test(paid)) return;
     updateContentInvoice(payment.id, {
       dateInvoiced: invoiced,
       paymentTerms: terms,
+      datePaid: paid || null,
     });
     onClose();
   }
@@ -61,7 +65,7 @@ export function PaymentEditModal({
       open={open}
       onClose={onClose}
       title="Edit payment details"
-      description="Update the invoice date and payment terms for this deal."
+      description="Update the invoice date, payment terms, and paid date for this deal."
       footer={
         <>
           <Button
@@ -149,6 +153,23 @@ export function PaymentEditModal({
               placeholder="Select terms"
             />
           </Field>
+
+          <Field
+            id="date-paid"
+            label="Date paid"
+            hint="Leave blank if the brand has not paid yet."
+            className="sm:col-span-2"
+          >
+            <TextField
+              id="date-paid"
+              type="date"
+              size="sm"
+              full
+              value={paid}
+              onChange={(event) => setPaid(event.target.value)}
+              iconLeft={<CalendarBlankIcon size={16} weight="bold" />}
+            />
+          </Field>
         </div>
 
         <div className="flex items-start gap-2 rounded-xl bg-payment px-3 py-2.5">
@@ -159,8 +180,8 @@ export function PaymentEditModal({
             aria-hidden
           />
           <Text variant="caption" className="leading-relaxed text-ink">
-            Status is calculated from delivery date, invoice date and payment
-            terms.
+            Status is calculated from the delivery date, invoice date, payment
+            terms, and paid date.
           </Text>
         </div>
       </div>
