@@ -28,12 +28,18 @@ export function IdeaCard({
   onTurnIntoContent,
 }: IdeaCardProps) {
   const [editing, setEditing] = useState(false);
+  const category = ideaStatusCategory(idea.status);
+  const border = {
+    idea: "border-idea-pill/25",
+    in_progress: "border-organic-pill/25",
+    used: "border-primary/25",
+  }[idea.status];
 
   return (
     <>
       <CategoryCard
-        category="idea"
-        className="flex h-full flex-col border border-idea-pill/25 p-6 sm:p-8"
+        category={category}
+        className={`flex h-full flex-col border p-6 sm:p-8 ${border}`}
       >
         <div className="flex items-start justify-between gap-3">
           <CategoryPill category={ideaStatusCategory(idea.status)}>

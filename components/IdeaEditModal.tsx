@@ -17,6 +17,7 @@ import {
   type IdeaItem,
   type IdeaStatus,
 } from "@/lib/ideas";
+import { categoryCard } from "@/lib/ui";
 
 type IdeaEditModalProps = {
   idea: IdeaItem | null;
@@ -96,7 +97,12 @@ export function IdeaEditModal({
           save();
         }}
       >
-        <div className="flex items-center gap-2 rounded-xl bg-idea px-3 py-2.5">
+        <div
+          className={[
+            "flex items-center gap-2 rounded-xl px-3 py-2.5",
+            categoryCard[ideaStatusCategory(status)],
+          ].join(" ")}
+        >
           <CategoryPill category={ideaStatusCategory(status)}>
             {IDEA_STATUS_LABELS[status]}
           </CategoryPill>

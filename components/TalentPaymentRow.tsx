@@ -40,7 +40,7 @@ export function TalentPaymentRow({
     >
       <td className="px-4 py-3">
         <Link
-          href={`/home/tracker/${payment.contentId}`}
+          href={`/home/tracker/${payment.contentId}?section=deal&from=payments`}
           className="font-display text-xs font-semibold text-ink hover:underline"
         >
           {payment.content}

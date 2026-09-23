@@ -8,7 +8,7 @@ import { SignOutIcon, UserIcon } from "@phosphor-icons/react";
 import { resetMockDb } from "@/lib/mockStore";
 import { Avatar } from "@/components/Avatar";
 import { Text } from "@/components/Text";
-import { useSelfProfile } from "@/lib/useMockDb";
+import { useAgencyProfile, useSelfProfile } from "@/lib/useMockDb";
 
 export type NavItem = {
   href: string;
@@ -46,8 +46,10 @@ export function Navbar({
 }: NavbarProps) {
   const pathname = usePathname();
   const liveProfile = useSelfProfile();
+  const agency = useAgencyProfile();
   const isTalent = brand === "Creator Assist";
-  const displayName = isTalent ? liveProfile.name : userName;
+  const displayName = isTalent ? liveProfile.name : agency.name || userName;
+  const displayBrand = isTalent ? brand : agency.agencyName || brand;
   const displayEmail = isTalent
     ? (liveProfile.email ?? userEmail)
     : userEmail;
@@ -91,7 +93,7 @@ export function Navbar({
           />
           <span className="min-w-0">
             <Text variant="title" className="truncate text-sm sm:text-base">
-              {brand}
+              {displayBrand}
             </Text>
             {brandMeta ? (
               <Text variant="caption" className="truncate">

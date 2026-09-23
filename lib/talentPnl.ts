@@ -1,7 +1,7 @@
 import type { Category } from "@/lib/ui";
 import { paymentStatusTone } from "@/lib/payments";
 import type { ContentType } from "@/lib/tracker";
-import { contentCategory, contentPillLabel } from "@/lib/tracker";
+import { contentCategory, contentPillLabel, fmtMoney } from "@/lib/tracker";
 import {
   TALENT_PNL_BY_BRAND,
   TALENT_PNL_BY_NICHE,
@@ -30,16 +30,7 @@ export function contentTypeLabel(type: ContentType): string {
   return contentPillLabel(type);
 }
 
-export { paymentStatusTone };
-
-export function fmtMoney(amount: number): string {
-  const abs = Math.abs(amount).toLocaleString("en-US", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  });
-  if (amount < 0) return `-$${abs}`;
-  return `$${abs}`;
-}
+export { paymentStatusTone, fmtMoney };
 
 export {
   TALENT_PNL_SUMMARY,

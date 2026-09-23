@@ -46,9 +46,9 @@ export function TalentProfileHeader({
           </Text>
         </div>
       </div>
-      <Button type="button" size="sm" variant="secondary" className="w-full sm:w-auto">
+      {/* <Button type="button" size="sm" variant="secondary" className="w-full sm:w-auto">
         Message
-      </Button>
+      </Button> */}
     </div>
   );
 }

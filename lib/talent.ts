@@ -3,6 +3,7 @@ import {
   getTalentById as getFromStore,
   TALENT as FROM_STORE,
 } from "@/lib/talentMock";
+import type { PaymentTerms } from "@/lib/tracker";
 
 export type TalentStatus = "active" | "invited" | "record";
 
@@ -36,12 +37,12 @@ export type TalentDeal = {
 };
 
 export type TalentInvoicing = {
+  contentId: string;
   dealTitle: string;
   summary: string;
   dateInvoiced: string;
-  paymentTerms: string;
+  paymentTerms: PaymentTerms;
   datePaid: string;
-  datePaidHint: string;
   dueNote: string;
 };
 

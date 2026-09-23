@@ -52,6 +52,7 @@ export function ContentTracker({
     type: string;
     brandName: string;
     goLiveDate: string;
+    notes: string;
   }) {
     if (!payload.title) return;
     const type: ContentType =
@@ -63,6 +64,7 @@ export function ContentTracker({
       type,
       brandName: type === "paid_collab" ? payload.brandName || null : null,
       goLiveDate: payload.goLiveDate || null,
+      notes: payload.notes,
     });
     setActiveStage("concept");
   }

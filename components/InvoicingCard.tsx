@@ -1,11 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CaretDownIcon } from "@phosphor-icons/react";
 import { Button } from "@/components/Button";
+import { Select } from "@/components/Select";
 import { Text } from "@/components/Text";
 import { TextField } from "@/components/TextField";
+import { updateContentInvoice } from "@/lib/mockStore";
 import type { TalentInvoicing } from "@/lib/talent";
+import { PAYMENT_TERM_OPTIONS, type PaymentTerms } from "@/lib/tracker";
 
 type InvoicingCardProps = {
   invoicing: TalentInvoicing;
@@ -17,6 +20,25 @@ export function InvoicingCard({
   className = "",
 }: InvoicingCardProps) {
   const [open, setOpen] = useState(false);
+  const [invoiced, setInvoiced] = useState(invoicing.dateInvoiced);
+  const [terms, setTerms] = useState<PaymentTerms>(invoicing.paymentTerms);
+  const [paid, setPaid] = useState(invoicing.datePaid);
+
+  useEffect(() => {
+    setInvoiced(invoicing.dateInvoiced);
+    setTerms(invoicing.paymentTerms);
+    setPaid(invoicing.datePaid);
+  }, [invoicing]);
+
+  function save() {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(invoiced)) return;
+    if (paid && !/^\d{4}-\d{2}-\d{2}$/.test(paid)) return;
+    updateContentInvoice(invoicing.contentId, {
+      dateInvoiced: invoiced,
+      paymentTerms: terms,
+      datePaid: paid || null,
+    });
+  }
 
   return (
     <section className={className}>
@@ -58,21 +80,23 @@ export function InvoicingCard({
                   Date invoiced
                 </Text>
                 <TextField
+                  type="date"
                   size="sm"
                   full
-                  defaultValue={invoicing.dateInvoiced}
-                  readOnly
+                  value={invoiced}
+                  onChange={(event) => setInvoiced(event.target.value)}
                 />
               </label>
               <label className="block min-w-0">
                 <Text variant="caption" className="mb-1.5 font-medium text-ink">
                   Payment terms
                 </Text>
-                <TextField
+                <Select
                   size="sm"
                   full
-                  defaultValue={invoicing.paymentTerms}
-                  readOnly
+                  options={[...PAYMENT_TERM_OPTIONS]}
+                  value={terms}
+                  onChange={(value) => setTerms(value as PaymentTerms)}
                 />
               </label>
               <label className="block min-w-0">
@@ -80,20 +104,23 @@ export function InvoicingCard({
                   Date paid
                 </Text>
                 <TextField
+                  type="date"
                   size="sm"
                   full
-                  defaultValue={invoicing.datePaid}
-                  readOnly
-                  className="bg-background"
+                  value={paid}
+                  onChange={(event) => setPaid(event.target.value)}
                 />
-                <Text variant="caption" className="mt-1.5">
-                  {invoicing.datePaidHint}
-                </Text>
               </label>
             </div>
 
             <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-              <Button type="button" size="sm" className="w-full sm:w-auto">
+              <Button
+                type="button"
+                size="sm"
+                className="w-full sm:w-auto"
+                onClick={save}
+                disabled={!invoiced}
+              >
                 Save invoicing
               </Button>
               <Text variant="caption">{invoicing.dueNote}</Text>

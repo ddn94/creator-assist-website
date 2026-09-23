@@ -18,6 +18,7 @@ export type PaymentItem = {
   /** Raw deal fields for editing */
   paymentTerms: string | null;
   dateInvoicedIso: string | null;
+  datePaidIso: string | null;
   delivered: string | null;
   invoiced: string | null;
   due: string | null;

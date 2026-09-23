@@ -5,12 +5,11 @@ import { PageWrapper } from "@/components/PageWrapper";
 import { RosterList } from "@/components/RosterList";
 import { StatCard } from "@/components/StatCard";
 import { Text } from "@/components/Text";
-import { AGENCY_ATTENTION } from "@/lib/talentMock";
 import { useAgencyOverviewData } from "@/lib/useMockDb";
 import { workspaceNav, workspaceShell } from "@/lib/workspace";
 
 export function AgencyOverview() {
-  const { stats, roster } = useAgencyOverviewData();
+  const { stats, roster, attention } = useAgencyOverviewData();
 
   return (
     <PageWrapper
@@ -52,7 +51,7 @@ export function AgencyOverview() {
           <Text variant="title" className="mb-3 text-lg">
             Needs attention
           </Text>
-          <NeedsAttentionList items={AGENCY_ATTENTION} />
+          <NeedsAttentionList items={attention} />
         </section>
 
         <section className="min-w-0">

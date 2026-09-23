@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/Button";
 import { Field } from "@/components/Field";
 import { Select } from "@/components/Select";
+import { TextArea } from "@/components/TextArea";
 import { TextField } from "@/components/TextField";
 import {
   CONTENT_TYPE_OPTIONS,
@@ -20,6 +21,7 @@ type AddContentPanelProps = {
     type: string;
     brandName: string;
     goLiveDate: string;
+    notes: string;
   }) => void;
 };
 
@@ -44,7 +46,7 @@ export function AddContentPanel({
       onToggle={(event) => setOpen(event.currentTarget.open)}
     >
       <summary className="flex cursor-pointer list-none items-center gap-2.5 px-4 py-3.5 font-display text-sm font-semibold text-ink select-none [&::-webkit-details-marker]:hidden">
-        <span className="inline-flex size-6 items-center justify-center rounded-full bg-primary text-on-primary">
+        <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-on-primary">
           <svg
             viewBox="0 0 16 16"
             className="size-3 fill-none stroke-current stroke-2 transition-transform group-open:rotate-45"
@@ -53,11 +55,23 @@ export function AddContentPanel({
             <path d="M8 3v10M3 8h10" strokeLinecap="round" />
           </svg>
         </span>
-        Add content
+        <span className="flex-1">Add content</span>
+        {open ? (
+          <Button
+            type="submit"
+            form="add-content-form"
+            size="xs"
+            className="shrink-0"
+            onClick={(event) => event.stopPropagation()}
+          >
+            Add
+          </Button>
+        ) : null}
       </summary>
 
       <form
-        className="grid grid-cols-1 gap-3 px-4 pb-4 md:grid-cols-4"
+        id="add-content-form"
+        className="grid grid-cols-1 gap-3 px-4 pb-4 md:grid-cols-5"
         onSubmit={(event) => {
           event.preventDefault();
           const form = event.currentTarget;
@@ -69,6 +83,7 @@ export function AddContentPanel({
             type: String(data.get("type") ?? "organic"),
             brandName: String(data.get("brandName") ?? "").trim(),
             goLiveDate: String(data.get("goLiveDate") ?? ""),
+            notes: String(data.get("notes") ?? "").trim(),
           });
           form.reset();
           setOpen(false);
@@ -113,7 +128,7 @@ export function AddContentPanel({
             full
           />
         </Field>
-        <Field id="brandName" label="Brand (paid only)">
+        <Field id="brandName" label="Brand (paid only)" className="md:col-span-2">
           <TextField
             id="brandName"
             name="brandName"
@@ -131,11 +146,21 @@ export function AddContentPanel({
             full
           />
         </Field>
-        <div className="flex items-end">
-          <Button type="submit" size="sm" className="h-10 w-full md:w-auto">
-            Add
-          </Button>
-        </div>
+        <Field
+          id="notes"
+          label="Notes"
+          className="md:col-start-5 md:row-start-1 md:row-span-2 md:flex md:h-full md:flex-col"
+        >
+          <TextArea
+            id="notes"
+            name="notes"
+            rows={3}
+            placeholder="Optional notes"
+            size="sm"
+            full
+            className="md:min-h-0 md:flex-1 md:resize-none!"
+          />
+        </Field>
       </form>
     </details>
   );
