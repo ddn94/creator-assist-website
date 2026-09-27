@@ -9,12 +9,12 @@ import {
   memberSinceLabel,
   readPlatforms,
   readString,
-} from "@/lib/auth/onboarding";
+} from "@/lib/auth/profileAnswers";
 import type { Profile } from "@/lib/auth/types";
 import { countryName } from "@/lib/countries";
-import { fmtFollowers, ROSTER_OPTIONS } from "@/lib/onboarding";
+import { fmtFollowers, ROSTER_OPTIONS } from "@/lib/profileFormOptions";
 import { PROFILE_APP_ROWS } from "@/lib/profile";
-import { platformCategoryFor } from "@/lib/mockStore";
+import { platformCategoryFor } from "@/lib/platforms";
 
 type AccountProfileProps = {
   profile: Profile;
@@ -85,7 +85,7 @@ export function AccountProfile({
           description={
             profile.role === "agency"
               ? "Agency name, your name, country, and roster size"
-              : "Name, age bracket, country, platforms, and community size"
+              : "Name, age bracket, country, niche, platforms, and community size"
           }
           href={editHref}
         />
