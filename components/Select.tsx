@@ -27,6 +27,7 @@ type SelectProps = {
   placeholder?: string;
   size?: ControlSize;
   full?: boolean;
+  disabled?: boolean;
   className?: string;
   onChange?: (value: string) => void;
 };
@@ -49,6 +50,7 @@ export function Select({
   placeholder = "Select…",
   size = "md",
   full = false,
+  disabled = false,
   className = "",
   onChange,
 }: SelectProps) {
@@ -60,7 +62,6 @@ export function Select({
   const inputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
-  const skipOpenOnFocus = useRef(false);
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState<MenuCoords | null>(null);
   const [query, setQuery] = useState("");
@@ -81,6 +82,12 @@ export function Select({
   function setValue(next: string) {
     if (controlledValue === undefined) setUncontrolled(next);
     onChange?.(next);
+  }
+
+  function closeMenu() {
+    setOpen(false);
+    setQuery("");
+    setCoords(null);
   }
 
   function updatePosition() {
@@ -121,21 +128,15 @@ export function Select({
   }
 
   useLayoutEffect(() => {
-    if (!open) {
-      setCoords(null);
-      return;
-    }
+    if (!open) return;
     updatePosition();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- position when open/options change
   }, [open, filtered.length]);
-
-  useEffect(() => {
-    if (!open) setQuery("");
-  }, [open]);
 
   useEffect(() => {
     if (!open) return;
 
-    function onPointerDown(event: MouseEvent) {
+    function onPointerDown(event: PointerEvent) {
       const target = event.target as Node;
       if (
         rootRef.current?.contains(target) ||
@@ -143,27 +144,34 @@ export function Select({
       ) {
         return;
       }
-      setOpen(false);
+      closeMenu();
+      inputRef.current?.blur();
     }
 
     function onKeyDown(event: globalThis.KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") {
+        closeMenu();
+        inputRef.current?.blur();
+      }
     }
 
     function onReposition() {
       updatePosition();
     }
 
-    document.addEventListener("mousedown", onPointerDown);
+    // Capture phase so we close before a <label htmlFor> retargets click
+    // onto this input and before any stopPropagation on bubble.
+    document.addEventListener("pointerdown", onPointerDown, true);
     document.addEventListener("keydown", onKeyDown);
     window.addEventListener("resize", onReposition);
     window.addEventListener("scroll", onReposition, true);
     return () => {
-      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("pointerdown", onPointerDown, true);
       document.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("resize", onReposition);
       window.removeEventListener("scroll", onReposition, true);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- attach while open
   }, [open, filtered.length]);
 
   useEffect(() => {
@@ -175,7 +183,7 @@ export function Select({
   }, [open, active, needle]);
 
   function openMenu() {
-    if (open) return;
+    if (disabled || open) return;
     const index = options.findIndex((option) => option.value === value);
     setActive(index >= 0 ? index : 0);
     setQuery("");
@@ -183,9 +191,8 @@ export function Select({
   }
 
   function choose(next: string) {
-    skipOpenOnFocus.current = true;
     setValue(next);
-    setOpen(false);
+    closeMenu();
     inputRef.current?.focus();
   }
 
@@ -207,7 +214,7 @@ export function Select({
       if (option) choose(option.value);
     } else if (event.key === "Escape") {
       event.preventDefault();
-      setOpen(false);
+      closeMenu();
     }
   }
 
@@ -255,7 +262,7 @@ export function Select({
                       <button
                         type="button"
                         className={[
-                          "flex w-full items-center px-3.5 py-2.5 text-left transition-colors focus:outline-none",
+                          "flex w-full cursor-pointer items-center px-3.5 py-2.5 text-left transition-colors focus:outline-none",
                           fieldText[size],
                           isActive || isSelected
                             ? "bg-background text-ink"
@@ -285,6 +292,9 @@ export function Select({
         ref={fieldRef}
         className={[
           "inline-flex min-w-0 items-center gap-2 rounded-input border border-border bg-card text-ink",
+          disabled
+            ? "cursor-not-allowed opacity-60"
+            : "cursor-pointer",
           controlSizes[size],
           fieldText[size],
           full ? "w-full" : "",
@@ -302,37 +312,42 @@ export function Select({
           aria-expanded={open}
           aria-controls={listId}
           aria-autocomplete="list"
+          aria-disabled={disabled}
+          disabled={disabled}
           autoComplete="off"
           placeholder={placeholder}
           value={inputValue}
           onChange={(event) => {
+            if (disabled) return;
             setQuery(event.target.value);
             setActive(0);
             if (!open) setOpen(true);
           }}
-          onFocus={() => {
-            if (skipOpenOnFocus.current) {
-              skipOpenOnFocus.current = false;
-              return;
-            }
-            openMenu();
+          // Open on pointerdown on the control itself — not onClick.
+          // A <label htmlFor> click is retargeted as click on this input,
+          // which would reopen the menu right after an outside close.
+          onPointerDown={() => {
+            if (!disabled) openMenu();
           }}
           onKeyDown={onInputKeyDown}
-          className="min-w-0 flex-1 bg-transparent text-ink outline-none placeholder:text-placeholder"
+          className="min-w-0 flex-1 bg-transparent text-ink outline-none placeholder:text-placeholder disabled:cursor-not-allowed"
         />
         <button
           type="button"
           tabIndex={-1}
           aria-label="Show options"
+          disabled={disabled}
           onMouseDown={(event) => event.preventDefault()}
           onClick={() => {
-            if (open) setOpen(false);
-            else {
+            if (disabled) return;
+            if (open) {
+              closeMenu();
+            } else {
               inputRef.current?.focus();
               openMenu();
             }
           }}
-          className="shrink-0 text-muted"
+          className="shrink-0 cursor-pointer text-muted disabled:cursor-not-allowed"
         >
           <CaretDownIcon
             size={16}
