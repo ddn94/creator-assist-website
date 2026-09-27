@@ -1,7 +1,13 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
+import {
+  accessRedirect,
+  subjectFromProfile,
+} from "@/lib/auth/access";
+import { isAdminEmail } from "@/lib/auth/admin";
 import { createClient } from "@/lib/supabase/server";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
-import { asAnswers } from "@/lib/auth/onboarding";
+import { asAnswers } from "@/lib/auth/profileAnswers";
 import type { Profile, UserRole } from "@/lib/auth/types";
 
 function asProfile(row: Record<string, unknown>): Profile {
@@ -20,49 +26,57 @@ function asProfile(row: Record<string, unknown>): Profile {
       typeof row.onboarding_completed_at === "string"
         ? row.onboarding_completed_at
         : null,
+    last_seen_at: typeof row.last_seen_at === "string" ? row.last_seen_at : null,
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
   };
 }
 
-export async function getProfile(): Promise<Profile | null> {
+export const getProfile = cache(async function getProfile(): Promise<Profile | null> {
   if (!hasSupabaseEnv()) return null;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+  const { data, error } = await supabase.auth.getClaims();
+  const userId = !error && data?.claims.sub ? String(data.claims.sub) : "";
+  if (!userId) return null;
 
-  const { data } = await supabase
+  const { data: row } = await supabase
     .from("profiles")
     .select("*")
-    .eq("id", user.id)
+    .eq("id", userId)
     .maybeSingle();
 
-  if (!data) return null;
-  return asProfile(data as Record<string, unknown>);
-}
+  if (!row) return null;
+  return asProfile(row as Record<string, unknown>);
+});
 
+/** Load profile or bail — access rules live in accessRedirect. */
 export async function requireProfile(role: UserRole) {
   const profile = await getProfile();
-  if (!profile) redirect("/login");
-  if (profile.role !== role) {
-    redirect(profile.role === "agency" ? "/workspace" : "/home");
-  }
-  if (!profile.onboarding_completed_at) {
-    redirect(profile.role === "agency" ? "/onboarding/agency" : "/onboarding");
-  }
-  return profile;
+  const to = accessRedirect(
+    profile ? subjectFromProfile(profile) : null,
+    { kind: "app", role },
+  );
+  if (to) redirect(to);
+  return profile!;
 }
 
 export async function requireOnboarding(role: UserRole) {
   const profile = await getProfile();
-  if (!profile) redirect("/login");
-  if (profile.role !== role) {
-    redirect(profile.role === "agency" ? "/onboarding/agency" : "/onboarding");
-  }
-  if (profile.onboarding_completed_at) {
-    redirect(profile.role === "agency" ? "/workspace" : "/home");
-  }
-  return profile;
+  const to = accessRedirect(
+    profile ? subjectFromProfile(profile) : null,
+    { kind: "onboarding", role },
+  );
+  if (to) redirect(to);
+  return profile!;
+}
+
+/** Signed-in user whose email is listed in ADMIN_EMAILS. */
+export async function requireAdmin() {
+  const profile = await getProfile();
+  const to = accessRedirect(
+    profile ? subjectFromProfile(profile) : null,
+    { kind: "admin", isAdmin: isAdminEmail(profile?.email) },
+  );
+  if (to) redirect(to);
+  return profile!;
 }
