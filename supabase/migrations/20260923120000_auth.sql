@@ -21,6 +21,7 @@ create table public.profiles (
   currency text,
   onboarding jsonb not null default '{}'::jsonb,
   onboarding_completed_at timestamptz,
+  last_seen_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -34,6 +35,10 @@ create table public.waitlist (
   consumed_by uuid references auth.users (id) on delete set null
 );
 
+-- Agency CRM card. Before the talent joins, name/platform/niche/location
+-- are a draft the agency typed. On join those bio fields are copied onto
+-- profiles once, then cleared here. After that this row keeps agency-only
+-- data: notes, invite status, email, and the link to their account.
 create table public.talent_records (
   id uuid primary key default gen_random_uuid(),
   agency_id uuid not null references public.profiles (id) on delete cascade,
@@ -54,6 +59,7 @@ create table public.talent_records (
 );
 
 create index talent_records_agency_id_idx on public.talent_records (agency_id);
+create index profiles_last_seen_at_idx on public.profiles (last_seen_at desc nulls last);
 
 -- ---------------------------------------------------------------------------
 -- Profile guards
@@ -81,6 +87,28 @@ $$;
 create trigger profiles_protect
   before update on public.profiles
   for each row execute function public.protect_profile();
+
+-- Throttled presence: signed-in users bump last_seen_at at most every 5 minutes.
+create or replace function public.touch_last_seen()
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null then
+    return;
+  end if;
+
+  update public.profiles
+    set last_seen_at = now()
+  where id = auth.uid()
+    and (
+      last_seen_at is null
+      or last_seen_at < now() - interval '5 minutes'
+    );
+end;
+$$;
 
 -- ---------------------------------------------------------------------------
 -- Invite codes
@@ -253,12 +281,42 @@ begin
 
     select * into rec from public.talent_records where invite_code = code;
 
-    insert into public.profiles (id, email, role, display_name)
-    values (new.id, email, 'talent', rec.name);
+    -- One-time seed onto the profile, then drop the bio copy from the card.
+    insert into public.profiles (
+      id, email, role, display_name, country, currency, onboarding
+    )
+    values (
+      new.id,
+      email,
+      'talent',
+      rec.name,
+      rec.location,
+      rec.currency,
+      jsonb_strip_nulls(jsonb_build_object(
+        'niche', nullif(trim(coalesce(rec.niche, '')), ''),
+        'platforms',
+          case
+            when nullif(trim(coalesce(rec.platform, '')), '') is null then null
+            else jsonb_build_array(
+              jsonb_build_object(
+                'platform', trim(rec.platform),
+                'handle', coalesce(nullif(trim(coalesce(rec.handle, '')), ''), ''),
+                'followers', greatest(coalesce(rec.followers, 0), 0)
+              )
+            )
+          end
+      ))
+    );
 
     update public.talent_records
       set linked_user_id = new.id,
           status = 'active',
+          platform = null,
+          handle = null,
+          followers = null,
+          niche = null,
+          location = null,
+          currency = null,
           updated_at = now()
       where id = rec.id and linked_user_id is null;
 
@@ -436,13 +494,17 @@ create policy talent_records_select_own
   to authenticated
   using (agency_id = (select auth.uid()));
 
+-- Locked down for clients; only RPCs (join_waitlist / signup) and the
+-- server-side service_role admin client may touch waitlist rows.
 revoke all on public.waitlist from public, anon, authenticated;
+grant select on public.waitlist to service_role;
 grant select, update on public.profiles to authenticated;
 grant select on public.talent_records to authenticated;
 
 revoke all on function public.generate_invite_code() from public;
 revoke all on function public.handle_new_user() from public;
 revoke all on function public.protect_profile() from public;
+revoke all on function public.touch_last_seen() from public;
 revoke all on function public.join_waitlist(text) from public;
 revoke all on function public.lookup_invite(text, text) from public;
 revoke all on function public.agency_add_talent(text, text, text, text, text, integer, text, text) from public;
@@ -450,6 +512,7 @@ revoke all on function public.agency_invite_talent(uuid, text) from public;
 
 grant execute on function public.join_waitlist(text) to anon, authenticated;
 grant execute on function public.lookup_invite(text, text) to anon, authenticated;
+grant execute on function public.touch_last_seen() to authenticated;
 grant execute on function public.agency_add_talent(text, text, text, text, text, integer, text, text) to authenticated;
 grant execute on function public.agency_invite_talent(uuid, text) to authenticated;
 grant execute on function public.handle_new_user() to supabase_auth_admin;
