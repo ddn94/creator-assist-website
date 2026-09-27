@@ -1,13 +1,21 @@
-import { AgencyFrame } from "@/components/AgencyFrame";
-import { PaymentsTable } from "@/components/PaymentsTable";
+import { PaymentList } from "@/components/PaymentList";
+import { AppFrame } from "@/components/AppFrame";
+import { requireProfile } from "@/lib/auth/session";
+import { listAgencyLinkedContent } from "@/lib/data/contentQueries";
+import { buildAgencyPayments } from "@/lib/data/selectors";
 
-export default function WorkspacePaymentsPage() {
+export default async function WorkspacePaymentsPage() {
+  await requireProfile("agency");
+  const linked = await listAgencyLinkedContent();
+  const items = buildAgencyPayments(linked);
+
   return (
-    <AgencyFrame
+    <AppFrame
+      role="agency"
       title="Payments"
       description="Every deal across the roster · you set invoice dates and terms"
     >
-      <PaymentsTable />
-    </AgencyFrame>
+      <PaymentList mode="agency" items={items} />
+    </AppFrame>
   );
 }
