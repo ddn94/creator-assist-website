@@ -5,21 +5,13 @@ export type PlatformAnswer = {
 };
 
 /**
- * Onboarding answers live in profiles.onboarding (jsonb).
+ * Profile answers live in profiles.onboarding (jsonb).
  * Add a question by writing a new key from the form. Remove a question by
  * stopping writing that key. Old answers can stay in the object.
  *
  * These keys are copied onto profile columns because the rest of the app
  * reads them directly: name, agencyName, country.
  */
-export const ONBOARDING_KEYS = {
-  name: "name",
-  ageBracket: "ageBracket",
-  country: "country",
-  platforms: "platforms",
-  agencyName: "agencyName",
-  rosterSize: "rosterSize",
-} as const;
 
 export function asAnswers(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
@@ -34,20 +26,28 @@ export function readString(
   return typeof value === "string" ? value : "";
 }
 
-export function readPlatforms(answers: Record<string, unknown>): PlatformAnswer[] {
-  const raw = answers.platforms;
-  if (!Array.isArray(raw)) return [];
-  return raw.flatMap((item) => {
+/** Shared scrubber for save and display — keeps stored JSON and UI in sync. */
+export function cleanPlatforms(value: unknown): PlatformAnswer[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
     if (!item || typeof item !== "object") return [];
     const row = item as Record<string, unknown>;
     const platform = typeof row.platform === "string" ? row.platform.trim() : "";
     if (!platform) return [];
     const handle = typeof row.handle === "string" ? row.handle.trim() : "";
-    const followersRaw =
-      typeof row.followers === "number" ? row.followers : Number(row.followers);
-    const followers = Number.isFinite(followersRaw) ? Math.max(0, followersRaw) : 0;
-    return [{ platform, handle, followers }];
+    const followers = Number(row.followers);
+    return [
+      {
+        platform,
+        handle,
+        followers: Number.isFinite(followers) ? Math.max(0, Math.round(followers)) : 0,
+      },
+    ];
   });
+}
+
+export function readPlatforms(answers: Record<string, unknown>): PlatformAnswer[] {
+  return cleanPlatforms(answers.platforms);
 }
 
 export function displayName(profile: {

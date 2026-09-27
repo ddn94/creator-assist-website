@@ -6,8 +6,8 @@ import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { PageWrapper } from "@/components/PageWrapper";
 import { Text } from "@/components/Text";
-import { talentNav, talentShell } from "@/lib/home";
-import { workspaceNav, workspaceShell } from "@/lib/workspace";
+import { talentNav } from "@/lib/home";
+import { workspaceNav } from "@/lib/workspace";
 
 function isArea(pathname: string, base: string) {
   return pathname === base || pathname.startsWith(`${base}/`);
@@ -67,7 +67,11 @@ export default function NotFound() {
 
   if (inWorkspace) {
     return (
-      <PageWrapper {...workspaceShell} navItems={workspaceNav}>
+      <PageWrapper
+        brand="Workspace"
+        userName="You"
+        navItems={workspaceNav}
+      >
         <div className="flex min-h-[calc(100dvh-7rem)] flex-col items-center justify-center py-8">
           <NotFoundCard homeHref="/workspace" homeLabel="Back to overview" />
         </div>
@@ -77,7 +81,11 @@ export default function NotFound() {
 
   if (inTalent) {
     return (
-      <PageWrapper {...talentShell} navItems={talentNav}>
+      <PageWrapper
+        brand="Creator Assist"
+        userName="You"
+        navItems={talentNav}
+      >
         <div className="flex min-h-[calc(100dvh-7rem)] flex-col items-center justify-center py-8">
           <NotFoundCard homeHref="/home" homeLabel="Back to overview" />
         </div>

@@ -1,6 +1,10 @@
 import { Suspense } from "react";
 import { ContentTracker } from "@/components/ContentTracker";
-import { TalentFrame } from "@/components/TalentFrame";
+import { AppFrame } from "@/components/AppFrame";
+import { asAnswers, readPlatforms } from "@/lib/auth/profileAnswers";
+import { requireProfile } from "@/lib/auth/session";
+import { listMyContentItems } from "@/lib/data/contentQueries";
+import { contentPlatformOptions } from "@/lib/platforms";
 
 export default async function TrackerPage({
   searchParams,
@@ -8,12 +12,21 @@ export default async function TrackerPage({
   searchParams: Promise<{ add?: string }>;
 }) {
   const { add } = await searchParams;
+  const profile = await requireProfile("talent");
+  const items = await listMyContentItems();
+  const platformOptions = contentPlatformOptions(
+    readPlatforms(asAnswers(profile.onboarding)).map((row) => row.platform),
+  );
 
   return (
-    <TalentFrame title="Content Tracker">
+    <AppFrame role="talent" title="Content Tracker">
       <Suspense fallback={null}>
-        <ContentTracker defaultAddOpen={add === "1"} />
+        <ContentTracker
+          items={items}
+          platformOptions={platformOptions}
+          defaultAddOpen={add === "1"}
+        />
       </Suspense>
-    </TalentFrame>
+    </AppFrame>
   );
 }

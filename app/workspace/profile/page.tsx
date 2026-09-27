@@ -1,13 +1,13 @@
 import { AccountProfile } from "@/components/AccountProfile";
-import { AgencyFrame } from "@/components/AgencyFrame";
+import { AppFrame } from "@/components/AppFrame";
 import { requireProfile } from "@/lib/auth/session";
 
 export default async function AgencyProfilePage() {
   const profile = await requireProfile("agency");
 
   return (
-    <AgencyFrame profile={profile}>
+    <AppFrame role="agency" profile={profile}>
       <AccountProfile profile={profile} editHref="/workspace/profile/edit" />
-    </AgencyFrame>
+    </AppFrame>
   );
 }

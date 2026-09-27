@@ -33,6 +33,7 @@ export function PageWrapper({
   children,
 }: PageWrapperProps) {
   const talentMobileNav = brand === "Creator Assist";
+  const hasAdminNav = navItems.some((item) => item.href.startsWith("/admin"));
 
   return (
     <div className="relative z-10 min-h-dvh bg-background">
@@ -44,7 +45,7 @@ export function PageWrapper({
         userEmail={userEmail}
         avatarUrl={avatarUrl}
         profileHref={profileHref}
-        hideMobileMenu={talentMobileNav}
+        hideMobileMenu={talentMobileNav && !hasAdminNav}
       />
       <main
         className={[

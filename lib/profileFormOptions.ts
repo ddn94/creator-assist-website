@@ -1,14 +1,10 @@
+/** Dropdown options for profile / signup forms (not profile JSON helpers). */
+
 export function fmtFollowers(n: number): string {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
   if (n >= 1_000) return (n / 1_000).toFixed(1).replace(/\.0$/, "") + "K";
   return String(n);
 }
-
-export const ONBOARDING_PLATFORMS = [
-  "Instagram",
-  "TikTok",
-  "YouTube",
-] as const;
 
 export const AGE_BRACKETS = [
   { value: "under_18", label: "Under 18" },
@@ -18,8 +14,6 @@ export const AGE_BRACKETS = [
   { value: "45_54", label: "45–54" },
   { value: "55_plus", label: "55+" },
 ] as const;
-
-export type AgeBracket = (typeof AGE_BRACKETS)[number]["value"];
 
 export const ROSTER_OPTIONS = [
   { value: "1-10", label: "1–10 talent" },

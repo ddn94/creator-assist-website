@@ -1,13 +1,17 @@
 import { IdeasBoard } from "@/components/IdeasBoard";
-import { TalentFrame } from "@/components/TalentFrame";
+import { AppFrame } from "@/components/AppFrame";
+import { listMyIdeas } from "@/lib/data/ideaQueries";
 
-export default function IdeasPage() {
+export default async function IdeasPage() {
+  const ideas = await listMyIdeas();
+
   return (
-    <TalentFrame
+    <AppFrame
+      role="talent"
       title="Ideas"
       description="Brain dump · jot it down, organize later"
     >
-      <IdeasBoard />
-    </TalentFrame>
+      <IdeasBoard ideas={ideas} />
+    </AppFrame>
   );
 }

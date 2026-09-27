@@ -11,25 +11,7 @@ export type Profile = {
   currency: string | null;
   onboarding: Record<string, unknown>;
   onboarding_completed_at: string | null;
-  created_at: string;
-  updated_at: string;
-};
-
-export type TalentRecord = {
-  id: string;
-  agency_id: string;
-  name: string;
-  email: string | null;
-  status: "record" | "invited" | "active";
-  invite_code: string | null;
-  linked_user_id: string | null;
-  platform: string | null;
-  handle: string | null;
-  followers: number | null;
-  niche: string | null;
-  notes: string | null;
-  location: string | null;
-  currency: string | null;
+  last_seen_at: string | null;
   created_at: string;
   updated_at: string;
 };

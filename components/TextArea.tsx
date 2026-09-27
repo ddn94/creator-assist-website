@@ -23,7 +23,7 @@ export function TextArea({
     <textarea
       rows={rows}
       className={[
-        "block min-w-0 resize-y rounded-input border border-border bg-card text-ink placeholder:text-placeholder focus:outline-none",
+        "block min-w-0 resize-y rounded-input border border-border bg-card text-ink placeholder:text-placeholder focus:outline-none disabled:cursor-not-allowed disabled:opacity-60",
         areaPadding[size],
         fieldText[size],
         full ? "w-full" : "",

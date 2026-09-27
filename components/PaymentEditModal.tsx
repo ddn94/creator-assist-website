@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   BuildingsIcon,
   CalendarBlankIcon,
@@ -15,36 +15,61 @@ import { Modal } from "@/components/Modal";
 import { Select } from "@/components/Select";
 import { Text } from "@/components/Text";
 import { TextField } from "@/components/TextField";
-import { updateContentInvoice } from "@/lib/mockStore";
 import type { PaymentItem } from "@/lib/payments";
 import {
   PAYMENT_TERM_OPTIONS,
   type PaymentTerms,
 } from "@/lib/tracker";
 
+type InvoicePatch = {
+  dateInvoiced: string;
+  paymentTerms: PaymentTerms;
+  datePaid: string | null;
+};
+
 type PaymentEditModalProps = {
   payment: PaymentItem | null;
   open: boolean;
+  error?: string | null;
   onClose: () => void;
+  onSave: (patch: InvoicePatch) => void;
 };
 
 export function PaymentEditModal({
   payment,
   open,
+  error,
   onClose,
+  onSave,
 }: PaymentEditModalProps) {
-  const [invoiced, setInvoiced] = useState("");
-  const [terms, setTerms] = useState<PaymentTerms>("net_30");
-  const [paid, setPaid] = useState("");
+  return (
+    <PaymentEditForm
+      key={
+        payment
+          ? `${payment.id}:${payment.dateInvoicedIso}:${payment.datePaidIso}:${payment.paymentTerms}`
+          : "closed"
+      }
+      payment={payment}
+      open={open}
+      error={error}
+      onClose={onClose}
+      onSave={onSave}
+    />
+  );
+}
 
-  useEffect(() => {
-    if (!payment || !open) return;
-    setInvoiced(payment.dateInvoicedIso ?? "");
-    setTerms(
-      (payment.paymentTerms as PaymentTerms | null) ?? "net_30",
-    );
-    setPaid(payment.datePaidIso ?? "");
-  }, [payment, open]);
+function PaymentEditForm({
+  payment,
+  open,
+  error,
+  onClose,
+  onSave,
+}: PaymentEditModalProps) {
+  const [invoiced, setInvoiced] = useState(payment?.dateInvoicedIso ?? "");
+  const [terms, setTerms] = useState<PaymentTerms>(
+    payment?.paymentTerms ?? "net_30",
+  );
+  const [paid, setPaid] = useState(payment?.datePaidIso ?? "");
 
   if (!payment) return null;
 
@@ -52,12 +77,11 @@ export function PaymentEditModal({
     if (!payment) return;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(invoiced)) return;
     if (paid && !/^\d{4}-\d{2}-\d{2}$/.test(paid)) return;
-    updateContentInvoice(payment.id, {
+    onSave({
       dateInvoiced: invoiced,
       paymentTerms: terms,
       datePaid: paid || null,
     });
-    onClose();
   }
 
   return (
@@ -91,12 +115,19 @@ export function PaymentEditModal({
       }
     >
       <div className="space-y-4">
+        {error ? (
+          <Text variant="caption" className="text-danger!">
+            {error}
+          </Text>
+        ) : null}
         <div className="flex items-start gap-3 rounded-xl bg-background px-3 py-3">
-          <Avatar name={payment.talentName} size="sm" />
+          <Avatar name={payment.talentName ?? payment.content} size="sm" />
           <div className="min-w-0 flex-1">
-            <Text variant="cardTitle">{payment.talentName}</Text>
+            <Text variant="cardTitle">
+              {payment.talentName ?? payment.content}
+            </Text>
             <Text variant="caption" className="mt-0.5 truncate text-ink">
-              {payment.content}
+              {payment.talentName ? payment.content : payment.brand}
             </Text>
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
               <span className="inline-flex items-center gap-1 text-muted">

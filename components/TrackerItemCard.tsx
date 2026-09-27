@@ -24,7 +24,8 @@ export function TrackerItemCard({
   onBackToEdited,
 }: TrackerItemCardProps) {
   const category = contentCategory(item.type);
-  const advanceTo = nextStage(item.stage);
+  const pending = item.id.startsWith("pending-");
+  const advanceTo = pending ? null : nextStage(item.stage);
   const meta = [
     item.platform,
     item.niche,
@@ -36,12 +37,18 @@ export function TrackerItemCard({
   return (
     <CategoryCard category={category} className="p-4">
       <CategoryPill category={category}>{contentPillLabel(item.type)}</CategoryPill>
-      <Link
-        href={`/home/tracker/${item.id}`}
-        className="mt-2.5 block font-display text-sm font-bold leading-snug text-ink hover:underline sm:text-base"
-      >
-        {item.title}
-      </Link>
+      {pending ? (
+        <span className="mt-2.5 block font-display text-sm font-bold leading-snug text-ink sm:text-base">
+          {item.title}
+        </span>
+      ) : (
+        <Link
+          href={`/home/tracker/${item.id}`}
+          className="mt-2.5 block font-display text-sm font-bold leading-snug text-ink hover:underline sm:text-base"
+        >
+          {item.title}
+        </Link>
+      )}
       <Text variant="caption" className="mt-1 text-sm">
         {meta}
       </Text>
@@ -62,7 +69,7 @@ export function TrackerItemCard({
           Move to {STAGE_LABELS[advanceTo]} →
         </Button>
       ) : null}
-      {item.stage === "delivered" ? (
+      {item.stage === "delivered" && !pending ? (
         <button
           type="button"
           onClick={() => onBackToEdited?.(item.id)}

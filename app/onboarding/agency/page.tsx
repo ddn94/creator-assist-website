@@ -1,5 +1,5 @@
-import { AgencyOnboarding } from "@/components/AgencyOnboarding";
-import { readString } from "@/lib/auth/onboarding";
+import { AgencyProfileForm } from "@/components/AgencyProfileForm";
+import { readString } from "@/lib/auth/profileAnswers";
 import { requireOnboarding } from "@/lib/auth/session";
 
 export default async function AgencyOnboardingPage() {
@@ -7,10 +7,13 @@ export default async function AgencyOnboardingPage() {
 
   return (
     <div className="relative z-10 flex min-h-dvh items-center justify-center bg-background">
-      <AgencyOnboarding
-        initialAgencyName={profile.agency_name ?? ""}
-        initialName={profile.display_name ?? ""}
-        initialRosterSize={readString(profile.onboarding, "rosterSize")}
+      <AgencyProfileForm
+        mode="wizard"
+        initial={{
+          agencyName: profile.agency_name ?? "",
+          name: profile.display_name ?? "",
+          rosterSize: readString(profile.onboarding, "rosterSize"),
+        }}
       />
     </div>
   );

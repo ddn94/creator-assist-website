@@ -11,6 +11,7 @@ export type RosterItem = {
   status: string;
   statusTone?: StatusTagTone;
   meta: string;
+  avatarUrl?: string | null;
 };
 
 export function RosterList({ items }: { items: RosterItem[] }) {
@@ -18,7 +19,14 @@ export function RosterList({ items }: { items: RosterItem[] }) {
     <PaginatedList
       items={items}
       getKey={(item) => item.id ?? item.name}
-      renderItem={(item) => <RosterCard {...item} />}
+      renderItem={(item) => (
+        <RosterCard
+          {...item}
+          href={
+            item.id ? `/workspace/talent/${item.id}?from=overview` : undefined
+          }
+        />
+      )}
     />
   );
 }

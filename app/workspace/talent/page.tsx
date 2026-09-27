@@ -1,16 +1,25 @@
 import { PlusIcon } from "@phosphor-icons/react/dist/ssr";
-import { AgencyFrame } from "@/components/AgencyFrame";
 import { Button } from "@/components/Button";
+import { AppFrame } from "@/components/AppFrame";
 import { TalentTable } from "@/components/TalentTable";
 import { requireProfile } from "@/lib/auth/session";
-import { listTalentRecords, toTalentItem } from "@/lib/auth/talentRecords";
+import { listTalentRecords } from "@/lib/data/talentRecords";
+import { getLinkedTalentAvatars } from "@/lib/data/linkedTalent";
+import { listAgencyLinkedContent } from "@/lib/data/contentQueries";
+import { buildTalentRoster } from "@/lib/data/selectors";
 
 export default async function WorkspaceTalentPage() {
   const profile = await requireProfile("agency");
-  const items = (await listTalentRecords()).map(toTalentItem);
+  const [records, linked, avatars] = await Promise.all([
+    listTalentRecords(),
+    listAgencyLinkedContent(),
+    getLinkedTalentAvatars(profile.id),
+  ]);
+  const items = buildTalentRoster(records, linked, avatars);
 
   return (
-    <AgencyFrame
+    <AppFrame
+      role="agency"
       profile={profile}
       title="Talent"
       description="Everyone you manage, on or off Creator Assist"
@@ -27,6 +36,6 @@ export default async function WorkspaceTalentPage() {
       }
     >
       <TalentTable items={items} />
-    </AgencyFrame>
+    </AppFrame>
   );
 }

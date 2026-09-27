@@ -15,7 +15,7 @@ import {
 
 type ExpenseTableProps = {
   expenses: TrackerExpense[];
-  onRemove: (id: string) => void;
+  onRemove?: (id: string) => void;
   variant?: DataTableVariant;
   className?: string;
 };
@@ -66,13 +66,15 @@ export function ExpenseTable({
               <Text variant="caption" className="font-medium text-ink">
                 {fmtMoney(item.amount)}
               </Text>
-              <button
-                type="button"
-                onClick={() => onRemove(item.id)}
-                className="cursor-pointer text-xs text-danger hover:underline"
-              >
-                Remove
-              </button>
+              {onRemove ? (
+                <button
+                  type="button"
+                  onClick={() => onRemove(item.id)}
+                  className="cursor-pointer text-xs text-danger hover:underline"
+                >
+                  Remove
+                </button>
+              ) : null}
             </div>
           </div>
 
@@ -90,13 +92,15 @@ export function ExpenseTable({
               {fmtMoney(item.amount)}
             </Text>
             <div className="justify-self-end">
-              <button
-                type="button"
-                onClick={() => onRemove(item.id)}
-                className="cursor-pointer text-xs text-danger hover:underline"
-              >
-                Remove
-              </button>
+              {onRemove ? (
+                <button
+                  type="button"
+                  onClick={() => onRemove(item.id)}
+                  className="cursor-pointer text-xs text-danger hover:underline"
+                >
+                  Remove
+                </button>
+              ) : null}
             </div>
           </div>
         </DataTableRow>

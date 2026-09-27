@@ -1,8 +1,9 @@
 import type { StatusTagTone } from "@/components/StatusTag";
 import {
-  getTalentById as getFromStore,
-  TALENT as FROM_STORE,
-} from "@/lib/talentMock";
+  attentionPaymentStatus,
+  paymentStatusTone,
+  type AttentionPaymentStatus,
+} from "@/lib/payments";
 import type { PaymentTerms } from "@/lib/tracker";
 
 export type TalentStatus = "active" | "invited" | "record";
@@ -21,9 +22,13 @@ export type TalentItem = {
   liveDeals: string | null;
   outstanding: string | null;
   lastActivity: string;
+  avatarUrl: string | null;
 };
 
-export type DealPayment = "overdue" | "awaiting" | null;
+/** Profile deal list only surfaces open invoices. */
+export type DealPayment = AttentionPaymentStatus;
+
+export const toDealPayment = attentionPaymentStatus;
 
 export type TalentDeal = {
   id: string;
@@ -54,6 +59,7 @@ export type TalentActivityItem = {
 
 export type TalentDetail = TalentItem & {
   firstName: string;
+  notes: string | null;
   deals: TalentDeal[];
   invoicing: TalentInvoicing | null;
   activity: TalentActivityItem[];
@@ -69,12 +75,6 @@ export const dealPaymentTone: Record<
   Exclude<DealPayment, null>,
   StatusTagTone
 > = {
-  overdue: "overdue",
-  awaiting: "awaiting",
+  overdue: paymentStatusTone.overdue,
+  awaiting_payment: paymentStatusTone.awaiting_payment,
 };
-
-export const TALENT: TalentItem[] = FROM_STORE;
-
-export function getTalentById(id: string): TalentDetail | null {
-  return getFromStore(id);
-}

@@ -15,9 +15,13 @@ Use the same variable **names** in all three places. Only the **values** change.
 ```
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+ADMIN_EMAILS
+SUPABASE_SERVICE_ROLE_KEY
 ```
 
-The publishable key is public. It is safe in `NEXT_PUBLIC_*` because row-level security limits what it can do. Do not put the secret key in the app or in a `NEXT_PUBLIC_` variable.
+The publishable key is public. It is safe in `NEXT_PUBLIC_*` because row-level security limits what it can do. Do not put the secret key (`SUPABASE_SERVICE_ROLE_KEY`) in the app client or in a `NEXT_PUBLIC_` variable.
+
+`ADMIN_EMAILS` is a comma-separated list of accounts that see a **Waitlist** link in the header and can open `/admin/waitlist` (email + invite code table, copy to send manually). Those people must already have signed up with that email.
 
 ## 1. Create the projects
 
@@ -34,12 +38,14 @@ For **each** project:
 1. Open **SQL Editor → New query**.
 2. Paste the full file `supabase/migrations/20260923120000_auth.sql`.
 3. Run it once.
+4. Paste and run `supabase/migrations/20260923200000_content.sql` (content tracker, ideas, deliverables, expenses, and agency read access to linked talent profiles — requires auth migration first).
 
 That creates:
 
 - `waitlist` — email plus a unique invite code
 - `profiles` — app user row (role, name, photo, flexible onboarding jsonb). Not `auth.users`
 - `talent_records` — agency roster rows. A record is not an account. An invite adds a unique code. Signup links the account and marks the row active
+- `content_items`, `content_deliverables`, `content_expenses`, `ideas` — talent tracker and ideas (agency can view/update invoices for linked talent)
 - `avatars` storage bucket
 - the trigger that creates a profile only when the invite code matches
 
@@ -78,7 +84,12 @@ From `creator-assist-new`:
 cp supabase/env.example .env.local
 ```
 
-Point `.env.local` at the **staging** project URL and publishable key. Restart `npm run dev`.
+Point `.env.local` at the **staging** project URL and publishable key. Also set:
+
+- `ADMIN_EMAILS` — your email(s), comma-separated
+- `SUPABASE_SERVICE_ROLE_KEY` — the project **secret** / service_role key (server-only; used only for the waitlist admin page)
+
+Restart `npm run dev`.
 
 `.env*` is gitignored, so `.env.local` stays on your machine.
 
@@ -90,6 +101,8 @@ Add both variables twice:
 
 - **Preview** (or a custom Staging environment, if the staging branch uses one): staging project URL and publishable key
 - **Production**: main project URL and publishable key
+
+Also set `ADMIN_EMAILS` and `SUPABASE_SERVICE_ROLE_KEY` per environment (same names; values can differ). The service role key must match the Supabase project for that deploy.
 
 Assign Production to the `main` branch. Point Preview, or the staging branch, at the staging Supabase project.
 
@@ -106,6 +119,7 @@ Redeploy after saving the variables. `NEXT_PUBLIC_` values are baked in at build
 5. Open **Profile**, upload a photo, then change it.
 6. Sign out and sign in.
 7. As an agency, add a talent record, then **Save and send invite**. The talent detail page shows the code. They sign up on the talent form with that email and code.
+8. If your email is in `ADMIN_EMAILS`, open **Waitlist** in the header — copy invite codes from the table and email them yourself (the app does not send mail).
 
 Repeat steps 2–3 against the **main** project only when you are ready for real users. Waitlist rows in staging are not in main.
 

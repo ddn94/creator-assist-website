@@ -1,5 +1,5 @@
 import { Button } from "@/components/Button";
-import { TalentFrame } from "@/components/TalentFrame";
+import { AppFrame } from "@/components/AppFrame";
 import { Text } from "@/components/Text";
 
 export default async function ProfileComingSoonPage({
@@ -11,7 +11,7 @@ export default async function ProfileComingSoonPage({
   const feature = f || "This section";
 
   return (
-    <TalentFrame>
+    <AppFrame role="talent">
       <div className="mx-auto max-w-md py-12 text-center sm:py-16">
         <Text as="h1" variant="heading" className="text-2xl sm:text-2xl">
           {feature}
@@ -23,6 +23,6 @@ export default async function ProfileComingSoonPage({
           Back to profile
         </Button>
       </div>
-    </TalentFrame>
+    </AppFrame>
   );
 }

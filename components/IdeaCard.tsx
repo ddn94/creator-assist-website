@@ -28,6 +28,7 @@ export function IdeaCard({
   onTurnIntoContent,
 }: IdeaCardProps) {
   const [editing, setEditing] = useState(false);
+  const pending = idea.id.startsWith("pending-");
   const category = ideaStatusCategory(idea.status);
   const border = {
     idea: "border-idea-pill/25",
@@ -82,6 +83,7 @@ export function IdeaCard({
               type="button"
               size="sm"
               className="h-10"
+              disabled={pending}
               onClick={() => onTurnIntoContent(idea.id)}
             >
               Turn into content →
@@ -91,16 +93,18 @@ export function IdeaCard({
             <button
               type="button"
               aria-label="Delete"
+              disabled={pending}
               onClick={() => onDelete(idea.id)}
-              className="inline-flex size-9 cursor-pointer items-center justify-center rounded-full text-muted transition-colors hover:bg-card hover:text-danger"
+              className="inline-flex size-9 cursor-pointer items-center justify-center rounded-full text-muted transition-colors hover:bg-card hover:text-danger disabled:cursor-not-allowed disabled:opacity-40"
             >
               <TrashIcon size={18} weight="regular" aria-hidden />
             </button>
             <button
               type="button"
               aria-label="Edit"
+              disabled={pending}
               onClick={() => setEditing(true)}
-              className="inline-flex size-9 cursor-pointer items-center justify-center rounded-full text-muted transition-colors hover:bg-card hover:text-ink"
+              className="inline-flex size-9 cursor-pointer items-center justify-center rounded-full text-muted transition-colors hover:bg-card hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
             >
               <PencilSimpleIcon size={18} weight="regular" aria-hidden />
             </button>

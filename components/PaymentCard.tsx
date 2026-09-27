@@ -7,36 +7,41 @@ import { CategoryCard } from "@/components/CategoryCard";
 import { Select } from "@/components/Select";
 import { StatusTag } from "@/components/StatusTag";
 import { Text } from "@/components/Text";
-import {
-  PAYMENT_TERM_OPTIONS,
-  paymentStatusTone,
-  type TalentPaymentItem,
-} from "@/lib/talentPayments";
+import { paymentStatusTone, type PaymentItem } from "@/lib/payments";
+import { PAYMENT_TERM_OPTIONS } from "@/lib/tracker";
 
-type TalentPaymentCardProps = {
-  payment: TalentPaymentItem;
+type PaymentCardProps = {
+  payment: PaymentItem;
   onMarkPaid: (id: string) => void;
   onMarkInvoiced: (id: string, terms: string) => void;
 };
 
-export function TalentPaymentCard({
+export function PaymentCard({
   payment,
   onMarkPaid,
   onMarkInvoiced,
-}: TalentPaymentCardProps) {
-  const [terms, setTerms] = useState<string>(payment.terms ?? "net_30");
+}: PaymentCardProps) {
+  const [terms, setTerms] = useState<string>(payment.paymentTerms ?? "net_30");
   const tone = paymentStatusTone[payment.status];
   const overdue = payment.status === "overdue";
+
+  const title = payment.contentHref ? (
+    <Link
+      href={payment.contentHref}
+      className="min-w-0 font-display text-base font-bold leading-snug text-ink hover:underline"
+    >
+      {payment.content}
+    </Link>
+  ) : (
+    <Text variant="cardTitle" className="min-w-0">
+      {payment.content}
+    </Text>
+  );
 
   return (
     <CategoryCard category="payment" className="p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3">
-        <Link
-          href={`/home/tracker/${payment.contentId}?section=deal&from=payments`}
-          className="min-w-0 font-display text-base font-bold leading-snug text-ink hover:underline"
-        >
-          {payment.content}
-        </Link>
+        {title}
         <StatusTag label={payment.statusLabel} tone={tone} />
       </div>
       <Text variant="caption" className="mt-0.5 text-sm">

@@ -11,7 +11,7 @@ import { Text } from "@/components/Text";
 import { TextField } from "@/components/TextField";
 import { signUp } from "@/lib/auth/actions";
 import { EMPTY_AUTH_STATE } from "@/lib/auth/types";
-import { ROSTER_OPTIONS } from "@/lib/onboarding";
+import { ROSTER_OPTIONS } from "@/lib/profileFormOptions";
 
 function CreateButton() {
   const { pending } = useFormStatus();

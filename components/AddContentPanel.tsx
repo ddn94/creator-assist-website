@@ -10,10 +10,13 @@ import { TextField } from "@/components/TextField";
 import {
   CONTENT_TYPE_OPTIONS,
 } from "@/lib/tracker";
-import { useSelfContentPlatformOptions } from "@/lib/useMockDb";
+import { DEFAULT_PLATFORM } from "@/lib/platforms";
+
+type PlatformOption = { value: string; label: string };
 
 type AddContentPanelProps = {
   defaultOpen?: boolean;
+  platformOptions: PlatformOption[];
   onAdd?: (payload: {
     title: string;
     platform: string;
@@ -27,13 +30,13 @@ type AddContentPanelProps = {
 
 export function AddContentPanel({
   defaultOpen = false,
+  platformOptions,
   onAdd,
 }: AddContentPanelProps) {
   const searchParams = useSearchParams();
   const openFromQuery = searchParams.get("add") === "1";
   const [open, setOpen] = useState(defaultOpen || openFromQuery);
-  const platformOptions = useSelfContentPlatformOptions();
-  const defaultPlatform = platformOptions[0]?.value ?? "Instagram";
+  const defaultPlatform = platformOptions[0]?.value ?? DEFAULT_PLATFORM;
 
   useEffect(() => {
     if (openFromQuery) setOpen(true);

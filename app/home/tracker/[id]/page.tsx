@@ -1,5 +1,10 @@
+import { notFound } from "next/navigation";
 import { ContentDetailView } from "@/components/ContentDetailView";
-import { TalentFrame } from "@/components/TalentFrame";
+import { AppFrame } from "@/components/AppFrame";
+import { asAnswers, readPlatforms } from "@/lib/auth/profileAnswers";
+import { requireProfile } from "@/lib/auth/session";
+import { getContentById } from "@/lib/data/contentQueries";
+import { contentPlatformOptions } from "@/lib/platforms";
 
 export default async function ContentDetailPage({
   params,
@@ -11,10 +16,24 @@ export default async function ContentDetailPage({
   const { id } = await params;
   const { from } = await searchParams;
   const backHref = from === "payments" ? "/home/payments" : "/home/tracker";
+  const profile = await requireProfile("talent");
+  const item = await getContentById(id);
+  if (!item || item.creatorId !== profile.id) notFound();
+
+  const currency = profile.currency?.trim() || "USD";
+  const platformOptions = contentPlatformOptions(
+    readPlatforms(asAnswers(profile.onboarding)).map((row) => row.platform),
+    item.platform,
+  );
 
   return (
-    <TalentFrame>
-      <ContentDetailView id={id} backHref={backHref} />
-    </TalentFrame>
+    <AppFrame role="talent">
+      <ContentDetailView
+        initial={item}
+        platformOptions={platformOptions}
+        currency={currency}
+        backHref={backHref}
+      />
+    </AppFrame>
   );
 }

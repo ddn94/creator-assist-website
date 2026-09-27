@@ -1,10 +1,12 @@
-import {
-  PNL_BRANDS as BRANDS,
-  PNL_CURRENCIES as CURRENCIES,
-  PNL_TALENT as TALENT_ROWS,
-} from "@/lib/talentMock";
+import type { Category } from "@/lib/ui";
+import type { PaymentStatus } from "@/lib/payments";
+import type { ContentType } from "@/lib/tracker";
+import { contentCategory, contentPillLabel } from "@/lib/tracker";
 
-export type PnlPeriod = "month" | "quarter" | "year" | "custom";
+export type { PnlPeriod } from "@/lib/pnlRange";
+export { PNL_PERIODS } from "@/lib/pnlRange";
+
+/** Agency P&L */
 
 export type PnlMetric = {
   label: string;
@@ -36,13 +38,41 @@ export type PnlBrandRow = {
   value: string;
 };
 
-export const PNL_PERIODS = [
-  { id: "month", label: "This month" },
-  { id: "quarter", label: "This quarter" },
-  { id: "year", label: "This year" },
-  { id: "custom", label: "Custom" },
-] as const;
+/** Talent P&L */
 
-export const PNL_CURRENCIES: PnlCurrencySummary[] = CURRENCIES;
-export const PNL_TALENT: PnlTalentRow[] = TALENT_ROWS;
-export const PNL_BRANDS: PnlBrandRow[] = BRANDS;
+export type TalentPnlContentRow = {
+  id: string;
+  contentId: string;
+  title: string;
+  type: ContentType;
+  brand: string | null;
+  niche: string | null;
+  paymentStatus: PaymentStatus | null;
+  paymentLabel: string | null;
+  fee: number | null;
+  expenses: number;
+  profit: number;
+};
+
+export type TalentPnlBreakdownRow = {
+  id: string;
+  name: string;
+  fee: number;
+  expenses: number;
+  profit: number;
+};
+
+export type TalentPnlSummary = {
+  revenue: number;
+  expenses: number;
+  net: number;
+  overdue: number;
+};
+
+export function contentTypeCategory(type: ContentType): Category {
+  return contentCategory(type);
+}
+
+export function contentTypeLabel(type: ContentType): string {
+  return contentPillLabel(type);
+}

@@ -1,18 +1,33 @@
-import { TalentFrame } from "@/components/TalentFrame";
 import { TalentOverview } from "@/components/TalentOverview";
+import { AppFrame } from "@/components/AppFrame";
 import { avatarPublicUrl } from "@/lib/auth/avatar";
-import { displayName } from "@/lib/auth/onboarding";
+import { displayName } from "@/lib/auth/profileAnswers";
 import { requireProfile } from "@/lib/auth/session";
+import { listMyContent } from "@/lib/data/contentQueries";
+import { listMyIdeas } from "@/lib/data/ideaQueries";
+import {
+  buildContinueFeed,
+  buildOverviewStats,
+} from "@/lib/data/selectors";
 
 export default async function TalentHomePage() {
   const profile = await requireProfile("talent");
+  const currency = profile.currency?.trim() || "USD";
+  const [content, ideas] = await Promise.all([
+    listMyContent(),
+    listMyIdeas(),
+  ]);
+  const stats = buildOverviewStats(content, currency);
+  const feed = buildContinueFeed(content, ideas);
 
   return (
-    <TalentFrame profile={profile}>
+    <AppFrame role="talent" profile={profile}>
       <TalentOverview
         userName={displayName(profile)}
         avatarUrl={avatarPublicUrl(profile.avatar_path, profile.updated_at)}
+        stats={stats}
+        feed={feed}
       />
-    </TalentFrame>
+    </AppFrame>
   );
 }
