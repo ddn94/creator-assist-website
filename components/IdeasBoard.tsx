@@ -6,35 +6,51 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { FilterPills } from "@/components/FilterPills";
+import { FormAlert } from "@/components/FormAlert";
 import { IdeaCard } from "@/components/IdeaCard";
 import { Select } from "@/components/Select";
 import { Text } from "@/components/Text";
 import { TextArea } from "@/components/TextArea";
 import { TextField } from "@/components/TextField";
 import {
+  addIdeaAction,
+  deleteIdeaAction,
+  turnIdeaIntoContentAction,
+  upsertIdeaAction,
+} from "@/lib/data/actions";
+import {
   IDEA_STATUS_LABELS,
   IDEA_STATUS_OPTIONS,
   IDEA_STATUSES,
   parseTags,
+  type IdeaItem,
   type IdeaStatus,
 } from "@/lib/ideas";
-import {
-  addIdea,
-  deleteIdea,
-  turnIdeaIntoContent,
-  upsertIdea,
-} from "@/lib/mockStore";
-import { useIdeas } from "@/lib/useMockDb";
 
-export function IdeasBoard() {
+type IdeasBoardProps = {
+  ideas: IdeaItem[];
+};
+
+export function IdeasBoard({ ideas }: IdeasBoardProps) {
   const router = useRouter();
-  const ideas = useIdeas();
   const [status, setStatus] = useState<string>("all");
   const [query, setQuery] = useState("");
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const serverKey = ideas
+    .map(
+      (idea) =>
+        `${idea.id}:${idea.status}:${idea.title}:${idea.body}:${idea.tags.join(",")}:${idea.linkedContentItemId ?? ""}`,
+    )
+    .join("|");
+  const [draft, setDraft] = useState<{
+    key: string;
+    rows: IdeaItem[];
+  } | null>(null);
+  const rows = draft?.key === serverKey ? draft.rows : ideas;
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    return ideas.filter((idea) => {
+    return rows.filter((idea) => {
       if (status !== "all" && idea.status !== status) return false;
       if (!needle) return true;
       return (
@@ -43,7 +59,11 @@ export function IdeasBoard() {
         idea.tags.some((tag) => tag.toLowerCase().includes(needle))
       );
     });
-  }, [ideas, status, query]);
+  }, [rows, status, query]);
+
+  function showRows(next: IdeaItem[]) {
+    setDraft({ key: serverKey, rows: next });
+  }
 
   const pills = [
     { id: "all", label: "All" },
@@ -63,11 +83,38 @@ export function IdeasBoard() {
     const nextStatus = IDEA_STATUSES.includes(payload.status as IdeaStatus)
       ? (payload.status as IdeaStatus)
       : "idea";
-    addIdea({
+    const tempId = `pending-${crypto.randomUUID()}`;
+    const optimistic: IdeaItem = {
+      id: tempId,
+      creatorId: rows[0]?.creatorId ?? "",
       title: payload.title,
       body: payload.body,
       tags: parseTags(payload.tags),
       status: nextStatus,
+      createdAt: new Date().toISOString().slice(0, 10),
+      linkedContentItemId: null,
+    };
+    const previous = rows;
+    setSaveError(null);
+    showRows([optimistic, ...rows]);
+    void addIdeaAction({
+      title: optimistic.title,
+      body: optimistic.body,
+      tags: optimistic.tags,
+      status: nextStatus,
+    }).then((result) => {
+      if ("error" in result) {
+        setDraft({ key: serverKey, rows: previous });
+        setSaveError(result.error);
+        return;
+      }
+      setDraft({
+        key: serverKey,
+        rows: [optimistic, ...previous].map((row) =>
+          row.id === tempId ? { ...row, id: result.id } : row,
+        ),
+      });
+      router.refresh();
     });
   }
 
@@ -129,6 +176,12 @@ export function IdeasBoard() {
         </form>
       </Card>
 
+      {saveError ? (
+        <div className="mb-4">
+          <FormAlert error={saveError} />
+        </div>
+      ) : null}
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <FilterPills
           className="flex-nowrap overflow-x-auto"
@@ -151,11 +204,45 @@ export function IdeasBoard() {
           <IdeaCard
             key={idea.id}
             idea={idea}
-            onUpdate={(next) => upsertIdea(next)}
-            onDelete={(id) => deleteIdea(id)}
-            onTurnIntoContent={(id) => {
-              const contentId = turnIdeaIntoContent(id);
-              if (contentId) router.push(`/home/tracker/${contentId}`);
+            onUpdate={(next) => {
+              if (next.id.startsWith("pending-")) return;
+              const previous = rows;
+              setSaveError(null);
+              showRows(rows.map((row) => (row.id === next.id ? next : row)));
+              void upsertIdeaAction({
+                id: next.id,
+                title: next.title,
+                body: next.body,
+                tags: next.tags,
+                status: next.status,
+                linkedContentItemId: next.linkedContentItemId,
+              }).then((result) => {
+                if (result.error) {
+                  setDraft({ key: serverKey, rows: previous });
+                  setSaveError(result.error);
+                  return;
+                }
+                router.refresh();
+              });
+            }}
+            onDelete={(id) => {
+              if (id.startsWith("pending-")) return;
+              const previous = rows;
+              setSaveError(null);
+              showRows(rows.filter((row) => row.id !== id));
+              void deleteIdeaAction(id).then((result) => {
+                if (result.error) {
+                  setDraft({ key: serverKey, rows: previous });
+                  setSaveError(result.error);
+                  return;
+                }
+                router.refresh();
+              });
+            }}
+            onTurnIntoContent={async (id) => {
+              const result = await turnIdeaIntoContentAction(id);
+              if ("id" in result) router.push(`/home/tracker/${result.id}`);
+              else router.refresh();
             }}
           />
         ))}
