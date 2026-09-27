@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { CaretDownIcon } from "@phosphor-icons/react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/Button";
 import { Select } from "@/components/Select";
 import { Text } from "@/components/Text";
 import { TextField } from "@/components/TextField";
-import { updateContentInvoice } from "@/lib/mockStore";
+import { updateContentInvoiceAction } from "@/lib/data/actions";
 import type { TalentInvoicing } from "@/lib/talent";
 import { PAYMENT_TERM_OPTIONS, type PaymentTerms } from "@/lib/tracker";
 
@@ -19,25 +20,43 @@ export function InvoicingCard({
   invoicing,
   className = "",
 }: InvoicingCardProps) {
+  return (
+    <InvoicingEditor
+      key={`${invoicing.contentId}:${invoicing.dateInvoiced}:${invoicing.paymentTerms}:${invoicing.datePaid}:${invoicing.dueNote}`}
+      invoicing={invoicing}
+      className={className}
+    />
+  );
+}
+
+function InvoicingEditor({
+  invoicing,
+  className,
+}: InvoicingCardProps) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [invoiced, setInvoiced] = useState(invoicing.dateInvoiced);
   const [terms, setTerms] = useState<PaymentTerms>(invoicing.paymentTerms);
   const [paid, setPaid] = useState(invoicing.datePaid);
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
 
-  useEffect(() => {
-    setInvoiced(invoicing.dateInvoiced);
-    setTerms(invoicing.paymentTerms);
-    setPaid(invoicing.datePaid);
-  }, [invoicing]);
-
-  function save() {
+  async function save() {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(invoiced)) return;
     if (paid && !/^\d{4}-\d{2}-\d{2}$/.test(paid)) return;
-    updateContentInvoice(invoicing.contentId, {
+    setError(null);
+    setSaved(true);
+    const result = await updateContentInvoiceAction(invoicing.contentId, {
       dateInvoiced: invoiced,
       paymentTerms: terms,
       datePaid: paid || null,
     });
+    if (result.error) {
+      setSaved(false);
+      setError(result.error);
+      return;
+    }
+    router.refresh();
   }
 
   return (
@@ -50,7 +69,7 @@ export function InvoicingCard({
           type="button"
           aria-expanded={open}
           onClick={() => setOpen((prev) => !prev)}
-          className="flex w-full items-start justify-between gap-3 text-left"
+          className="flex w-full cursor-pointer items-start justify-between gap-3 text-left"
         >
           <div className="min-w-0">
             <Text variant="cardTitle" className="text-base">
@@ -84,7 +103,10 @@ export function InvoicingCard({
                   size="sm"
                   full
                   value={invoiced}
-                  onChange={(event) => setInvoiced(event.target.value)}
+                  onChange={(event) => {
+                    setInvoiced(event.target.value);
+                    setSaved(false);
+                  }}
                 />
               </label>
               <label className="block min-w-0">
@@ -96,7 +118,10 @@ export function InvoicingCard({
                   full
                   options={[...PAYMENT_TERM_OPTIONS]}
                   value={terms}
-                  onChange={(value) => setTerms(value as PaymentTerms)}
+                  onChange={(value) => {
+                    setTerms(value as PaymentTerms);
+                    setSaved(false);
+                  }}
                 />
               </label>
               <label className="block min-w-0">
@@ -108,7 +133,10 @@ export function InvoicingCard({
                   size="sm"
                   full
                   value={paid}
-                  onChange={(event) => setPaid(event.target.value)}
+                  onChange={(event) => {
+                    setPaid(event.target.value);
+                    setSaved(false);
+                  }}
                 />
               </label>
             </div>
@@ -121,9 +149,14 @@ export function InvoicingCard({
                 onClick={save}
                 disabled={!invoiced}
               >
-                Save invoicing
+                {saved ? "Saved" : "Save invoicing"}
               </Button>
-              <Text variant="caption">{invoicing.dueNote}</Text>
+              <Text
+                variant="caption"
+                className={error ? "text-danger!" : undefined}
+              >
+                {error ?? invoicing.dueNote}
+              </Text>
             </div>
           </>
         ) : null}

@@ -2,7 +2,7 @@
 
 import { TrashIcon } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { BackLink } from "@/components/BackLink";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
@@ -11,13 +11,17 @@ import { CategoryPill } from "@/components/CategoryPill";
 import { DeliverableTable } from "@/components/DeliverableTable";
 import { ExpenseTable } from "@/components/ExpenseTable";
 import { Field } from "@/components/Field";
+import { FormAlert } from "@/components/FormAlert";
 import { Select } from "@/components/Select";
 import { StatusTag } from "@/components/StatusTag";
 import { Text } from "@/components/Text";
 import { TextArea } from "@/components/TextArea";
 import { TextField } from "@/components/TextField";
-import { deleteContent, upsertContent } from "@/lib/mockStore";
-import { useSelfContentPlatformOptions, useTrackerDetail } from "@/lib/useMockDb";
+import {
+  deleteContentAction,
+  updateContentInvoiceAction,
+  upsertContentAction,
+} from "@/lib/data/actions";
 import {
   CONTENT_TYPE_OPTIONS,
   DELIVERABLE_TYPE_OPTIONS,
@@ -33,64 +37,61 @@ import {
   deliverablesTotal,
   formatLiveDate,
   fmtMoney,
-  selfCurrencyCode,
+  type PaymentTerms,
   type TrackerDetail,
   type TrackerDeliverable,
   type TrackerExpense,
 } from "@/lib/tracker";
 
 type ContentDetailViewProps = {
-  id: string;
+  initial: TrackerDetail;
+  platformOptions: { value: string; label: string }[];
+  currency: string;
   backHref?: string;
+  /** Agency sees the same UI; only invoice dates + terms stay editable. */
+  mode?: "talent" | "agency";
 };
 
 export function ContentDetailView({
-  id,
+  initial,
+  platformOptions,
+  currency,
   backHref = "/home/tracker",
+  mode = "talent",
 }: ContentDetailViewProps) {
-  const stored = useTrackerDetail(id);
-
-  if (!stored) {
-    return (
-      <div className="mx-auto max-w-3xl py-16 text-center">
-        <Text variant="heading" className="text-2xl">
-          Content not found
-        </Text>
-        <Text variant="description" className="mt-2">
-          This item may have been deleted.
-        </Text>
-        <Button href={backHref} className="mt-6" size="sm">
-          Back
-        </Button>
-      </div>
-    );
-  }
-
   return (
     <ContentDetailEditor
-      key={stored.id}
-      initial={stored}
+      key={`${initial.id}-${initial.updatedAt}`}
+      initial={initial}
+      platformOptions={platformOptions}
+      currency={currency}
       backHref={backHref}
+      mode={mode}
     />
   );
 }
 
 function ContentDetailEditor({
   initial,
+  platformOptions,
+  currency,
   backHref,
+  mode,
 }: {
   initial: TrackerDetail;
+  platformOptions: { value: string; label: string }[];
+  currency: string;
   backHref: string;
+  mode: "talent" | "agency";
 }) {
   const router = useRouter();
-  const stored = useTrackerDetail(initial.id);
   const [item, setItem] = useState(initial);
-  const platformOptions = useSelfContentPlatformOptions(item.platform);
-  const currency = selfCurrencyCode();
-
-  useEffect(() => {
-    if (stored) setItem(stored);
-  }, [stored]);
+  const [formGeneration, setFormGeneration] = useState(0);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [invoiceSaving, setInvoiceSaving] = useState(false);
+  const [invoiceError, setInvoiceError] = useState<string | null>(null);
+  const isAgency = mode === "agency";
+  const locked = isAgency;
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("section") !== "deal") {
@@ -122,16 +123,23 @@ function ContentDetailEditor({
     ? deliverablesTotal(item.deal.deliverables)
     : 0;
 
-  function commit(next: TrackerDetail) {
+  async function commit(next: TrackerDetail) {
+    if (isAgency) return;
+    const previous = item;
+    setSaveError(null);
     setItem(next);
-    upsertContent({
-      ...next,
-      updatedAt: new Date().toISOString().slice(0, 10),
-    });
+    const result = await upsertContentAction(next);
+    if (result.error) {
+      setItem(previous);
+      setFormGeneration((generation) => generation + 1);
+      setSaveError(result.error);
+      return;
+    }
+    router.refresh();
   }
 
   function removeDeliverable(deliverableId: string) {
-    if (!item.deal) return;
+    if (!item.deal || isAgency) return;
     commit({
       ...item,
       deal: {
@@ -144,16 +152,75 @@ function ContentDetailEditor({
   }
 
   function removeExpense(expenseId: string) {
+    if (isAgency) return;
     commit({
       ...item,
       expenses: item.expenses.filter((e) => e.id !== expenseId),
     });
   }
 
-  function handleDelete() {
-    deleteContent(item.id);
+  async function handleDelete() {
+    if (isAgency) return;
+    await deleteContentAction(item.id);
     router.push("/home/tracker");
   }
+
+  async function handleDealSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!item.deal) return;
+    const data = new FormData(event.currentTarget);
+    const paymentTerms = (String(data.get("paymentTerms") ?? "net_30") ||
+      "net_30") as PaymentTerms;
+    const dateInvoiced = String(data.get("dateInvoiced") ?? "") || null;
+    const datePaid = String(data.get("datePaid") ?? "") || null;
+
+    if (isAgency) {
+      if (!dateInvoiced) {
+        setInvoiceError("Enter a valid invoice date.");
+        return;
+      }
+      const previous = item;
+      setInvoiceError(null);
+      setItem({
+        ...item,
+        deal: {
+          ...item.deal,
+          paymentTerms,
+          dateInvoiced,
+          datePaid,
+          dateDelivered: item.deal.dateDelivered ?? dateInvoiced,
+        },
+      });
+      setInvoiceSaving(true);
+      const result = await updateContentInvoiceAction(item.id, {
+        dateInvoiced,
+        paymentTerms,
+        datePaid,
+      });
+      setInvoiceSaving(false);
+      if (result.error) {
+        setItem(previous);
+        setInvoiceError(result.error);
+        return;
+      }
+      router.refresh();
+      return;
+    }
+
+    commit({
+      ...item,
+      deal: {
+        ...item.deal,
+        feeAgreed: Number(data.get("feeAgreed") || 0),
+        paymentTerms,
+        dateDelivered: String(data.get("dateDelivered") ?? "") || null,
+        dateInvoiced,
+        datePaid,
+      },
+    });
+  }
+
+  const money = (amount: number) => fmtMoney(amount, currency);
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -164,7 +231,8 @@ function ContentDetailEditor({
           aria-label="Delete content item"
           title="Delete"
           onClick={handleDelete}
-          className="inline-flex size-10 cursor-pointer items-center justify-center rounded-full bg-card text-danger shadow-card transition-colors hover:bg-organic"
+          disabled={locked}
+          className="inline-flex size-10 cursor-pointer items-center justify-center rounded-full bg-card text-danger shadow-card transition-colors hover:bg-organic disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-card"
         >
           <TrashIcon size={18} weight="regular" aria-hidden />
         </button>
@@ -177,6 +245,11 @@ function ContentDetailEditor({
         <Text variant="heading" className="mt-2.5 text-2xl sm:text-3xl">
           {item.title}
         </Text>
+        {saveError ? (
+          <div className="mt-3">
+            <FormAlert error={saveError} />
+          </div>
+        ) : null}
       </div>
 
       <Card className="mb-5">
@@ -184,9 +257,11 @@ function ContentDetailEditor({
           Details
         </Text>
         <form
+          key={`details-${formGeneration}`}
           className="grid grid-cols-1 gap-3 md:grid-cols-2"
           onSubmit={(event) => {
             event.preventDefault();
+            if (locked) return;
             const data = new FormData(event.currentTarget);
             const type =
               data.get("type") === "paid_collab" ? "paid_collab" : "organic";
@@ -207,13 +282,13 @@ function ContentDetailEditor({
               deal:
                 type === "paid_collab"
                   ? item.deal ?? {
-                    feeAgreed: 0,
-                    paymentTerms: "net_30",
-                    dateDelivered: null,
-                    dateInvoiced: null,
-                    datePaid: null,
-                    deliverables: [],
-                  }
+                      feeAgreed: 0,
+                      paymentTerms: "net_30",
+                      dateDelivered: null,
+                      dateInvoiced: null,
+                      datePaid: null,
+                      deliverables: [],
+                    }
                   : null,
             });
           }}
@@ -224,6 +299,7 @@ function ContentDetailEditor({
               name="title"
               defaultValue={item.title}
               required
+              disabled={locked}
               size="sm"
               full
             />
@@ -234,6 +310,7 @@ function ContentDetailEditor({
               name="platform"
               defaultValue={item.platform}
               options={platformOptions}
+              disabled={locked}
               size="sm"
               full
             />
@@ -243,6 +320,7 @@ function ContentDetailEditor({
               id="niche"
               name="niche"
               defaultValue={item.niche ?? ""}
+              disabled={locked}
               size="sm"
               full
             />
@@ -253,6 +331,7 @@ function ContentDetailEditor({
               name="type"
               defaultValue={item.type}
               options={[...CONTENT_TYPE_OPTIONS]}
+              disabled={locked}
               size="sm"
               full
             />
@@ -262,6 +341,7 @@ function ContentDetailEditor({
               id="brandName"
               name="brandName"
               defaultValue={item.brandName ?? ""}
+              disabled={locked}
               size="sm"
               full
             />
@@ -272,6 +352,7 @@ function ContentDetailEditor({
               name="stage"
               defaultValue={item.stage}
               options={STAGE_OPTIONS}
+              disabled={locked}
               size="sm"
               full
             />
@@ -282,6 +363,7 @@ function ContentDetailEditor({
               name="goLiveDate"
               type="date"
               defaultValue={item.goLiveDate ?? ""}
+              disabled={locked}
               size="sm"
               full
             />
@@ -293,6 +375,7 @@ function ContentDetailEditor({
               defaultValue={item.shotList}
               rows={3}
               placeholder="Shots, angles, references — plan it while it's in Concept"
+              disabled={locked}
               size="sm"
               full
             />
@@ -303,12 +386,13 @@ function ContentDetailEditor({
               name="notes"
               defaultValue={item.notes}
               rows={4}
+              disabled={locked}
               size="sm"
               full
             />
           </Field>
           <div>
-            <Button type="submit" size="sm" className="h-10">
+            <Button type="submit" size="sm" className="h-10" disabled={locked}>
               Save
             </Button>
           </div>
@@ -334,24 +418,9 @@ function ContentDetailEditor({
           </div>
 
           <form
+            key={`deal-${formGeneration}`}
             className="grid grid-cols-1 gap-3 md:grid-cols-3"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (!item.deal) return;
-              const data = new FormData(event.currentTarget);
-              commit({
-                ...item,
-                deal: {
-                  ...item.deal,
-                  feeAgreed: Number(data.get("feeAgreed") || 0),
-                  paymentTerms: (String(data.get("paymentTerms") ?? "net_30") ||
-                    "net_30") as typeof item.deal.paymentTerms,
-                  dateDelivered: String(data.get("dateDelivered") ?? "") || null,
-                  dateInvoiced: String(data.get("dateInvoiced") ?? "") || null,
-                  datePaid: String(data.get("datePaid") ?? "") || null,
-                },
-              });
-            }}
+            onSubmit={handleDealSubmit}
           >
             <Field id="feeAgreed" label={`Fee agreed (${currency})`}>
               <TextField
@@ -361,6 +430,7 @@ function ContentDetailEditor({
                 step="0.01"
                 min="0"
                 defaultValue={item.deal.feeAgreed || ""}
+                disabled={locked}
                 size="sm"
                 full
               />
@@ -381,6 +451,7 @@ function ContentDetailEditor({
                 name="dateDelivered"
                 type="date"
                 defaultValue={item.deal.dateDelivered ?? ""}
+                disabled={locked}
                 size="sm"
                 full
               />
@@ -391,6 +462,7 @@ function ContentDetailEditor({
                 name="dateInvoiced"
                 type="date"
                 defaultValue={item.deal.dateInvoiced ?? ""}
+                required={isAgency}
                 size="sm"
                 full
               />
@@ -406,8 +478,17 @@ function ContentDetailEditor({
               />
             </Field>
             <div className="flex flex-wrap items-center gap-3 md:col-span-3">
-              <Button type="submit" size="sm" className="h-10">
-                Save deal
+              <Button
+                type="submit"
+                size="sm"
+                className="h-10"
+                disabled={invoiceSaving}
+              >
+                {isAgency
+                  ? invoiceSaving
+                    ? "Saving…"
+                    : "Save deal"
+                  : "Save deal"}
               </Button>
               <Text variant="caption" className="text-sm">
                 Due date:{" "}
@@ -415,6 +496,11 @@ function ContentDetailEditor({
                   {dueDate ? formatLiveDate(dueDate) : "—"}
                 </span>
               </Text>
+              {invoiceError ? (
+                <Text variant="caption" className="text-danger">
+                  {invoiceError}
+                </Text>
+              ) : null}
             </div>
           </form>
 
@@ -424,27 +510,30 @@ function ContentDetailEditor({
             </Text>
             <DeliverableTable
               deliverables={item.deal.deliverables}
-              onRemove={removeDeliverable}
+              onRemove={locked ? undefined : removeDeliverable}
               variant="plain"
             />
             {item.deal.deliverables.length > 0 &&
-              deliverableSum !== item.deal.feeAgreed ? (
+            deliverableSum !== item.deal.feeAgreed ? (
               <Text
                 variant="caption"
                 className="mb-3 rounded-lg border border-idea-pill/40 bg-idea px-2.5 py-1.5 text-xxs text-ink"
               >
-                Deliverables total ({fmtMoney(deliverableSum)}) differs from the
-                agreed fee ({fmtMoney(item.deal.feeAgreed)}). P&L uses the agreed
+                Deliverables total ({money(deliverableSum)}) differs from the
+                agreed fee ({money(item.deal.feeAgreed)}). P&L uses the agreed
                 fee.
               </Text>
             ) : null}
             <form
+              key={`deliverable-${formGeneration}`}
               className="grid grid-cols-3 items-end gap-2 md:grid-cols-[minmax(0,1.4fr)_minmax(0,0.7fr)_minmax(0,1fr)_auto] md:gap-3"
               onSubmit={(event) => {
                 event.preventDefault();
-                if (!item.deal) return;
+                if (locked || !item.deal) return;
                 const data = new FormData(event.currentTarget);
-                const type = String(data.get("type") ?? "video") as TrackerDeliverable["type"];
+                const type = String(
+                  data.get("type") ?? "video",
+                ) as TrackerDeliverable["type"];
                 const quantity = Number(data.get("quantity") || 1);
                 const rate = Number(data.get("rate") || 0);
                 if (!rate) return;
@@ -472,6 +561,7 @@ function ContentDetailEditor({
                   name="type"
                   defaultValue="video"
                   options={[...DELIVERABLE_TYPE_OPTIONS]}
+                  disabled={locked}
                   size="sm"
                   full
                 />
@@ -483,18 +573,24 @@ function ContentDetailEditor({
                   type="number"
                   min="1"
                   defaultValue={1}
+                  disabled={locked}
                   size="sm"
                   full
                 />
               </Field>
-              <Field id="rate" label={`Rate (${currency} per unit)`} className="min-w-0">
+              <Field
+                id="rate"
+                label={`Rate (${currency} per unit)`}
+                className="min-w-0"
+              >
                 <TextField
                   id="rate"
                   name="rate"
                   type="number"
                   step="0.01"
                   min="0"
-                  required
+                  required={!locked}
+                  disabled={locked}
                   size="sm"
                   full
                 />
@@ -503,6 +599,7 @@ function ContentDetailEditor({
                 type="submit"
                 variant="secondary"
                 size="sm"
+                disabled={locked}
                 className="col-span-3 h-10 w-full md:col-span-1 md:w-auto"
               >
                 Add deliverable
@@ -516,18 +613,20 @@ function ContentDetailEditor({
         <Text variant="title" className="mb-3 text-base">
           Expenses{" "}
           <span className="font-sans text-sm font-normal text-muted">
-            (total {fmtMoney(totalExpenses)})
+            (total {money(totalExpenses)})
           </span>
         </Text>
         <ExpenseTable
           expenses={item.expenses}
-          onRemove={removeExpense}
+          onRemove={locked ? undefined : removeExpense}
           variant="plain"
         />
         <form
+          key={`expense-${formGeneration}`}
           className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end md:gap-3"
           onSubmit={(event) => {
             event.preventDefault();
+            if (locked) return;
             const data = new FormData(event.currentTarget);
             const amount = Number(data.get("amount") || 0);
             if (!amount) return;
@@ -558,18 +657,24 @@ function ContentDetailEditor({
               name="category"
               defaultValue="editor"
               options={[...EXPENSE_CATEGORY_OPTIONS]}
+              disabled={locked}
               size="sm"
               full
             />
           </Field>
-          <Field id="expenseAmount" label={`Amount (${currency})`} className="min-w-0">
+          <Field
+            id="expenseAmount"
+            label={`Amount (${currency})`}
+            className="min-w-0"
+          >
             <TextField
               id="expenseAmount"
               name="amount"
               type="number"
               step="0.01"
               min="0"
-              required
+              required={!locked}
+              disabled={locked}
               size="sm"
               full
             />
@@ -579,6 +684,7 @@ function ContentDetailEditor({
               id="expenseDate"
               name="date"
               type="date"
+              disabled={locked}
               size="sm"
               full
             />
@@ -588,12 +694,19 @@ function ContentDetailEditor({
             label="Note"
             className="min-w-0 md:min-w-40 md:flex-1"
           >
-            <TextField id="expenseNote" name="note" size="sm" full />
+            <TextField
+              id="expenseNote"
+              name="note"
+              disabled={locked}
+              size="sm"
+              full
+            />
           </Field>
           <Button
             type="submit"
             variant="secondary"
             size="sm"
+            disabled={locked}
             className="col-span-2 h-10 w-full md:w-auto"
           >
             Add expense
@@ -607,14 +720,14 @@ function ContentDetailEditor({
             Profit for this item
           </Text>
           <Text variant="description">
-            Fee {fmtMoney(fee)} − Expenses {fmtMoney(totalExpenses)} ={" "}
+            Fee {money(fee)} − Expenses {money(totalExpenses)} ={" "}
             <span
               className={[
                 "font-display text-base font-bold",
                 fee - totalExpenses >= 0 ? "text-primary-hover" : "text-danger",
               ].join(" ")}
             >
-              {fmtMoney(fee - totalExpenses)}
+              {money(fee - totalExpenses)}
             </span>
           </Text>
         </Card>
@@ -627,7 +740,13 @@ function ContentDetailEditor({
           </Text>
           <Text variant="description">
             💡 {item.ideaTitle}{" "}
-            <Button href="/home/ideas">(view in brain dump)</Button>
+            {locked ? (
+              <span className="text-sm font-medium text-muted">
+                (view in brain dump)
+              </span>
+            ) : (
+              <Button href="/home/ideas">(view in brain dump)</Button>
+            )}
           </Text>
         </Card>
       ) : null}
