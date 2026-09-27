@@ -1,11 +1,17 @@
 import type { Category } from "@/lib/ui";
-import {
-  IDEAS as IDEAS_FROM_STORE,
-  type IdeaItem,
-  type IdeaStatus,
-} from "@/lib/talentMock";
 
-export type { IdeaItem, IdeaStatus };
+export type IdeaStatus = "idea" | "in_progress" | "used";
+
+export type IdeaItem = {
+  id: string;
+  creatorId: string;
+  title: string;
+  body: string;
+  tags: string[];
+  status: IdeaStatus;
+  createdAt: string;
+  linkedContentItemId: string | null;
+};
 
 export const IDEA_STATUSES = ["idea", "in_progress", "used"] as const;
 
@@ -40,5 +46,3 @@ export function formatIdeaDate(isoDate: string): string {
     year: "numeric",
   });
 }
-
-export const IDEAS: IdeaItem[] = IDEAS_FROM_STORE;

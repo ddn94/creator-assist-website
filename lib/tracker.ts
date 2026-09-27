@@ -1,5 +1,4 @@
 import type { StatusTagTone } from "@/components/StatusTag";
-import { getMockCreators } from "@/lib/mockStore";
 import type { Category } from "@/lib/ui";
 
 export const STAGES = [
@@ -24,12 +23,6 @@ export const STAGE_OPTIONS = STAGES.map((stage) => ({
   value: stage,
   label: STAGE_LABELS[stage],
 }));
-
-export const PLATFORM_OPTIONS = [
-  { value: "Instagram", label: "Instagram" },
-  { value: "TikTok", label: "TikTok" },
-  { value: "YouTube", label: "YouTube" },
-] as const;
 
 export const CONTENT_TYPE_OPTIONS = [
   { value: "organic", label: "Organic" },
@@ -138,6 +131,7 @@ export type TrackerDetail = TrackerItem & {
   deal: TrackerDeal | null;
   expenses: TrackerExpense[];
   ideaTitle: string | null;
+  createdAt: string;
   updatedAt: string;
   /** Owner in the shared mock DB */
   creatorId: string;
@@ -166,7 +160,7 @@ export function formatLiveDate(isoDate: string): string {
   });
 }
 
-export function fmtMoney(amount: number, currency = selfCurrencyCode()): string {
+export function fmtMoney(amount: number, currency = "USD"): string {
   const code = currency || "USD";
   const whole = Math.round(amount * 100) % 100 === 0;
   try {
@@ -179,13 +173,6 @@ export function fmtMoney(amount: number, currency = selfCurrencyCode()): string 
   } catch {
     return `${code} ${amount}`;
   }
-}
-
-export function selfCurrencyCode(): string {
-  const code = getMockCreators()
-    .find((creator) => creator.id === "fatima")
-    ?.currency?.trim();
-  return code || "USD";
 }
 
 export function deliverablesTotal(
@@ -220,4 +207,46 @@ export function computeDealStatus(
     `${today.toISOString().slice(0, 10)}T12:00:00`,
   );
   return todayDate > dueDate ? "overdue" : "awaiting_payment";
+}
+
+function daySpan(fromIso: string, to = new Date()): number {
+  const from = new Date(`${fromIso}T12:00:00`);
+  const today = new Date(`${to.toISOString().slice(0, 10)}T12:00:00`);
+  return Math.round((today.getTime() - from.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function shortDayMonth(iso: string): string {
+  return new Date(`${iso}T12:00:00`).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+  });
+}
+
+/** Needs-attention line. The optimistic save uses this so it matches a refresh. */
+export function attentionDetail(
+  status: DealStatus,
+  options: {
+    dueIso?: string | null;
+    deliveredIso?: string | null;
+    deliveredLabel?: string | null;
+    today?: Date;
+  } = {},
+): string | null {
+  const today = options.today ?? new Date();
+  const dueIso = options.dueIso ?? null;
+  if (status === "overdue" && dueIso) {
+    return `${daySpan(dueIso, today)} days overdue`;
+  }
+  if (status === "awaiting_payment" && dueIso) {
+    const days = -daySpan(dueIso, today);
+    return days >= 0 ? `Due in ${days} days` : `Due ${shortDayMonth(dueIso)}`;
+  }
+  if (status === "not_invoiced") {
+    const label = options.deliveredIso
+      ? shortDayMonth(options.deliveredIso)
+      : options.deliveredLabel;
+    if (!label) return null;
+    return `Delivered ${label} · Not invoiced`;
+  }
+  return null;
 }
