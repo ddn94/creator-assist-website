@@ -80,7 +80,7 @@ export function Navbar({
   return (
     <header className="relative border-b border-card-border bg-background/90 backdrop-blur-sm">
       <div className="mx-auto flex max-w-7xl items-center gap-3 px-3 py-3 sm:px-4 lg:px-5">
-        <Link href={items[0]?.href ?? "/"} className="flex min-w-0 items-center gap-2.5">
+        <Link href={items[0]?.href ?? "/"} className="flex min-w-0 cursor-pointer items-center gap-2.5">
           <Image
             src="/icons/icon-192.png"
             alt=""
@@ -109,7 +109,7 @@ export function Navbar({
                 key={item.href}
                 href={item.href}
                 className={[
-                  "rounded-full px-3.5 py-2 font-display text-sm font-semibold transition-colors",
+                  "cursor-pointer rounded-full px-3.5 py-2 font-display text-sm font-semibold transition-colors",
                   active
                     ? "bg-card text-ink shadow-card"
                     : "text-muted hover:text-ink",
@@ -133,7 +133,7 @@ export function Navbar({
               aria-controls={userMenuId}
               aria-label="User menu"
               onClick={() => setUserMenuOpen((prev) => !prev)}
-              className="rounded-full outline-none"
+              className="cursor-pointer rounded-full outline-none"
             >
               <Avatar name={displayName} size="sm" src={avatarUrl} />
             </button>
