@@ -8,7 +8,7 @@ import { FormAlert } from "@/components/FormAlert";
 import { Text } from "@/components/Text";
 import { TextArea } from "@/components/TextArea";
 import { TextField } from "@/components/TextField";
-import { addTalent } from "@/lib/auth/talentActions";
+import { addTalent } from "@/lib/data/talentActions";
 import { EMPTY_AUTH_STATE } from "@/lib/auth/types";
 
 type AddTalentFormProps = {

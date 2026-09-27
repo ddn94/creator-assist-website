@@ -1,9 +1,25 @@
-import { countryName } from "@/lib/countries";
-import { fmtFollowers } from "@/lib/onboarding";
-import type { TalentItem, TalentStatus } from "@/lib/talent";
-import type { TalentRecord } from "@/lib/auth/types";
+import type { TalentStatus } from "@/lib/talent";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
+
+export type TalentRecord = {
+  id: string;
+  agency_id: string;
+  name: string;
+  email: string | null;
+  status: "record" | "invited" | "active";
+  invite_code: string | null;
+  linked_user_id: string | null;
+  platform: string | null;
+  handle: string | null;
+  followers: number | null;
+  niche: string | null;
+  notes: string | null;
+  location: string | null;
+  currency: string | null;
+  created_at: string;
+  updated_at: string;
+};
 
 function asRecord(row: Record<string, unknown>): TalentRecord {
   const status: TalentStatus =
@@ -15,7 +31,8 @@ function asRecord(row: Record<string, unknown>): TalentRecord {
     email: typeof row.email === "string" ? row.email : null,
     status,
     invite_code: typeof row.invite_code === "string" ? row.invite_code : null,
-    linked_user_id: typeof row.linked_user_id === "string" ? row.linked_user_id : null,
+    linked_user_id:
+      typeof row.linked_user_id === "string" ? row.linked_user_id : null,
     platform: typeof row.platform === "string" ? row.platform : null,
     handle: typeof row.handle === "string" ? row.handle : null,
     followers: typeof row.followers === "number" ? row.followers : null,
@@ -25,49 +42,6 @@ function asRecord(row: Record<string, unknown>): TalentRecord {
     currency: typeof row.currency === "string" ? row.currency : null,
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
-  };
-}
-
-function statusLabel(status: TalentStatus) {
-  if (status === "active") return "Active";
-  if (status === "invited") return "Invited";
-  return "Record only";
-}
-
-function activityLabel(record: TalentRecord) {
-  if (record.status === "invited") return "Invite pending";
-  if (record.status === "active") return "Joined";
-  const date = new Date(record.created_at);
-  if (Number.isNaN(date.getTime())) return "Added";
-  return `Added ${date.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
-}
-
-export function toTalentItem(record: TalentRecord): TalentItem {
-  const platform = record.platform?.trim() || "";
-  const handle = record.handle?.trim() || "";
-  const platformLabel = platform
-    ? handle
-      ? `${platform} · ${handle}`
-      : platform
-    : "—";
-
-  return {
-    id: record.id,
-    name: record.name,
-    email: record.email,
-    status: record.status,
-    statusLabel: statusLabel(record.status),
-    platforms: platformLabel,
-    platformsFull: platformLabel === "—" ? "No platform yet" : platformLabel,
-    community:
-      record.followers && record.followers > 0
-        ? fmtFollowers(record.followers)
-        : "—",
-    niches: record.niche ?? "",
-    location: record.location ? countryName(record.location) : "",
-    liveDeals: null,
-    outstanding: null,
-    lastActivity: activityLabel(record),
   };
 }
 

@@ -6,16 +6,25 @@ import { CategoryCard } from "@/components/CategoryCard";
 import { CategoryPill } from "@/components/CategoryPill";
 import { StatCard } from "@/components/StatCard";
 import { Text } from "@/components/Text";
+import type {
+  ContinueFeedItem,
+  OverviewStats,
+} from "@/lib/data/selectors";
 import { JUMP_TILES, greeting } from "@/lib/home";
-import { useTalentOverviewData } from "@/lib/useMockDb";
 
 type TalentOverviewProps = {
   userName: string;
   avatarUrl?: string | null;
+  stats: OverviewStats;
+  feed: ContinueFeedItem[];
 };
 
-export function TalentOverview({ userName, avatarUrl }: TalentOverviewProps) {
-  const { stats, feed } = useTalentOverviewData();
+export function TalentOverview({
+  userName,
+  avatarUrl,
+  stats,
+  feed,
+}: TalentOverviewProps) {
   const displayName = userName.trim() || "there";
   const firstName = displayName.split(/\s+/)[0] || displayName;
 

@@ -1,9 +1,16 @@
 import { AgencyOverview } from "@/components/AgencyOverview";
+import { AppFrame } from "@/components/AppFrame";
 import type { RosterItem } from "@/components/RosterList";
-import { avatarPublicUrl } from "@/lib/auth/avatar";
-import { displayName } from "@/lib/auth/onboarding";
 import { requireProfile } from "@/lib/auth/session";
-import { listTalentRecords, toTalentItem } from "@/lib/auth/talentRecords";
+import { listTalentRecords } from "@/lib/data/talentRecords";
+import { toTalentItem } from "@/lib/data/talentItem";
+import { getLinkedTalentAvatars } from "@/lib/data/linkedTalent";
+import { listAgencyLinkedContent } from "@/lib/data/contentQueries";
+import {
+  buildAgencyAttention,
+  buildAgencyOverviewMoney,
+  buildAgencyPayments,
+} from "@/lib/data/selectors";
 import { talentStatusTone, type TalentItem } from "@/lib/talent";
 
 function rosterItems(items: TalentItem[]): RosterItem[] {
@@ -14,6 +21,7 @@ function rosterItems(items: TalentItem[]): RosterItem[] {
     status: item.statusLabel,
     statusTone: talentStatusTone[item.status],
     meta: item.email ?? item.lastActivity,
+    avatarUrl: item.avatarUrl,
   }));
 }
 
@@ -26,19 +34,35 @@ function talentFooter(items: TalentItem[]) {
 
 export default async function WorkspaceOverviewPage() {
   const profile = await requireProfile("agency");
-  const talent = (await listTalentRecords()).map(toTalentItem);
+  const [records, avatars, linked] = await Promise.all([
+    listTalentRecords(),
+    getLinkedTalentAvatars(profile.id),
+    listAgencyLinkedContent(),
+  ]);
+  const talent = records.map((record) =>
+    toTalentItem(record, avatars.get(record.id) ?? null),
+  );
   const brand = profile.agency_name?.trim() || "Workspace";
+  const homeCurrency = profile.currency?.trim() || "USD";
+  const moneyStats = buildAgencyOverviewMoney(linked, homeCurrency);
+  const attention = buildAgencyAttention(linked);
+  const payments = buildAgencyPayments(linked);
 
   return (
-    <AgencyOverview
-      userName={displayName(profile)}
-      userEmail={profile.email}
-      brand={brand}
-      avatarUrl={avatarPublicUrl(profile.avatar_path, profile.updated_at)}
+    <AppFrame
+      role="agency"
+      profile={profile}
+      title="Overview"
       description={`${brand} · ${talent.length} talent`}
-      talentCount={talent.length}
-      talentFooter={talentFooter(talent)}
-      roster={rosterItems(talent)}
-    />
+    >
+      <AgencyOverview
+        talentCount={talent.length}
+        talentFooter={talentFooter(talent)}
+        roster={rosterItems(talent)}
+        moneyStats={moneyStats}
+        attention={attention}
+        payments={payments}
+      />
+    </AppFrame>
   );
 }

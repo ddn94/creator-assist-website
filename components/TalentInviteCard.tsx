@@ -8,7 +8,7 @@ import { Field } from "@/components/Field";
 import { FormAlert } from "@/components/FormAlert";
 import { Text } from "@/components/Text";
 import { TextField } from "@/components/TextField";
-import { inviteTalent } from "@/lib/auth/talentActions";
+import { inviteTalent } from "@/lib/data/talentActions";
 import { EMPTY_AUTH_STATE } from "@/lib/auth/types";
 
 function InviteButton({ label }: { label: string }) {

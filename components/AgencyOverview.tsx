@@ -1,48 +1,40 @@
 "use client";
 
 import { NeedsAttentionList } from "@/components/NeedsAttentionList";
-import { PageWrapper } from "@/components/PageWrapper";
 import { RosterList, type RosterItem } from "@/components/RosterList";
 import { StatCard } from "@/components/StatCard";
 import { Text } from "@/components/Text";
-import { useAgencyOverviewData } from "@/lib/useMockDb";
-import { workspaceNav } from "@/lib/workspace";
+import type { AttentionItem } from "@/lib/data/selectors";
+import type { PaymentItem } from "@/lib/payments";
+
+type AgencyMoneyStats = {
+  outstanding: string;
+  overdue: string;
+  received: string;
+  outstandingFooter: string;
+  overdueFooter: string;
+  receivedFooter: string;
+};
 
 type AgencyOverviewProps = {
-  userName: string;
-  userEmail?: string;
-  brand: string;
-  avatarUrl?: string | null;
-  description: string;
   talentCount: number;
   talentFooter: string;
   roster: RosterItem[];
+  moneyStats: AgencyMoneyStats;
+  attention: AttentionItem[];
+  payments: PaymentItem[];
 };
 
 export function AgencyOverview({
-  userName,
-  userEmail,
-  brand,
-  avatarUrl,
-  description,
   talentCount,
   talentFooter,
   roster,
+  moneyStats,
+  attention,
+  payments,
 }: AgencyOverviewProps) {
-  const { stats, attention } = useAgencyOverviewData();
-
   return (
-    <PageWrapper
-      brand={brand}
-      brandMeta="Agency workspace"
-      userName={userName}
-      userEmail={userEmail}
-      avatarUrl={avatarUrl}
-      profileHref="/workspace/profile"
-      navItems={workspaceNav}
-      title="Overview"
-      description={description}
-    >
+    <>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Talent"
@@ -52,21 +44,21 @@ export function AgencyOverview({
         />
         <StatCard
           label="Outstanding"
-          value={stats.outstanding}
-          footer={stats.outstandingFooter}
+          value={moneyStats.outstanding}
+          footer={moneyStats.outstandingFooter}
           tone="payment"
         />
         <StatCard
           label="Overdue"
-          value={stats.overdue}
-          footer={stats.overdueFooter}
+          value={moneyStats.overdue}
+          footer={moneyStats.overdueFooter}
           tone="organic"
           valueClassName="text-danger!"
         />
         <StatCard
           label="Received this month"
-          value={stats.received}
-          footer={stats.receivedFooter}
+          value={moneyStats.received}
+          footer={moneyStats.receivedFooter}
           tone="idea"
         />
       </div>
@@ -76,7 +68,7 @@ export function AgencyOverview({
           <Text variant="title" className="mb-3 text-lg">
             Needs attention
           </Text>
-          <NeedsAttentionList items={attention} />
+          <NeedsAttentionList items={attention} payments={payments} />
         </section>
 
         <section className="min-w-0">
@@ -86,6 +78,6 @@ export function AgencyOverview({
           <RosterList items={roster} />
         </section>
       </div>
-    </PageWrapper>
+    </>
   );
 }

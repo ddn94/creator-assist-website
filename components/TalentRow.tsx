@@ -32,9 +32,9 @@ export function TalentRow({ talent, className = "" }: TalentRowProps) {
       {/* Mobile card */}
       <Link
         href={href}
-        className="flex w-full items-start gap-3 px-4 py-3.5 text-left transition-colors hover:bg-background/60 lg:hidden"
+        className="flex w-full cursor-pointer items-start gap-3 px-4 py-3.5 text-left transition-colors hover:bg-background/60 lg:hidden"
       >
-        <Avatar name={talent.name} size="sm" />
+        <Avatar name={talent.name} size="sm" src={talent.avatarUrl} />
         <div className="min-w-0 flex-1 space-y-1.5">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
@@ -71,10 +71,10 @@ export function TalentRow({ talent, className = "" }: TalentRowProps) {
       {/* Desktop row */}
       <Link
         href={href}
-        className="hidden w-full grid-cols-[minmax(12rem,1.6fr)_7.5rem_minmax(6rem,1fr)_4.5rem_4.5rem_5.5rem_minmax(6rem,1fr)_1.5rem] items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-background/60 lg:grid"
+        className="hidden w-full cursor-pointer grid-cols-[minmax(12rem,1.6fr)_7.5rem_minmax(6rem,1fr)_4.5rem_4.5rem_5.5rem_minmax(6rem,1fr)_1.5rem] items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-background/60 lg:grid"
       >
         <div className="flex min-w-0 items-center gap-2.5">
-          <Avatar name={talent.name} size="sm" />
+          <Avatar name={talent.name} size="sm" src={talent.avatarUrl} />
           <div className="min-w-0">
             <Text variant="cardTitle" className="truncate">
               {talent.name}
