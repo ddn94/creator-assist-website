@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AddContentPanel } from "@/components/AddContentPanel";
 import { FilterPills } from "@/components/FilterPills";
@@ -15,6 +15,7 @@ import {
   STAGES,
   STAGE_LABELS,
   nextStage,
+  revisionBackStage,
   type ContentType,
   type Stage,
   type TrackerItem,
@@ -41,6 +42,8 @@ export function ContentTracker({
     rows: TrackerItem[];
   } | null>(null);
   const rows = draft?.key === serverKey ? draft.rows : items;
+  const rowsRef = useRef(rows);
+  rowsRef.current = rows;
 
   const counts = useMemo(() => {
     const map = Object.fromEntries(STAGES.map((stage) => [stage, 0])) as Record<
@@ -54,19 +57,21 @@ export function ContentTracker({
   const activeItems = rows.filter((item) => item.stage === activeStage);
 
   function showRows(next: TrackerItem[]) {
+    rowsRef.current = next;
     setDraft({ key: serverKey, rows: next });
   }
 
   function moveStage(id: string, stage: Stage) {
-    if (id.startsWith("pending-")) return;
-    const item = rows.find((row) => row.id === id);
+    const current = rowsRef.current;
+    const item = current.find((row) => row.id === id);
     if (!item || item.stage === stage) return;
-    const previous = rows;
+    const previous = current;
     setSaveError(null);
-    showRows(rows.map((row) => (row.id === id ? { ...row, stage } : row)));
+    showRows(current.map((row) => (row.id === id ? { ...row, stage } : row)));
+    if (id.startsWith("pending-")) return;
     void setContentStageAction(id, stage).then((result) => {
       if (result.error) {
-        setDraft({ key: serverKey, rows: previous });
+        showRows(previous);
         setSaveError(result.error);
         return;
       }
@@ -81,8 +86,11 @@ export function ContentTracker({
     if (stage) moveStage(id, stage);
   }
 
-  function backToEdited(id: string) {
-    moveStage(id, "edited");
+  function revisionBack(id: string) {
+    const item = rows.find((row) => row.id === id);
+    if (!item) return;
+    const stage = revisionBackStage(item.stage);
+    if (stage) moveStage(id, stage);
   }
 
   function addItem(payload: {
@@ -122,17 +130,32 @@ export function ContentTracker({
       notes: payload.notes,
     }).then((result) => {
       if ("error" in result) {
-        setDraft({ key: serverKey, rows: previous });
+        showRows(previous);
         setSaveError(result.error);
         return;
       }
-      setDraft({
-        key: serverKey,
-        rows: [optimistic, ...previous].map((row) =>
-          row.id === tempId ? { ...row, id: result.id } : row,
-        ),
+      const latest = rowsRef.current;
+      const pendingRow = latest.find((row) => row.id === tempId);
+      const stage = pendingRow?.stage ?? "concept";
+      const next = latest.map((row) =>
+        row.id === tempId ? { ...row, id: result.id } : row,
+      );
+      showRows(next);
+      if (stage === "concept") {
+        router.refresh();
+        return;
+      }
+      void setContentStageAction(result.id, stage).then((stageResult) => {
+        if (stageResult.error) {
+          showRows(
+            next.map((row) =>
+              row.id === result.id ? { ...row, stage: "concept" } : row,
+            ),
+          );
+          setSaveError(stageResult.error);
+        }
+        router.refresh();
       });
-      router.refresh();
     });
   }
 
@@ -166,7 +189,7 @@ export function ContentTracker({
               key={item.id}
               item={item}
               onAdvance={advance}
-              onBackToEdited={backToEdited}
+              onRevisionBack={revisionBack}
             />
           ))}
           {activeItems.length === 0 ? (
@@ -197,7 +220,7 @@ export function ContentTracker({
                     key={item.id}
                     item={item}
                     onAdvance={advance}
-                    onBackToEdited={backToEdited}
+                    onRevisionBack={revisionBack}
                   />
                 ))}
                 {colItems.length === 0 ? (
