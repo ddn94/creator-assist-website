@@ -2,13 +2,12 @@
 
 import { useState } from "react";
 import { Button } from "@/components/Button";
+import { DateField } from "@/components/DateField";
 import { FilterPills } from "@/components/FilterPills";
 import { PillToggle } from "@/components/PillToggle";
 import { Text } from "@/components/Text";
-import { TextField } from "@/components/TextField";
 import {
   PNL_PERIODS,
-  pnlCustomPresets,
   type PnlDateFilter,
   type PnlRangeKind,
 } from "@/lib/pnlRange";
@@ -39,7 +38,7 @@ export function PnlDateRangeControl({
   heading,
   className = "",
 }: PnlDateRangeControlProps) {
-  const [range, setRange] = useState<PnlRangeKind>("month");
+  const [range, setRange] = useState<PnlRangeKind>("all");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [appliedFrom, setAppliedFrom] = useState("");
@@ -50,12 +49,10 @@ export function PnlDateRangeControl({
     onChange(filterFor(next, appliedFrom, appliedTo));
   }
 
-  function applyCustom(nextFrom: string, nextTo: string) {
-    setFrom(nextFrom);
-    setTo(nextTo);
-    setAppliedFrom(nextFrom);
-    setAppliedTo(nextTo);
-    onChange(filterFor("custom", nextFrom, nextTo));
+  function applyCustom() {
+    setAppliedFrom(from);
+    setAppliedTo(to);
+    onChange(filterFor("custom", from, to));
   }
 
   const customLabel =
@@ -96,49 +93,20 @@ export function PnlDateRangeControl({
 
       {range === "custom" ? (
         <div className="mt-4 rounded-card border border-card-border bg-card p-4 shadow-card sm:p-5">
-          <div className="mb-3 flex flex-wrap items-center gap-2">
-            {pnlCustomPresets().map((preset) => (
-              <button
-                key={preset.label}
-                type="button"
-                onClick={() => applyCustom(preset.from, preset.to)}
-                className="rounded-full border border-border bg-background px-3.5 py-1.5 font-display text-sm font-semibold text-ink transition-colors hover:bg-card"
-              >
-                {preset.label}
-              </button>
-            ))}
-            <Text variant="caption" className="ml-auto text-xs">
-              Showing: {customLabel}
-            </Text>
-          </div>
           <div className="flex flex-wrap items-end gap-3">
-            <div>
+            <div className="w-full min-w-0 sm:w-56">
               <Text variant="label" className="mb-1">
                 From
               </Text>
-              <TextField
-                type="date"
-                size="sm"
-                value={from}
-                onChange={(e) => setFrom(e.target.value)}
-              />
+              <DateField size="sm" full value={from} onChange={setFrom} />
             </div>
-            <div>
+            <div className="w-full min-w-0 sm:w-56">
               <Text variant="label" className="mb-1">
                 To
               </Text>
-              <TextField
-                type="date"
-                size="sm"
-                value={to}
-                onChange={(e) => setTo(e.target.value)}
-              />
+              <DateField size="sm" full value={to} onChange={setTo} />
             </div>
-            <Button
-              type="button"
-              size="xs"
-              onClick={() => applyCustom(from, to)}
-            >
+            <Button type="button" size="sm" onClick={applyCustom}>
               Apply
             </Button>
           </div>
