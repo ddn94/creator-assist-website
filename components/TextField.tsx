@@ -38,6 +38,7 @@ export function TextField({
   iconLeft,
   iconRight,
   className = "",
+  spellCheck = false,
   ...props
 }: TextFieldProps) {
   const inset = iconInset[size];
@@ -57,6 +58,7 @@ export function TextField({
         ]
           .filter(Boolean)
           .join(" ")}
+        spellCheck={spellCheck}
         {...props}
       />
       <Icon className={inset.posRight}>{iconRight}</Icon>

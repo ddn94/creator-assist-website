@@ -35,6 +35,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
+      spellCheck={false}
       className={`${inter.variable} ${urbanist.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full font-sans bg-background text-ink">
