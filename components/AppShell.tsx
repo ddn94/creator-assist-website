@@ -5,6 +5,7 @@ import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { Navbar, type NavItem } from "@/components/Navbar";
 import { PageBody } from "@/components/PageBody";
 import { PageWrapper } from "@/components/PageWrapper";
+import { RefreshOnFocus } from "@/components/RefreshOnFocus";
 
 export const InsideAppShell = createContext(false);
 
@@ -34,6 +35,7 @@ export function AppShell({
 
   return (
     <InsideAppShell.Provider value={true}>
+      <RefreshOnFocus />
       <div className="relative z-10 min-h-dvh bg-background">
         <Navbar
           brand={brand}

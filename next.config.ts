@@ -2,10 +2,11 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   experimental: {
-    // Revisit a page within a minute from the copy already in the browser.
+    // Keep recently visited tabs in the browser so switching back is instant;
+    // a quiet refresh on focus updates them in the background.
     staleTimes: {
-      dynamic: 60,
-      static: 180,
+      dynamic: 600,
+      static: 1800,
     },
   },
   images: {
