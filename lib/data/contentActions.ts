@@ -5,6 +5,7 @@ import {
   requireTalentId,
 } from "@/lib/data/actionHelpers";
 import { DEFAULT_PLATFORM } from "@/lib/platforms";
+import { toTimestamp } from "@/lib/timestamps";
 import { createClient } from "@/lib/supabase/server";
 import type {
   ContentType,
@@ -39,7 +40,7 @@ export async function addContentAction(payload: {
         type: payload.type,
         brand_name: isPaid ? payload.brandName : null,
         stage: "concept",
-        go_live_date: payload.goLiveDate || null,
+        go_live_date: toTimestamp(payload.goLiveDate),
         notes: payload.notes ?? "",
         idea_title: payload.ideaTitle ?? null,
         fee_agreed: isPaid ? 0 : null,
@@ -117,15 +118,15 @@ export async function upsertContentAction(
         type: item.type,
         brand_name: isPaid ? item.brandName : null,
         stage: item.stage,
-        go_live_date: item.goLiveDate,
+        go_live_date: toTimestamp(item.goLiveDate),
         shot_list: item.shotList,
         notes: item.notes,
         idea_title: item.ideaTitle,
         fee_agreed: isPaid ? (item.deal?.feeAgreed ?? 0) : null,
         payment_terms: isPaid ? (item.deal?.paymentTerms ?? "net_30") : null,
-        date_delivered: isPaid ? (item.deal?.dateDelivered ?? null) : null,
-        date_invoiced: isPaid ? (item.deal?.dateInvoiced ?? null) : null,
-        date_paid: isPaid ? (item.deal?.datePaid ?? null) : null,
+        date_delivered: isPaid ? toTimestamp(item.deal?.dateDelivered) : null,
+        date_invoiced: isPaid ? toTimestamp(item.deal?.dateInvoiced) : null,
+        date_paid: isPaid ? toTimestamp(item.deal?.datePaid) : null,
       })
       .eq("id", item.id)
       .eq("owner_id", ownerId);

@@ -4,8 +4,8 @@ import { getProfile } from "@/lib/auth/session";
 import {
   revalidateContent,
   requireTalentId,
-  todayIso,
 } from "@/lib/data/actionHelpers";
+import { mergeTimestamp, nowTimestamp } from "@/lib/timestamps";
 import { createClient } from "@/lib/supabase/server";
 import type { PaymentTerms } from "@/lib/tracker";
 
@@ -14,21 +14,17 @@ export async function markContentPaidAction(
 ): Promise<{ error: string | null }> {
   try {
     await requireTalentId();
-    const paid = todayIso();
+    const paid = nowTimestamp();
     const supabase = await createClient();
     const { data } = await supabase
       .from("content_items")
-      .select("date_invoiced, date_delivered")
+      .select("id")
       .eq("id", contentId)
       .maybeSingle();
     if (!data) return { error: "Content not found." };
     const { error } = await supabase
       .from("content_items")
-      .update({
-        date_paid: paid,
-        date_invoiced: data.date_invoiced ?? paid,
-        date_delivered: data.date_delivered ?? paid,
-      })
+      .update({ date_paid: paid })
       .eq("id", contentId);
     if (error) return { error: "Could not mark paid." };
     revalidateContent([`/home/tracker/${contentId}`]);
@@ -46,11 +42,11 @@ export async function markContentInvoicedAction(
 ): Promise<{ error: string | null }> {
   try {
     await requireTalentId();
-    const invoiced = todayIso();
+    const invoiced = nowTimestamp();
     const supabase = await createClient();
     const { data } = await supabase
       .from("content_items")
-      .select("date_delivered")
+      .select("id")
       .eq("id", contentId)
       .maybeSingle();
     if (!data) return { error: "Content not found." };
@@ -59,7 +55,6 @@ export async function markContentInvoicedAction(
       .update({
         payment_terms: terms,
         date_invoiced: invoiced,
-        date_delivered: data.date_delivered ?? invoiced,
         date_paid: null,
       })
       .eq("id", contentId);
@@ -85,29 +80,39 @@ export async function updateContentInvoiceAction(
   try {
     const profile = await getProfile();
     if (!profile) return { error: "Sign in required." };
-    const invoiced = payload.dateInvoiced.slice(0, 10);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(invoiced)) {
+    const invoicedDay = payload.dateInvoiced.slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(invoicedDay)) {
       return { error: "Enter a valid invoice date." };
     }
-    const paid = payload.datePaid?.slice(0, 10) || null;
-    if (paid && !/^\d{4}-\d{2}-\d{2}$/.test(paid)) {
+    const paidDay = payload.datePaid?.slice(0, 10) || null;
+    if (paidDay && !/^\d{4}-\d{2}-\d{2}$/.test(paidDay)) {
       return { error: "Enter a valid paid date." };
     }
 
     const supabase = await createClient();
     const { data } = await supabase
       .from("content_items")
-      .select("date_delivered")
+      .select("date_delivered, date_invoiced, date_paid")
       .eq("id", contentId)
       .maybeSingle();
     if (!data) return { error: "Content not found." };
 
+    const invoiced = mergeTimestamp(
+      typeof data.date_invoiced === "string" ? data.date_invoiced : null,
+      invoicedDay,
+    );
+    const paid = mergeTimestamp(
+      typeof data.date_paid === "string" ? data.date_paid : null,
+      paidDay,
+    );
     const { error } = await supabase
       .from("content_items")
       .update({
         payment_terms: payload.paymentTerms,
         date_invoiced: invoiced,
-        date_delivered: data.date_delivered ?? invoiced,
+        date_delivered:
+          data.date_delivered ??
+          mergeTimestamp(null, invoicedDay),
         date_paid: paid,
       })
       .eq("id", contentId);

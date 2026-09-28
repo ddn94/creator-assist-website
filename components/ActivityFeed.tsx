@@ -1,4 +1,7 @@
+"use client";
+
 import { Text } from "@/components/Text";
+import { activityWhen } from "@/lib/data/format";
 import type { TalentActivityItem } from "@/lib/talent";
 
 type ActivityFeedProps = {
@@ -18,8 +21,8 @@ export function ActivityFeed({ items, className = "" }: ActivityFeedProps) {
             {items.map((item) => (
               <li key={item.id}>
                 <Text variant="cardTitle">{item.title}</Text>
-                <Text variant="caption" className="mt-0.5">
-                  {item.meta}
+                <Text variant="caption" className="mt-0.5" suppressHydrationWarning>
+                  {item.detail} · {activityWhen(item.when)}
                 </Text>
               </li>
             ))}

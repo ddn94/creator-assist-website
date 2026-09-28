@@ -131,7 +131,11 @@ export function buildAgencyOverviewMoney(
       if (status === "overdue") overdue += fee;
     } else if (
       content.deal.datePaid &&
-      new Date(`${content.deal.datePaid}T12:00:00`) >= monthStart
+      new Date(
+        content.deal.datePaid.includes("T")
+          ? content.deal.datePaid
+          : `${content.deal.datePaid}T12:00:00`,
+      ) >= monthStart
     ) {
       received += fee;
     }

@@ -99,9 +99,9 @@ function mapDeal(row: ContentRow): TrackerDeal | null {
   return {
     feeAgreed: num(row.fee_agreed),
     paymentTerms: (row.payment_terms as PaymentTerms) || "net_30",
-    dateDelivered: dateOnly(row.date_delivered),
-    dateInvoiced: dateOnly(row.date_invoiced),
-    datePaid: dateOnly(row.date_paid),
+    dateDelivered: row.date_delivered,
+    dateInvoiced: row.date_invoiced,
+    datePaid: row.date_paid,
     deliverables: (row.content_deliverables ?? [])
       .slice()
       .sort((a, b) => a.sort_order - b.sort_order)
@@ -119,7 +119,7 @@ export function mapContent(row: ContentRow): TrackerDetail {
     type: row.type as ContentType,
     brandName: row.brand_name,
     stage: row.stage as Stage,
-    goLiveDate: dateOnly(row.go_live_date),
+    goLiveDate: row.go_live_date,
     shotList: row.shot_list ?? "",
     notes: row.notes ?? "",
     deal: mapDeal(row),
@@ -130,6 +130,8 @@ export function mapContent(row: ContentRow): TrackerDetail {
     ideaTitle: row.idea_title,
     createdAt: dateOnly(row.created_at) ?? row.created_at.slice(0, 10),
     updatedAt: dateOnly(row.updated_at) ?? row.updated_at.slice(0, 10),
+    createdAtIso: row.created_at,
+    updatedAtIso: row.updated_at,
   };
 }
 

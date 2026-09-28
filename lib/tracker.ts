@@ -133,6 +133,9 @@ export type TrackerDetail = TrackerItem & {
   ideaTitle: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Full timestamps. Date-only createdAt/updatedAt stay for day comparisons. */
+  createdAtIso?: string;
+  updatedAtIso?: string;
   /** Owner in the shared mock DB */
   creatorId: string;
 };
@@ -151,8 +154,37 @@ export function nextStage(stage: Stage): Stage | null {
   return STAGES[index + 1];
 }
 
+/**
+ * Revision loop: Edited ↔ Filmed ↔ Delivered only.
+ * Concept is forward-only; Go Live is final.
+ */
+export function revisionBackStage(stage: Stage): Stage | null {
+  if (stage === "edited") return "filmed";
+  if (stage === "delivered") return "edited";
+  return null;
+}
+
+/** Stage choices allowed from the current stage (tracker detail select). */
+export function stageOptionsFor(stage: Stage) {
+  const allowed: Stage[] =
+    stage === "concept"
+      ? ["concept", "filmed"]
+      : stage === "filmed"
+        ? ["filmed", "edited"]
+        : stage === "edited"
+          ? ["filmed", "edited", "delivered"]
+          : stage === "delivered"
+            ? ["edited", "delivered", "go_live"]
+            : ["go_live"];
+  return allowed.map((value) => ({
+    value,
+    label: STAGE_LABELS[value],
+  }));
+}
+
 export function formatLiveDate(isoDate: string): string {
-  const date = new Date(`${isoDate}T12:00:00`);
+  const day = isoDate.slice(0, 10);
+  const date = new Date(`${day}T12:00:00`);
   return date.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -186,7 +218,7 @@ export function computeDueDate(deal: {
   dateInvoiced: string | null;
 }): string | null {
   if (!deal.dateInvoiced) return null;
-  const due = new Date(`${deal.dateInvoiced}T12:00:00`);
+  const due = new Date(`${deal.dateInvoiced.slice(0, 10)}T12:00:00`);
   due.setDate(due.getDate() + (TERM_DAYS[deal.paymentTerms] ?? 30));
   return due.toISOString().slice(0, 10);
 }
@@ -210,13 +242,13 @@ export function computeDealStatus(
 }
 
 function daySpan(fromIso: string, to = new Date()): number {
-  const from = new Date(`${fromIso}T12:00:00`);
+  const from = new Date(`${fromIso.slice(0, 10)}T12:00:00`);
   const today = new Date(`${to.toISOString().slice(0, 10)}T12:00:00`);
   return Math.round((today.getTime() - from.getTime()) / (1000 * 60 * 60 * 24));
 }
 
 function shortDayMonth(iso: string): string {
-  return new Date(`${iso}T12:00:00`).toLocaleDateString("en-GB", {
+  return new Date(`${iso.slice(0, 10)}T12:00:00`).toLocaleDateString("en-GB", {
     day: "numeric",
     month: "short",
   });
