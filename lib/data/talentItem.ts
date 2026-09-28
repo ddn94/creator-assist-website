@@ -40,12 +40,12 @@ function formatPlatformPair(platform: string, handle: string) {
 function platformsFromRecord(record: TalentRecord) {
   const label = formatPlatformPair(record.platform ?? "", record.handle ?? "");
   return {
-    platforms: label || "—",
+    platforms: label || "No platform yet",
     platformsFull: label || "No platform yet",
     community:
       record.followers && record.followers > 0
         ? fmtFollowers(record.followers)
-        : "—",
+        : "",
   };
 }
 
@@ -63,7 +63,7 @@ function platformsFromLive(meta: LinkedTalentMeta) {
   return {
     platforms: joined,
     platformsFull: joined,
-    community: totalFollowers > 0 ? fmtFollowers(totalFollowers) : "—",
+    community: totalFollowers > 0 ? fmtFollowers(totalFollowers) : "",
   };
 }
 
@@ -74,9 +74,9 @@ export function toTalentItem(
   const linked = !!meta;
   const platforms = linked
     ? platformsFromLive(meta) ?? {
-        platforms: "—",
+        platforms: "No platform yet",
         platformsFull: "No platform yet",
-        community: "—",
+        community: "",
       }
     : platformsFromRecord(record);
 

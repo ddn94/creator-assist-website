@@ -25,6 +25,14 @@ type AgencyOverviewProps = {
   payments: PaymentItem[];
 };
 
+function EmptyPanel({ children }: { children: string }) {
+  return (
+    <div className="rounded-card border border-card-border bg-card px-4 py-8 text-center shadow-card">
+      <Text variant="description">{children}</Text>
+    </div>
+  );
+}
+
 export function AgencyOverview({
   talentCount,
   talentFooter,
@@ -68,14 +76,25 @@ export function AgencyOverview({
           <Text variant="title" className="mb-3 text-lg">
             Needs attention
           </Text>
-          <NeedsAttentionList items={attention} payments={payments} />
+          {attention.length === 0 ? (
+            <EmptyPanel>Nothing needs attention.</EmptyPanel>
+          ) : (
+            <NeedsAttentionList items={attention} payments={payments} />
+          )}
         </section>
 
         <section className="min-w-0">
           <Text variant="title" className="mb-3 text-lg">
             Roster
           </Text>
-          <RosterList items={roster} />
+          {roster.length === 0 ? (
+            <EmptyPanel>
+              No talent yet. Add a record, or invite someone onto Creator
+              Assist.
+            </EmptyPanel>
+          ) : (
+            <RosterList items={roster} />
+          )}
         </section>
       </div>
     </>

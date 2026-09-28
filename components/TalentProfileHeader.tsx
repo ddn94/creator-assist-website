@@ -13,11 +13,13 @@ export function TalentProfileHeader({
   className = "",
 }: TalentProfileHeaderProps) {
   const meta = [
-    `${talent.community} community`,
+    talent.community ? `${talent.community} community` : "",
     talent.platformsFull,
     talent.niches,
     talent.location,
-  ].join(" · ");
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   const notes = talent.notes?.trim() || "";
 
