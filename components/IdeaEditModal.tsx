@@ -137,7 +137,7 @@ export function IdeaEditModal({
               id={`${formId}-tags`}
               value={tags}
               onChange={(event) => setTags(event.target.value)}
-              placeholder="lifestyle, video"
+              placeholder="Tags, comma-separated"
               size="sm"
               full
             />

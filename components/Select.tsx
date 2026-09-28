@@ -72,10 +72,10 @@ export function Select({
   const needle = query.trim().toLowerCase();
   const filtered = needle
     ? options.filter(
-        (option) =>
-          option.label.toLowerCase().includes(needle) ||
-          option.value.toLowerCase().includes(needle),
-      )
+      (option) =>
+        option.label.toLowerCase().includes(needle) ||
+        option.value.toLowerCase().includes(needle),
+    )
     : options;
   const inputValue = open ? query : (selected?.label ?? "");
 
@@ -220,69 +220,69 @@ export function Select({
 
   const menuStyle: CSSProperties | undefined = coords
     ? {
-        position: "fixed",
-        top: coords.top,
-        bottom: coords.bottom,
-        left: coords.left,
-        width: coords.width,
-        maxHeight: coords.maxHeight,
-        zIndex: 80,
-      }
+      position: "fixed",
+      top: coords.top,
+      bottom: coords.bottom,
+      left: coords.left,
+      width: coords.width,
+      maxHeight: coords.maxHeight,
+      zIndex: 80,
+    }
     : undefined;
 
   const menu =
     open && coords && typeof document !== "undefined"
       ? createPortal(
-          <div
-            ref={menuRef}
-            style={menuStyle}
-            className="overflow-hidden rounded-input border border-card-border bg-card shadow-card"
-          >
-            {filtered.length === 0 ? (
-              <p className="px-3.5 py-2.5 text-xs text-muted">No matches</p>
-            ) : (
-              <ul
-                ref={listRef}
-                id={listId}
-                role="listbox"
-                aria-labelledby={selectId}
-                style={{ maxHeight: coords.maxHeight }}
-                className="overflow-auto py-1"
-              >
-                {filtered.map((option, index) => {
-                  const isSelected = option.value === value;
-                  const isActive = index === active;
-                  return (
-                    <li
-                      key={option.value}
-                      role="option"
-                      aria-selected={isSelected}
-                      data-index={index}
+        <div
+          ref={menuRef}
+          style={menuStyle}
+          className="overflow-hidden rounded-input border border-card-border bg-card shadow-card"
+        >
+          {filtered.length === 0 ? (
+            <p className="px-3.5 py-2.5 text-xs text-muted">No matches</p>
+          ) : (
+            <ul
+              ref={listRef}
+              id={listId}
+              role="listbox"
+              aria-labelledby={selectId}
+              style={{ maxHeight: coords.maxHeight }}
+              className="overflow-auto py-1"
+            >
+              {filtered.map((option, index) => {
+                const isSelected = option.value === value;
+                const isActive = index === active;
+                return (
+                  <li
+                    key={option.value}
+                    role="option"
+                    aria-selected={isSelected}
+                    data-index={index}
+                  >
+                    <button
+                      type="button"
+                      className={[
+                        "flex w-full cursor-pointer items-center px-3.5 py-2.5 text-left transition-colors focus:outline-none",
+                        fieldText[size],
+                        isActive || isSelected
+                          ? "bg-background text-ink"
+                          : "text-ink hover:bg-background",
+                        isSelected ? "font-medium" : "",
+                      ].join(" ")}
+                      onMouseEnter={() => setActive(index)}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => choose(option.value)}
                     >
-                      <button
-                        type="button"
-                        className={[
-                          "flex w-full cursor-pointer items-center px-3.5 py-2.5 text-left transition-colors focus:outline-none",
-                          fieldText[size],
-                          isActive || isSelected
-                            ? "bg-background text-ink"
-                            : "text-ink hover:bg-background",
-                          isSelected ? "font-medium" : "",
-                        ].join(" ")}
-                        onMouseEnter={() => setActive(index)}
-                        onMouseDown={(event) => event.preventDefault()}
-                        onClick={() => choose(option.value)}
-                      >
-                        {option.label}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>,
-          document.body,
-        )
+                      {option.label}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>,
+        document.body,
+      )
       : null;
 
   return (
@@ -290,8 +290,19 @@ export function Select({
       {name ? <input type="hidden" name={name} value={value} /> : null}
       <div
         ref={fieldRef}
+        onPointerDown={(event) => {
+          if (disabled) return;
+          const target = event.target;
+          if (!(target instanceof Element)) return;
+          if (target.closest("button")) return;
+          if (target !== inputRef.current) {
+            event.preventDefault();
+            inputRef.current?.focus();
+          }
+          openMenu();
+        }}
         className={[
-          "inline-flex min-w-0 items-center gap-2 rounded-input border border-border bg-card text-ink",
+          "inline-flex min-w-0 items-stretch gap-2 rounded-input border border-border bg-card text-ink",
           disabled
             ? "cursor-not-allowed opacity-60"
             : "cursor-pointer",
@@ -323,14 +334,8 @@ export function Select({
             setActive(0);
             if (!open) setOpen(true);
           }}
-          // Open on pointerdown on the control itself — not onClick.
-          // A <label htmlFor> click is retargeted as click on this input,
-          // which would reopen the menu right after an outside close.
-          onPointerDown={() => {
-            if (!disabled) openMenu();
-          }}
           onKeyDown={onInputKeyDown}
-          className="min-w-0 flex-1 bg-transparent text-ink outline-none placeholder:text-placeholder disabled:cursor-not-allowed"
+          className="h-full min-w-0 flex-1 cursor-pointer self-stretch bg-transparent text-ink outline-none placeholder:text-placeholder disabled:cursor-not-allowed"
         />
         <button
           type="button"
@@ -347,7 +352,7 @@ export function Select({
               openMenu();
             }
           }}
-          className="shrink-0 cursor-pointer text-muted disabled:cursor-not-allowed"
+          className="flex h-full shrink-0 cursor-pointer items-center self-stretch px-1 text-muted disabled:cursor-not-allowed"
         >
           <CaretDownIcon
             size={16}

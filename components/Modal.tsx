@@ -88,7 +88,7 @@ export function Modal({
             type="button"
             aria-label="Close"
             onClick={onClose}
-            className="inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-background hover:text-ink"
+            className="inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-background hover:text-ink cursor-pointer"
           >
             <XIcon size={18} weight="bold" />
           </button>

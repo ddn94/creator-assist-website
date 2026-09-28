@@ -62,7 +62,7 @@ export default function AgencySignupPage() {
                 name="workEmail"
                 type="email"
                 autoComplete="email"
-                placeholder="you@agency.com"
+                placeholder="Email"
                 required
                 size="sm"
                 full

@@ -88,7 +88,7 @@ export function AddTalentForm({ className = "" }: AddTalentFormProps) {
               name="platform"
               size="sm"
               full
-              placeholder="e.g. Instagram"
+              placeholder="Platform"
             />
           </Field>
           <Field id="handle" label="Handle">
