@@ -8,7 +8,6 @@ import {
   computeDealStatus,
   computeDueDate,
   dealStatusTone,
-  formatLiveDate,
   type DealStatus,
   type PaymentTerms,
 } from "@/lib/tracker";
@@ -177,7 +176,7 @@ export function markPaid(
   const fields = paymentRowFields(
     {
       paymentTerms: item.paymentTerms ?? "net_30",
-      dateInvoiced: item.dateInvoicedIso ?? today,
+      dateInvoiced: item.dateInvoicedIso,
       datePaid: today,
     },
     displayDate,
@@ -185,7 +184,7 @@ export function markPaid(
   return {
     ...item,
     ...fields,
-    delivered: item.delivered ?? formatLiveDate(today),
+    delivered: item.delivered,
     status: "paid",
     statusLabel: DEAL_STATUS_LABELS.paid,
     action: "done",
@@ -209,7 +208,7 @@ export function markInvoiced(
   return {
     ...item,
     ...fields,
-    delivered: item.delivered ?? formatLiveDate(today),
+    delivered: item.delivered,
     action: paymentActionFor("talent", fields.status),
   };
 }

@@ -8,6 +8,7 @@ import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { CategoryCard } from "@/components/CategoryCard";
 import { CategoryPill } from "@/components/CategoryPill";
+import { DateField } from "@/components/DateField";
 import { DeliverableTable } from "@/components/DeliverableTable";
 import { ExpenseTable } from "@/components/ExpenseTable";
 import { Field } from "@/components/Field";
@@ -17,6 +18,7 @@ import { StatusTag } from "@/components/StatusTag";
 import { Text } from "@/components/Text";
 import { TextArea } from "@/components/TextArea";
 import { TextField } from "@/components/TextField";
+import { toDateInput } from "@/lib/timestamps";
 import {
   deleteContentAction,
   updateContentInvoiceAction,
@@ -27,7 +29,7 @@ import {
   DELIVERABLE_TYPE_OPTIONS,
   EXPENSE_CATEGORY_OPTIONS,
   PAYMENT_TERM_OPTIONS,
-  STAGE_OPTIONS,
+  stageOptionsFor,
   computeDealStatus,
   computeDueDate,
   contentCategory,
@@ -351,18 +353,17 @@ function ContentDetailEditor({
               id="stage"
               name="stage"
               defaultValue={item.stage}
-              options={STAGE_OPTIONS}
+              options={stageOptionsFor(item.stage)}
               disabled={locked}
               size="sm"
               full
             />
           </Field>
           <Field id="goLiveDate" label="Go-live date">
-            <TextField
+            <DateField
               id="goLiveDate"
               name="goLiveDate"
-              type="date"
-              defaultValue={item.goLiveDate ?? ""}
+              defaultValue={toDateInput(item.goLiveDate)}
               disabled={locked}
               size="sm"
               full
@@ -446,33 +447,30 @@ function ContentDetailEditor({
               />
             </Field>
             <Field id="dateDelivered" label="Date delivered">
-              <TextField
+              <DateField
                 id="dateDelivered"
                 name="dateDelivered"
-                type="date"
-                defaultValue={item.deal.dateDelivered ?? ""}
+                defaultValue={toDateInput(item.deal.dateDelivered)}
                 disabled={locked}
                 size="sm"
                 full
               />
             </Field>
             <Field id="dateInvoiced" label="Date invoiced">
-              <TextField
+              <DateField
                 id="dateInvoiced"
                 name="dateInvoiced"
-                type="date"
-                defaultValue={item.deal.dateInvoiced ?? ""}
+                defaultValue={toDateInput(item.deal.dateInvoiced)}
                 required={isAgency}
                 size="sm"
                 full
               />
             </Field>
             <Field id="datePaid" label="Date paid">
-              <TextField
+              <DateField
                 id="datePaid"
                 name="datePaid"
-                type="date"
-                defaultValue={item.deal.datePaid ?? ""}
+                defaultValue={toDateInput(item.deal.datePaid)}
                 size="sm"
                 full
               />
@@ -680,10 +678,9 @@ function ContentDetailEditor({
             />
           </Field>
           <Field id="expenseDate" label="Date" className="min-w-0">
-            <TextField
+            <DateField
               id="expenseDate"
               name="date"
-              type="date"
               disabled={locked}
               size="sm"
               full

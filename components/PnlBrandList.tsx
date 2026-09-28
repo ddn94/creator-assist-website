@@ -24,21 +24,27 @@ export function PnlBrandList({
           By brand
         </Text>
       </div>
-      <ul className="divide-y divide-card-border">
-        {rows.map((row) => (
-          <li
-            key={row.id}
-            className="flex items-center justify-between gap-3 px-4 py-3.5 sm:px-5"
-          >
-            <Text variant="cardTitle" className="min-w-0 truncate">
-              {row.name}
-            </Text>
-            <Text variant="caption" className="shrink-0 font-medium text-ink">
-              {row.value}
-            </Text>
-          </li>
-        ))}
-      </ul>
+      {rows.length === 0 ? (
+        <div className="px-4 py-8 text-center">
+          <Text variant="description">No brands in this period.</Text>
+        </div>
+      ) : (
+        <ul className="divide-y divide-card-border">
+          {rows.map((row) => (
+            <li
+              key={row.id}
+              className="flex items-center justify-between gap-3 px-4 py-3.5 sm:px-5"
+            >
+              <Text variant="cardTitle" className="min-w-0 truncate">
+                {row.name}
+              </Text>
+              <Text variant="caption" className="shrink-0 font-medium text-ink">
+                {row.value}
+              </Text>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

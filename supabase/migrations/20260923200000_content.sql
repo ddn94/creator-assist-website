@@ -13,7 +13,7 @@ create table public.content_items (
   brand_name text,
   stage text not null default 'concept'
     check (stage in ('concept', 'filmed', 'edited', 'delivered', 'go_live')),
-  go_live_date date,
+  go_live_date timestamptz,
   shot_list text not null default '',
   notes text not null default '',
   idea_title text,
@@ -23,9 +23,9 @@ create table public.content_items (
       payment_terms is null
       or payment_terms in ('net_30', 'net_60', 'net_90', 'net_120')
     ),
-  date_delivered date,
-  date_invoiced date,
-  date_paid date,
+  date_delivered timestamptz,
+  date_invoiced timestamptz,
+  date_paid timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

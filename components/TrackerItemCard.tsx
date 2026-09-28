@@ -9,23 +9,25 @@ import {
   contentPillLabel,
   formatLiveDate,
   nextStage,
+  revisionBackStage,
   type TrackerItem,
 } from "@/lib/tracker";
 
 type TrackerItemCardProps = {
   item: TrackerItem;
   onAdvance?: (id: string) => void;
-  onBackToEdited?: (id: string) => void;
+  onRevisionBack?: (id: string) => void;
 };
 
 export function TrackerItemCard({
   item,
   onAdvance,
-  onBackToEdited,
+  onRevisionBack,
 }: TrackerItemCardProps) {
   const category = contentCategory(item.type);
   const pending = item.id.startsWith("pending-");
-  const advanceTo = pending ? null : nextStage(item.stage);
+  const advanceTo = nextStage(item.stage);
+  const backTo = revisionBackStage(item.stage);
   const meta = [
     item.platform,
     item.niche,
@@ -69,13 +71,13 @@ export function TrackerItemCard({
           Move to {STAGE_LABELS[advanceTo]} →
         </Button>
       ) : null}
-      {item.stage === "delivered" && !pending ? (
+      {backTo ? (
         <button
           type="button"
-          onClick={() => onBackToEdited?.(item.id)}
+          onClick={() => onRevisionBack?.(item.id)}
           className="mt-1 w-full cursor-pointer py-2 text-center font-sans text-xs text-muted transition-colors hover:text-ink"
         >
-          Needs revisions? ← Back to Edited
+          Needs revisions? ← Back to {STAGE_LABELS[backTo]}
         </button>
       ) : null}
     </CategoryCard>

@@ -68,7 +68,7 @@ export function AgencyProfileForm({ mode, initial }: AgencyProfileFormProps) {
           required
           value={agencyName}
           onChange={(event) => setAgencyName(event.target.value)}
-          placeholder="Bright Talent"
+          placeholder="Agency name"
           size="sm"
           full
         />

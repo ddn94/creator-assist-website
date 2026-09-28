@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 
 /** Short-lived copy of role + onboarding, so the proxy can skip the profile read. */
 export const GATE_COOKIE = "ca_gate";
-const GATE_MAX_AGE_SEC = 5 * 60;
+const GATE_MAX_AGE_SEC = 30 * 60;
 
 export type Gate = {
   sub: string;

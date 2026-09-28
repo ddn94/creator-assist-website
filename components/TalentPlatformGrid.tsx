@@ -3,7 +3,7 @@
 import { Checkbox } from "@/components/Checkbox";
 import { TextField } from "@/components/TextField";
 import type { PlatformAnswer } from "@/lib/auth/profileAnswers";
-import { PLATFORMS } from "@/lib/platforms";
+import { PROFILE_PLATFORMS } from "@/lib/platforms";
 
 export type PlatformRow = {
   key: string;
@@ -31,7 +31,7 @@ export function buildPlatformRows(
   platforms: PlatformAnswer[],
   mode: "wizard" | "edit",
 ): PlatformRow[] {
-  const preset = PLATFORMS.map((platform) => {
+  const preset = PROFILE_PLATFORMS.map((platform) => {
     const account = platforms.find((p) => p.platform === platform);
     return {
       key: platform,
@@ -44,7 +44,9 @@ export function buildPlatformRows(
   });
 
   const custom = platforms
-    .filter((p) => !(PLATFORMS as readonly string[]).includes(p.platform))
+    .filter(
+      (p) => !(PROFILE_PLATFORMS as readonly string[]).includes(p.platform),
+    )
     .map((p) => ({
       key: p.platform,
       platform: p.platform,

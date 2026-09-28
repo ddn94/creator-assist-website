@@ -195,7 +195,7 @@ export function IdeasBoard({ ideas }: IdeasBoardProps) {
           placeholder="Search ideas"
           size="sm"
           iconLeft={<MagnifyingGlassIcon size={16} weight="bold" />}
-          className="w-full rounded-full sm:w-44"
+          className="w-full rounded-full sm:w-80"
         />
       </div>
 

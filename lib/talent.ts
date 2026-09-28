@@ -54,7 +54,8 @@ export type TalentInvoicing = {
 export type TalentActivityItem = {
   id: string;
   title: string;
-  meta: string;
+  detail: string;
+  when: string;
 };
 
 export type TalentDetail = TalentItem & {

@@ -38,6 +38,13 @@ export function PnlTalentTable({ rows, className = "" }: PnlTalentTableProps) {
 
       {/* Mobile cards */}
       <div className="divide-y divide-card-border md:hidden">
+        {rows.length === 0 ? (
+          <div className="px-4 py-8 text-center">
+            <Text variant="description">
+              No billed deals in this period.
+            </Text>
+          </div>
+        ) : null}
         {rows.map((row) => (
           <div key={row.id} className="space-y-2 px-4 py-3.5">
             <div className="flex items-center gap-2.5">
@@ -87,6 +94,18 @@ export function PnlTalentTable({ rows, className = "" }: PnlTalentTableProps) {
             </tr>
           </thead>
           <tbody>
+            {rows.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={HEADERS.length}
+                  className="px-4 py-8 text-center"
+                >
+                  <Text variant="description">
+                    No billed deals in this period.
+                  </Text>
+                </td>
+              </tr>
+            ) : null}
             {rows.map((row) => (
               <tr
                 key={row.id}

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/Button";
+import { DateField } from "@/components/DateField";
 import { Field } from "@/components/Field";
 import { Select } from "@/components/Select";
 import { TextArea } from "@/components/TextArea";
@@ -36,6 +37,7 @@ export function AddContentPanel({
   const searchParams = useSearchParams();
   const openFromQuery = searchParams.get("add") === "1";
   const [open, setOpen] = useState(defaultOpen || openFromQuery);
+  const [formKey, setFormKey] = useState(0);
   const defaultPlatform = platformOptions[0]?.value ?? DEFAULT_PLATFORM;
 
   useEffect(() => {
@@ -44,7 +46,7 @@ export function AddContentPanel({
 
   return (
     <details
-      className="group mb-5 overflow-hidden rounded-card border border-card-border bg-card shadow-card"
+      className="group mb-5 overflow-visible rounded-card border border-card-border bg-card shadow-card"
       open={open}
       onToggle={(event) => setOpen(event.currentTarget.open)}
     >
@@ -73,6 +75,7 @@ export function AddContentPanel({
       </summary>
 
       <form
+        key={formKey}
         id="add-content-form"
         className="grid grid-cols-1 gap-3 px-4 pb-4 md:grid-cols-5"
         onSubmit={(event) => {
@@ -88,7 +91,7 @@ export function AddContentPanel({
             goLiveDate: String(data.get("goLiveDate") ?? ""),
             notes: String(data.get("notes") ?? "").trim(),
           });
-          form.reset();
+          setFormKey((key) => key + 1);
           setOpen(false);
         }}
       >
@@ -97,7 +100,7 @@ export function AddContentPanel({
             id="title"
             name="title"
             required
-            placeholder="e.g. Spring haul reel"
+            placeholder="Content title"
             size="sm"
             full
           />
@@ -116,7 +119,7 @@ export function AddContentPanel({
           <TextField
             id="niche"
             name="niche"
-            placeholder="e.g. fashion"
+            placeholder="Niche"
             size="sm"
             full
           />
@@ -141,13 +144,7 @@ export function AddContentPanel({
           />
         </Field>
         <Field id="goLiveDate" label="Go-live date">
-          <TextField
-            id="goLiveDate"
-            name="goLiveDate"
-            type="date"
-            size="sm"
-            full
-          />
+          <DateField id="goLiveDate" name="goLiveDate" size="sm" full />
         </Field>
         <Field
           id="notes"

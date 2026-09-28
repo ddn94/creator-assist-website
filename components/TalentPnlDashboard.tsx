@@ -26,7 +26,7 @@ export function TalentPnlDashboard({
   currency,
   className = "",
 }: TalentPnlDashboardProps) {
-  const [filter, setFilter] = useState<PnlDateFilter>({ range: "month" });
+  const [filter, setFilter] = useState<PnlDateFilter>({ range: "all" });
 
   const summary = useMemo(
     () => buildTalentPnlSummary(allContent, filter),

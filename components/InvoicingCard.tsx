@@ -4,10 +4,11 @@ import { useState } from "react";
 import { CaretDownIcon } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/Button";
+import { DateField } from "@/components/DateField";
 import { Select } from "@/components/Select";
 import { Text } from "@/components/Text";
-import { TextField } from "@/components/TextField";
 import { updateContentInvoiceAction } from "@/lib/data/actions";
+import { toDateInput } from "@/lib/timestamps";
 import type { TalentInvoicing } from "@/lib/talent";
 import { PAYMENT_TERM_OPTIONS, type PaymentTerms } from "@/lib/tracker";
 
@@ -35,9 +36,9 @@ function InvoicingEditor({
 }: InvoicingCardProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [invoiced, setInvoiced] = useState(invoicing.dateInvoiced);
+  const [invoiced, setInvoiced] = useState(toDateInput(invoicing.dateInvoiced));
   const [terms, setTerms] = useState<PaymentTerms>(invoicing.paymentTerms);
-  const [paid, setPaid] = useState(invoicing.datePaid);
+  const [paid, setPaid] = useState(toDateInput(invoicing.datePaid));
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
@@ -98,13 +99,12 @@ function InvoicingEditor({
                 <Text variant="caption" className="mb-1.5 font-medium text-ink">
                   Date invoiced
                 </Text>
-                <TextField
-                  type="date"
+                <DateField
                   size="sm"
                   full
                   value={invoiced}
-                  onChange={(event) => {
-                    setInvoiced(event.target.value);
+                  onChange={(next) => {
+                    setInvoiced(next);
                     setSaved(false);
                   }}
                 />
@@ -128,13 +128,12 @@ function InvoicingEditor({
                 <Text variant="caption" className="mb-1.5 font-medium text-ink">
                   Date paid
                 </Text>
-                <TextField
-                  type="date"
+                <DateField
                   size="sm"
                   full
                   value={paid}
-                  onChange={(event) => {
-                    setPaid(event.target.value);
+                  onChange={(next) => {
+                    setPaid(next);
                     setSaved(false);
                   }}
                 />

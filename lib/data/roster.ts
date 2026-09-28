@@ -1,4 +1,4 @@
-import { daysBetween, displayShortDate, timeAgo } from "@/lib/data/format";
+import { daysBetween, displayShortDate } from "@/lib/data/format";
 import type { LinkedTalentMeta } from "@/lib/data/linkedTalent";
 import type { TalentRecord } from "@/lib/data/talentRecords";
 import { toTalentItem } from "@/lib/data/talentItem";
@@ -35,22 +35,24 @@ export function buildTalentActivity(
   today = new Date(),
 ): TalentActivityItem[] {
   const todayIso = today.toISOString().slice(0, 10);
-  const events: (TalentActivityItem & { date: string })[] = [];
+  const events: (TalentActivityItem & { sort: string })[] = [];
 
   for (const item of items) {
     events.push({
       id: `${item.id}-created`,
       title: `Added "${item.title}"`,
-      meta: `${item.platform} · ${timeAgo(item.createdAt, today)}`,
-      date: item.createdAt,
+      detail: item.platform,
+      when: item.createdAtIso ?? item.createdAt,
+      sort: item.createdAtIso ?? item.createdAt,
     });
 
     if (item.deal?.dateDelivered) {
       events.push({
         id: `${item.id}-delivered`,
         title: `Delivered "${item.title}"`,
-        meta: `${item.brandName ?? item.platform} · ${timeAgo(item.deal.dateDelivered, today)}`,
-        date: item.deal.dateDelivered,
+        detail: item.brandName ?? item.platform,
+        when: item.deal.dateDelivered,
+        sort: item.deal.dateDelivered,
       });
     }
 
@@ -58,8 +60,9 @@ export function buildTalentActivity(
       events.push({
         id: `${item.id}-invoiced`,
         title: `Invoiced "${item.title}"`,
-        meta: `${fmtMoney(item.deal.feeAgreed, currency)} · ${timeAgo(item.deal.dateInvoiced, today)}`,
-        date: item.deal.dateInvoiced,
+        detail: fmtMoney(item.deal.feeAgreed, currency),
+        when: item.deal.dateInvoiced,
+        sort: item.deal.dateInvoiced,
       });
     }
 
@@ -67,17 +70,19 @@ export function buildTalentActivity(
       events.push({
         id: `${item.id}-paid`,
         title: `Payment received for "${item.title}"`,
-        meta: `${fmtMoney(item.deal.feeAgreed, currency)} · ${timeAgo(item.deal.datePaid, today)}`,
-        date: item.deal.datePaid,
+        detail: fmtMoney(item.deal.feeAgreed, currency),
+        when: item.deal.datePaid,
+        sort: item.deal.datePaid,
       });
     }
 
-    if (item.goLiveDate && item.goLiveDate <= todayIso) {
+    if (item.goLiveDate && item.goLiveDate.slice(0, 10) <= todayIso) {
       events.push({
         id: `${item.id}-live`,
         title: `"${item.title}" went live`,
-        meta: `${item.platform} · ${timeAgo(item.goLiveDate, today)}`,
-        date: item.goLiveDate,
+        detail: item.platform,
+        when: item.goLiveDate,
+        sort: item.goLiveDate,
       });
     }
 
@@ -88,23 +93,26 @@ export function buildTalentActivity(
         item.deal?.dateInvoiced,
         item.deal?.datePaid,
         item.goLiveDate,
-      ].filter((d): d is string => !!d),
+      ]
+        .filter((d): d is string => !!d)
+        .map((d) => d.slice(0, 10)),
     );
-    if (!knownDates.has(item.updatedAt)) {
+    if (!knownDates.has(item.updatedAt.slice(0, 10))) {
       events.push({
         id: `${item.id}-updated`,
         title: `Updated "${item.title}"`,
-        meta: `${STAGE_LABELS[item.stage as Stage] ?? item.stage} · ${timeAgo(item.updatedAt, today)}`,
-        date: item.updatedAt,
+        detail: STAGE_LABELS[item.stage as Stage] ?? item.stage,
+        when: item.updatedAtIso ?? item.updatedAt,
+        sort: item.updatedAtIso ?? item.updatedAt,
       });
     }
   }
 
   return events
-    .sort((a, b) => b.date.localeCompare(a.date))
+    .sort((a, b) => b.sort.localeCompare(a.sort))
     .slice(0, 8)
-    .map(({ date: _date, ...rest }) => {
-      void _date;
+    .map(({ sort: _sort, ...rest }) => {
+      void _sort;
       return rest;
     });
 }

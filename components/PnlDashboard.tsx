@@ -31,7 +31,7 @@ export function PnlDashboard({
   homeCurrency,
   className = "",
 }: PnlDashboardProps) {
-  const [filter, setFilter] = useState<PnlDateFilter>({ range: "month" });
+  const [filter, setFilter] = useState<PnlDateFilter>({ range: "all" });
 
   const currencies = useMemo(
     () => buildAgencyPnlCurrencies(linkedRows, homeCurrency, filter),
