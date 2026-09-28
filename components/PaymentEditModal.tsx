@@ -3,19 +3,19 @@
 import { useState } from "react";
 import {
   BuildingsIcon,
-  CalendarBlankIcon,
   CurrencyGbpIcon,
   GlobeIcon,
   InfoIcon,
 } from "@phosphor-icons/react";
 import { Avatar } from "@/components/Avatar";
 import { Button } from "@/components/Button";
+import { DateField } from "@/components/DateField";
 import { Field } from "@/components/Field";
 import { Modal } from "@/components/Modal";
 import { Select } from "@/components/Select";
 import { Text } from "@/components/Text";
-import { TextField } from "@/components/TextField";
 import type { PaymentItem } from "@/lib/payments";
+import { toDateInput } from "@/lib/timestamps";
 import {
   PAYMENT_TERM_OPTIONS,
   type PaymentTerms,
@@ -65,11 +65,13 @@ function PaymentEditForm({
   onClose,
   onSave,
 }: PaymentEditModalProps) {
-  const [invoiced, setInvoiced] = useState(payment?.dateInvoicedIso ?? "");
+  const [invoiced, setInvoiced] = useState(
+    toDateInput(payment?.dateInvoicedIso),
+  );
   const [terms, setTerms] = useState<PaymentTerms>(
     payment?.paymentTerms ?? "net_30",
   );
-  const [paid, setPaid] = useState(payment?.datePaidIso ?? "");
+  const [paid, setPaid] = useState(toDateInput(payment?.datePaidIso));
 
   if (!payment) return null;
 
@@ -158,14 +160,12 @@ function PaymentEditForm({
             label="Invoice date"
             hint="The date the invoice was issued to the brand."
           >
-            <TextField
+            <DateField
               id="invoice-date"
-              type="date"
               size="sm"
               full
               value={invoiced}
-              onChange={(event) => setInvoiced(event.target.value)}
-              iconLeft={<CalendarBlankIcon size={16} weight="bold" />}
+              onChange={setInvoiced}
             />
           </Field>
 
@@ -191,14 +191,12 @@ function PaymentEditForm({
             hint="Leave blank if the brand has not paid yet."
             className="sm:col-span-2"
           >
-            <TextField
+            <DateField
               id="date-paid"
-              type="date"
               size="sm"
               full
               value={paid}
-              onChange={(event) => setPaid(event.target.value)}
-              iconLeft={<CalendarBlankIcon size={16} weight="bold" />}
+              onChange={setPaid}
             />
           </Field>
         </div>
