@@ -39,11 +39,22 @@ import {
   deliverablesTotal,
   formatLiveDate,
   fmtMoney,
+  type ContentType,
   type PaymentTerms,
+  type TrackerDeal,
   type TrackerDetail,
   type TrackerDeliverable,
   type TrackerExpense,
 } from "@/lib/tracker";
+
+const EMPTY_DEAL: TrackerDeal = {
+  feeAgreed: 0,
+  paymentTerms: "net_30",
+  dateDelivered: null,
+  dateInvoiced: null,
+  datePaid: null,
+  deliverables: [],
+};
 
 type ContentDetailViewProps = {
   initial: TrackerDetail;
@@ -88,6 +99,7 @@ function ContentDetailEditor({
 }) {
   const router = useRouter();
   const [item, setItem] = useState(initial);
+  const [draftType, setDraftType] = useState<ContentType>(initial.type);
   const [formGeneration, setFormGeneration] = useState(0);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [invoiceSaving, setInvoiceSaving] = useState(false);
@@ -116,13 +128,14 @@ function ContentDetailEditor({
     };
   }, [item.id]);
 
-  const isPaid = item.type === "paid_collab";
+  const isPaid = draftType === "paid_collab";
+  const visibleDeal = isPaid ? (item.deal ?? EMPTY_DEAL) : null;
   const totalExpenses = item.expenses.reduce((sum, e) => sum + e.amount, 0);
-  const fee = item.deal?.feeAgreed ?? 0;
-  const dealStatus = item.deal ? computeDealStatus(item.deal) : null;
-  const dueDate = item.deal ? computeDueDate(item.deal) : null;
-  const deliverableSum = item.deal
-    ? deliverablesTotal(item.deal.deliverables)
+  const fee = visibleDeal?.feeAgreed ?? 0;
+  const dealStatus = visibleDeal ? computeDealStatus(visibleDeal) : null;
+  const dueDate = visibleDeal ? computeDueDate(visibleDeal) : null;
+  const deliverableSum = visibleDeal
+    ? deliverablesTotal(visibleDeal.deliverables)
     : 0;
 
   async function commit(next: TrackerDetail) {
@@ -133,10 +146,12 @@ function ContentDetailEditor({
     const result = await upsertContentAction(next);
     if (result.error) {
       setItem(previous);
+      setDraftType(previous.type);
       setFormGeneration((generation) => generation + 1);
       setSaveError(result.error);
       return;
     }
+    setDraftType(next.type);
     router.refresh();
   }
 
@@ -169,7 +184,8 @@ function ContentDetailEditor({
 
   async function handleDealSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!item.deal) return;
+    const deal = item.deal ?? (draftType === "paid_collab" ? EMPTY_DEAL : null);
+    if (!deal) return;
     const data = new FormData(event.currentTarget);
     const paymentTerms = (String(data.get("paymentTerms") ?? "net_30") ||
       "net_30") as PaymentTerms;
@@ -177,6 +193,7 @@ function ContentDetailEditor({
     const datePaid = String(data.get("datePaid") ?? "") || null;
 
     if (isAgency) {
+      if (!item.deal) return;
       if (!dateInvoiced) {
         setInvoiceError("Enter a valid invoice date.");
         return;
@@ -211,8 +228,9 @@ function ContentDetailEditor({
 
     commit({
       ...item,
+      type: "paid_collab",
       deal: {
-        ...item.deal,
+        ...deal,
         feeAgreed: Number(data.get("feeAgreed") || 0),
         paymentTerms,
         dateDelivered: String(data.get("dateDelivered") ?? "") || null,
@@ -241,8 +259,8 @@ function ContentDetailEditor({
       </div>
 
       <div className="mb-5">
-        <CategoryPill category={contentCategory(item.type)}>
-          {contentPillLabel(item.type)}
+        <CategoryPill category={contentCategory(draftType)}>
+          {contentPillLabel(draftType)}
         </CategoryPill>
         <Text variant="heading" className="mt-2.5 text-2xl sm:text-3xl">
           {item.title}
@@ -336,6 +354,9 @@ function ContentDetailEditor({
               disabled={locked}
               size="sm"
               full
+              onChange={(value) =>
+                setDraftType(value === "paid_collab" ? "paid_collab" : "organic")
+              }
             />
           </Field>
           <Field id="brandName" label="Brand">
@@ -400,7 +421,7 @@ function ContentDetailEditor({
         </form>
       </Card>
 
-      {isPaid && item.deal ? (
+      {visibleDeal ? (
         <CategoryCard
           id="deal"
           category="payment"
@@ -430,7 +451,7 @@ function ContentDetailEditor({
                 type="number"
                 step="0.01"
                 min="0"
-                defaultValue={item.deal.feeAgreed || ""}
+                defaultValue={visibleDeal.feeAgreed || ""}
                 disabled={locked}
                 size="sm"
                 full
@@ -440,7 +461,7 @@ function ContentDetailEditor({
               <Select
                 id="paymentTerms"
                 name="paymentTerms"
-                defaultValue={item.deal.paymentTerms}
+                defaultValue={visibleDeal.paymentTerms}
                 options={[...PAYMENT_TERM_OPTIONS]}
                 size="sm"
                 full
@@ -450,7 +471,7 @@ function ContentDetailEditor({
               <DateField
                 id="dateDelivered"
                 name="dateDelivered"
-                defaultValue={toDateInput(item.deal.dateDelivered)}
+                defaultValue={toDateInput(visibleDeal.dateDelivered)}
                 disabled={locked}
                 size="sm"
                 full
@@ -460,7 +481,7 @@ function ContentDetailEditor({
               <DateField
                 id="dateInvoiced"
                 name="dateInvoiced"
-                defaultValue={toDateInput(item.deal.dateInvoiced)}
+                defaultValue={toDateInput(visibleDeal.dateInvoiced)}
                 required={isAgency}
                 size="sm"
                 full
@@ -470,7 +491,7 @@ function ContentDetailEditor({
               <DateField
                 id="datePaid"
                 name="datePaid"
-                defaultValue={toDateInput(item.deal.datePaid)}
+                defaultValue={toDateInput(visibleDeal.datePaid)}
                 size="sm"
                 full
               />
@@ -507,18 +528,18 @@ function ContentDetailEditor({
               Deliverables
             </Text>
             <DeliverableTable
-              deliverables={item.deal.deliverables}
+              deliverables={visibleDeal.deliverables}
               onRemove={locked ? undefined : removeDeliverable}
               variant="plain"
             />
-            {item.deal.deliverables.length > 0 &&
-            deliverableSum !== item.deal.feeAgreed ? (
+            {visibleDeal.deliverables.length > 0 &&
+            deliverableSum !== visibleDeal.feeAgreed ? (
               <Text
                 variant="caption"
                 className="mb-3 rounded-lg border border-idea-pill/40 bg-idea px-2.5 py-1.5 text-xxs text-ink"
               >
                 Deliverables total ({money(deliverableSum)}) differs from the
-                agreed fee ({money(item.deal.feeAgreed)}). P&L uses the agreed
+                agreed fee ({money(visibleDeal.feeAgreed)}). P&L uses the agreed
                 fee.
               </Text>
             ) : null}
@@ -527,7 +548,7 @@ function ContentDetailEditor({
               className="grid grid-cols-3 items-end gap-2 md:grid-cols-[minmax(0,1.4fr)_minmax(0,0.7fr)_minmax(0,1fr)_auto] md:gap-3"
               onSubmit={(event) => {
                 event.preventDefault();
-                if (locked || !item.deal) return;
+                if (locked || !visibleDeal) return;
                 const data = new FormData(event.currentTarget);
                 const type = String(
                   data.get("type") ?? "video",
@@ -537,10 +558,11 @@ function ContentDetailEditor({
                 if (!rate) return;
                 commit({
                   ...item,
+                  type: "paid_collab",
                   deal: {
-                    ...item.deal,
+                    ...visibleDeal,
                     deliverables: [
-                      ...item.deal.deliverables,
+                      ...visibleDeal.deliverables,
                       {
                         id: `d-${Date.now()}`,
                         type,
