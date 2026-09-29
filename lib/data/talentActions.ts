@@ -2,6 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { getProfile } from "@/lib/auth/session";
+import { revalidateContent } from "@/lib/data/actionHelpers";
 import { flashToast } from "@/lib/toastFlash";
 import type { AuthFormState } from "@/lib/auth/types";
 import { withSupabaseAuthAction } from "@/lib/supabase/env";
@@ -84,3 +86,28 @@ export const inviteTalent = withSupabaseAuthAction(
     return { error: null, message: "Invite sent." };
   },
 );
+
+export async function deleteTalentRecordAction(
+  id: string,
+): Promise<{ error: string | null }> {
+  const profile = await getProfile();
+  if (!profile || profile.role !== "agency") {
+    return { error: "Only an agency can remove a record." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("agency_delete_record", { p_id: id });
+  if (error) {
+    const message = error.message.toLowerCase();
+    if (message.includes("not been invited") || message.includes("only a record")) {
+      return { error: "Only a record that has not been invited can be removed." };
+    }
+    if (message.includes("only an agency")) {
+      return { error: "Only an agency can remove a record." };
+    }
+    return { error: "Could not remove this talent." };
+  }
+
+  revalidateContent();
+  return { error: null };
+}

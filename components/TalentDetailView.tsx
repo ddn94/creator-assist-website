@@ -1,14 +1,19 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
+import { TrashIcon } from "@phosphor-icons/react";
+import { useRouter } from "next/navigation";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { BackLink } from "@/components/BackLink";
 import { DealTable } from "@/components/DealTable";
+import { FormAlert } from "@/components/FormAlert";
 import { InvoicingCard } from "@/components/InvoicingCard";
 import { RecordContentForm } from "@/components/RecordContentForm";
+import { showToast } from "@/components/Toast";
 import { TalentInviteCard } from "@/components/TalentInviteCard";
 import { TalentProfileHeader } from "@/components/TalentProfileHeader";
 import { Text } from "@/components/Text";
+import { deleteTalentRecordAction } from "@/lib/data/talentActions";
 import type { TalentDetail } from "@/lib/talent";
 
 type TalentDetailViewProps = {
@@ -32,10 +37,44 @@ export function TalentDetailView({
   canAddContent = false,
   platformOptions = [],
 }: TalentDetailViewProps) {
+  const router = useRouter();
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const canDelete = talent.status === "record";
+
+  async function handleDelete() {
+    if (!canDelete || pending) return;
+    setPending(true);
+    setError(null);
+    const result = await deleteTalentRecordAction(talent.id);
+    if (result.error) {
+      setError(result.error);
+      setPending(false);
+      return;
+    }
+    showToast(`“${talent.name}” was removed.`, "danger");
+    router.push(backHref);
+  }
+
   return (
     <div className="space-y-6">
       <div className="space-y-4">
-        <BackLink href={backHref} label={backLabel} />
+        <div className="flex items-center justify-between">
+          <BackLink href={backHref} label={backLabel} />
+          {canDelete ? (
+            <button
+              type="button"
+              aria-label="Delete record"
+              title="Delete"
+              onClick={() => void handleDelete()}
+              disabled={pending}
+              className="inline-flex size-10 cursor-pointer items-center justify-center rounded-full bg-card text-danger shadow-card transition-colors hover:bg-organic disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-card"
+            >
+              <TrashIcon size={18} weight="regular" aria-hidden />
+            </button>
+          ) : null}
+        </div>
+        {error ? <FormAlert error={error} /> : null}
         <TalentProfileHeader talent={talent} />
       </div>
 
