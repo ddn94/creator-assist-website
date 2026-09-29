@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/Button";
+import { showToast } from "@/components/Toast";
 import { Card } from "@/components/Card";
 import { Field } from "@/components/Field";
 import { FormAlert } from "@/components/FormAlert";
@@ -54,6 +55,7 @@ export function AgencyProfileForm({ mode, initial }: AgencyProfileFormProps) {
       return;
     }
     if (!complete) {
+      showToast("Profile saved.");
       router.push("/workspace/profile");
       router.refresh();
     }

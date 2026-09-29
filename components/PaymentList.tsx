@@ -4,6 +4,7 @@ import { CaretDownIcon, CaretUpIcon } from "@phosphor-icons/react";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FilterPills } from "@/components/FilterPills";
+import { showToast } from "@/components/Toast";
 import { PaymentCard } from "@/components/PaymentCard";
 import { PaymentRow } from "@/components/PaymentRow";
 import { Text } from "@/components/Text";
@@ -137,6 +138,7 @@ export function PaymentList({ mode, items, className = "" }: PaymentListProps) {
       replaceRow(current);
       return;
     }
+    showToast(`“${current.content}” was marked as paid.`);
     router.refresh();
   }
 
@@ -149,6 +151,7 @@ export function PaymentList({ mode, items, className = "" }: PaymentListProps) {
       replaceRow(current);
       return;
     }
+    showToast(`“${current.content}” was marked as invoiced.`);
     router.refresh();
   }
 

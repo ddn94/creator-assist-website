@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CameraIcon } from "@phosphor-icons/react";
 import { Avatar } from "@/components/Avatar";
+import { showToast } from "@/components/Toast";
 import { Text } from "@/components/Text";
 import { setAvatarPath } from "@/lib/auth/actions";
 import { avatarObjectPath } from "@/lib/auth/avatar";
@@ -59,6 +60,7 @@ export function ProfilePhoto({ userId, name, src }: ProfilePhotoProps) {
       return;
     }
 
+    showToast("Photo updated.");
     router.refresh();
     setPending(false);
   }

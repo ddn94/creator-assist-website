@@ -5,6 +5,7 @@ import { useState, type KeyboardEvent, type MouseEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Avatar } from "@/components/Avatar";
 import { Button } from "@/components/Button";
+import { showToast } from "@/components/Toast";
 import { PaymentEditModal } from "@/components/PaymentEditModal";
 import { Select } from "@/components/Select";
 import { StatusTag } from "@/components/StatusTag";
@@ -297,6 +298,7 @@ export function PaymentRow({
                 setOpen(true);
                 return;
               }
+              showToast("Payment updated.");
               router.refresh();
             });
           }}

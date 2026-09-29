@@ -1,8 +1,10 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { useFormStatus } from "react-dom";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/Button";
+import { showToast } from "@/components/Toast";
 import { Card } from "@/components/Card";
 import { Field } from "@/components/Field";
 import { FormAlert } from "@/components/FormAlert";
@@ -27,7 +29,16 @@ type TalentInviteCardProps = {
 };
 
 export function TalentInviteCard({ id, email, inviteCode }: TalentInviteCardProps) {
+  const router = useRouter();
   const [state, action] = useActionState(inviteTalent, EMPTY_AUTH_STATE);
+  const toasted = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!state.message || toasted.current === state.message) return;
+    toasted.current = state.message;
+    showToast(state.message);
+    router.refresh();
+  }, [state.message, router]);
 
   if (inviteCode) {
     return (

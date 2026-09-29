@@ -69,3 +69,12 @@ summary {
   color: var(--color-placeholder);
   opacity: 1;
 }
+
+@keyframes toast-timer {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}

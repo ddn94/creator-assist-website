@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Urbanist, Geist_Mono } from "next/font/google";
+import { ToastHost } from "@/components/Toast";
 import "./globals.css";
 
 const inter = Inter({
@@ -45,6 +46,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <div className="absolute -right-16 bottom-0 size-32 rounded-full bg-organic min-[900px]:-right-20 min-[900px]:size-72" />
         </div>
         {children}
+        <ToastHost />
       </body>
     </html>
   );

@@ -4,6 +4,7 @@ import { TrashIcon } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { BackLink } from "@/components/BackLink";
+import { showToast } from "@/components/Toast";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { CategoryCard } from "@/components/CategoryCard";
@@ -138,7 +139,10 @@ function ContentDetailEditor({
     ? deliverablesTotal(visibleDeal.deliverables)
     : 0;
 
-  async function commit(next: TrackerDetail) {
+  async function commit(
+    next: TrackerDetail,
+    notice?: { message: string; tone?: "success" | "danger" },
+  ) {
     if (isAgency) return;
     const previous = item;
     setSaveError(null);
@@ -152,33 +156,45 @@ function ContentDetailEditor({
       return;
     }
     setDraftType(next.type);
+    if (notice) showToast(notice.message, notice.tone ?? "success");
     router.refresh();
   }
 
   function removeDeliverable(deliverableId: string) {
     if (!item.deal || isAgency) return;
-    commit({
-      ...item,
-      deal: {
-        ...item.deal,
-        deliverables: item.deal.deliverables.filter(
-          (d) => d.id !== deliverableId,
-        ),
+    void commit(
+      {
+        ...item,
+        deal: {
+          ...item.deal,
+          deliverables: item.deal.deliverables.filter(
+            (d) => d.id !== deliverableId,
+          ),
+        },
       },
-    });
+      { message: "Deliverable removed.", tone: "danger" },
+    );
   }
 
   function removeExpense(expenseId: string) {
     if (isAgency) return;
-    commit({
-      ...item,
-      expenses: item.expenses.filter((e) => e.id !== expenseId),
-    });
+    void commit(
+      {
+        ...item,
+        expenses: item.expenses.filter((e) => e.id !== expenseId),
+      },
+      { message: "Expense removed.", tone: "danger" },
+    );
   }
 
   async function handleDelete() {
     if (isAgency) return;
-    await deleteContentAction(item.id);
+    const result = await deleteContentAction(item.id);
+    if (result.error) {
+      setSaveError(result.error);
+      return;
+    }
+    showToast("Content deleted.", "danger");
     router.push("/home/tracker");
   }
 
@@ -222,11 +238,12 @@ function ContentDetailEditor({
         setInvoiceError(result.error);
         return;
       }
+      showToast("Deal saved.");
       router.refresh();
       return;
     }
 
-    commit({
+    void commit({
       ...item,
       type: "paid_collab",
       deal: {
@@ -237,7 +254,7 @@ function ContentDetailEditor({
         dateInvoiced,
         datePaid,
       },
-    });
+    }, { message: "Deal saved." });
   }
 
   const money = (amount: number) => fmtMoney(amount, currency);
@@ -310,7 +327,7 @@ function ContentDetailEditor({
                       deliverables: [],
                     }
                   : null,
-            });
+            }, { message: "Details have been saved." });
           }}
         >
           <Field id="title" label="Title" className="md:col-span-2">
@@ -571,7 +588,7 @@ function ContentDetailEditor({
                       },
                     ],
                   },
-                });
+                }, { message: "Deliverable added." });
                 event.currentTarget.reset();
               }}
             >
@@ -667,7 +684,7 @@ function ContentDetailEditor({
                 },
                 ...item.expenses,
               ],
-            });
+            }, { message: "Expense added." });
             event.currentTarget.reset();
           }}
         >

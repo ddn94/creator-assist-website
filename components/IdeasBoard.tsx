@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { FilterPills } from "@/components/FilterPills";
+import { showToast } from "@/components/Toast";
 import { FormAlert } from "@/components/FormAlert";
 import { IdeaCard } from "@/components/IdeaCard";
 import { Select } from "@/components/Select";
@@ -114,6 +115,7 @@ export function IdeasBoard({ ideas }: IdeasBoardProps) {
           row.id === tempId ? { ...row, id: result.id } : row,
         ),
       });
+      showToast(`“${optimistic.title}” was added.`);
       router.refresh();
     });
   }
@@ -222,6 +224,7 @@ export function IdeasBoard({ ideas }: IdeasBoardProps) {
                   setSaveError(result.error);
                   return;
                 }
+                showToast("Idea saved.");
                 router.refresh();
               });
             }}
@@ -236,13 +239,19 @@ export function IdeasBoard({ ideas }: IdeasBoardProps) {
                   setSaveError(result.error);
                   return;
                 }
+                showToast("Idea deleted.", "danger");
                 router.refresh();
               });
             }}
             onTurnIntoContent={async (id) => {
+              const idea = rows.find((row) => row.id === id);
               const result = await turnIdeaIntoContentAction(id);
-              if ("id" in result) router.push(`/home/tracker/${result.id}`);
-              else router.refresh();
+              if ("id" in result) {
+                showToast(
+                  `Content added from your idea “${idea?.title ?? "Idea"}”.`,
+                );
+                router.push(`/home/tracker/${result.id}`);
+              } else router.refresh();
             }}
           />
         ))}

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { CaretDownIcon } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/Button";
+import { showToast } from "@/components/Toast";
 import { DateField } from "@/components/DateField";
 import { Select } from "@/components/Select";
 import { Text } from "@/components/Text";
@@ -57,6 +58,7 @@ function InvoicingEditor({
       setError(result.error);
       return;
     }
+    showToast("Invoicing saved.");
     router.refresh();
   }
 

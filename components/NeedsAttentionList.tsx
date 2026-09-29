@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { NeedsAttentionCard } from "@/components/NeedsAttentionCard";
+import { showToast } from "@/components/Toast";
 import { PaginatedList } from "@/components/PaginatedList";
 import { PaymentEditModal } from "@/components/PaymentEditModal";
 import { updateContentInvoiceAction } from "@/lib/data/actions";
@@ -88,6 +89,7 @@ export function NeedsAttentionList({
               setOpenId(payment.id);
               return;
             }
+            showToast("Payment updated.");
             router.refresh();
           });
         }}

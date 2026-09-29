@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { flashToast } from "@/lib/toastFlash";
 import type { AuthFormState } from "@/lib/auth/types";
 import { withSupabaseAuthAction } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
@@ -45,6 +46,7 @@ export const addTalent = withSupabaseAuthAction(
     }
 
     revalidatePath("/workspace/talent");
+    await flashToast(`“${name}” was added.`);
     redirect(`/workspace/talent/${String(data)}`);
   },
 );
@@ -79,6 +81,6 @@ export const inviteTalent = withSupabaseAuthAction(
     }
 
     revalidatePath(`/workspace/talent/${id}`);
-    redirect(`/workspace/talent/${id}`);
+    return { error: null, message: "Invite sent." };
   },
 );

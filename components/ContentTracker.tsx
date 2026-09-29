@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AddContentPanel } from "@/components/AddContentPanel";
+import { showToast } from "@/components/Toast";
 import { FilterPills } from "@/components/FilterPills";
 import { FormAlert } from "@/components/FormAlert";
 import { Text } from "@/components/Text";
@@ -141,6 +142,7 @@ export function ContentTracker({
         row.id === tempId ? { ...row, id: result.id } : row,
       );
       showRows(next);
+      showToast(`Your content “${optimistic.title}” was added.`);
       if (stage === "concept") {
         router.refresh();
         return;
