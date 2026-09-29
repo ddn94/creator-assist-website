@@ -39,13 +39,14 @@ For **each** project:
 2. Paste the full file `supabase/migrations/20260923120000_auth.sql`.
 3. Run it once.
 4. Paste and run `supabase/migrations/20260923200000_content.sql` (content tracker, ideas, deliverables, expenses, and agency read access to linked talent profiles — requires auth migration first).
+5. Paste and run `supabase/migrations/20260929180000_record_content.sql` (agency can log content on a private record; signup claims those rows onto the new talent account).
 
 That creates:
 
 - `waitlist` — email plus a unique invite code
 - `profiles` — app user row (role, name, photo, flexible onboarding jsonb). Not `auth.users`
 - `talent_records` — agency roster rows. A record is not an account. An invite adds a unique code. Signup links the account and marks the row active
-- `content_items`, `content_deliverables`, `content_expenses`, `ideas` — talent tracker and ideas (agency can view/update invoices for linked talent)
+- `content_items`, `content_deliverables`, `content_expenses`, `ideas` — talent tracker and ideas. An agency can log content on a private record; when that person signs up, those items move onto their account. For linked talent, the agency can view content and update invoices
 - `avatars` storage bucket
 - the trigger that creates a profile only when the invite code matches
 
