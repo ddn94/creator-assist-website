@@ -136,8 +136,10 @@ export type TrackerDetail = TrackerItem & {
   /** Full timestamps. Date-only createdAt/updatedAt stay for day comparisons. */
   createdAtIso?: string;
   updatedAtIso?: string;
-  /** Owner in the shared mock DB */
+  /** Profile that owns the item. Empty until a record's content is claimed. */
   creatorId: string;
+  /** Agency roster row this item was logged against, when there is one. */
+  talentRecordId?: string | null;
 };
 
 export function contentCategory(type: ContentType): Category {

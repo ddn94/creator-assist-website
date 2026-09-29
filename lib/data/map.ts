@@ -12,7 +12,8 @@ import type { IdeaItem, IdeaStatus } from "@/lib/ideas";
 
 export type ContentRow = {
   id: string;
-  owner_id: string;
+  owner_id: string | null;
+  talent_record_id?: string | null;
   title: string;
   platform: string;
   niche: string | null;
@@ -112,7 +113,8 @@ function mapDeal(row: ContentRow): TrackerDeal | null {
 export function mapContent(row: ContentRow): TrackerDetail {
   return {
     id: row.id,
-    creatorId: row.owner_id,
+    creatorId: row.owner_id ?? "",
+    talentRecordId: row.talent_record_id ?? null,
     title: row.title,
     platform: row.platform,
     niche: row.niche,

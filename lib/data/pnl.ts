@@ -245,7 +245,7 @@ export function buildAgencyPnlCurrencies(
   for (const { content, currency } of rows) {
     if (!content.deal || content.type !== "paid_collab") continue;
     if (!dealInPnlRange(content, start, end)) continue;
-    talentIds.add(content.creatorId);
+    talentIds.add(content.creatorId || content.talentRecordId || content.id);
     const fee = convertAmount(content.deal.feeAgreed, currency || "USD", home);
     billed += fee;
     if (
