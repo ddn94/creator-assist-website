@@ -62,8 +62,12 @@ type ContentDetailViewProps = {
   platformOptions: { value: string; label: string }[];
   currency: string;
   backHref?: string;
-  /** Agency sees the same UI; only invoice dates + terms stay editable. */
-  mode?: "talent" | "agency";
+  /**
+   * talent: the owner edits everything.
+   * agency: linked talent; only invoice dates and terms stay editable.
+   * record: agency logging content for someone who has not joined yet.
+   */
+  mode?: "talent" | "agency" | "record";
 };
 
 export function ContentDetailView({
@@ -96,7 +100,7 @@ function ContentDetailEditor({
   platformOptions: { value: string; label: string }[];
   currency: string;
   backHref: string;
-  mode: "talent" | "agency";
+  mode: "talent" | "agency" | "record";
 }) {
   const router = useRouter();
   const [item, setItem] = useState(initial);
@@ -195,7 +199,7 @@ function ContentDetailEditor({
       return;
     }
     showToast("Content deleted.", "danger");
-    router.push("/home/tracker");
+    router.push(mode === "record" ? backHref : "/home/tracker");
   }
 
   async function handleDealSubmit(event: FormEvent<HTMLFormElement>) {

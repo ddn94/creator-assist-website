@@ -19,15 +19,21 @@ export default async function AgencyTalentContentPage({
   const fromOverview = from === "overview";
   const profile = await requireProfile("agency");
   const record = await getTalentRecord(talentId);
-  if (!record?.linked_user_id) notFound();
+  if (!record) notFound();
 
   const [item, linked] = await Promise.all([
     getContentById(contentId),
     getLinkedTalentAvatars(profile.id),
   ]);
-  if (!item || item.creatorId !== record.linked_user_id) notFound();
+  const belongsToRecord =
+    item != null &&
+    (item.talentRecordId === record.id ||
+      (record.linked_user_id != null &&
+        item.creatorId === record.linked_user_id));
+  if (!belongsToRecord || !item) notFound();
 
-  const currency = linked.get(record.id)?.currency || "USD";
+  const currency =
+    linked.get(record.id)?.currency || record.currency || "USD";
   const platformOptions = contentPlatformOptions([item.platform], item.platform);
 
   return (
@@ -41,7 +47,7 @@ export default async function AgencyTalentContentPage({
             ? `/workspace/talent/${talentId}?from=overview`
             : `/workspace/talent/${talentId}`
         }
-        mode="agency"
+        mode={item.creatorId ? "agency" : "record"}
       />
     </AppFrame>
   );

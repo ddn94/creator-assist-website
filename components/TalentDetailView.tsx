@@ -1,9 +1,11 @@
 "use client";
 
+import { Suspense } from "react";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { BackLink } from "@/components/BackLink";
 import { DealTable } from "@/components/DealTable";
 import { InvoicingCard } from "@/components/InvoicingCard";
+import { RecordContentForm } from "@/components/RecordContentForm";
 import { TalentInviteCard } from "@/components/TalentInviteCard";
 import { TalentProfileHeader } from "@/components/TalentProfileHeader";
 import { Text } from "@/components/Text";
@@ -16,6 +18,8 @@ type TalentDetailViewProps = {
   backHref?: string;
   backLabel?: string;
   fromOverview?: boolean;
+  canAddContent?: boolean;
+  platformOptions?: { value: string; label: string }[];
 };
 
 export function TalentDetailView({
@@ -25,6 +29,8 @@ export function TalentDetailView({
   backHref = "/workspace/talent",
   backLabel = "Talent",
   fromOverview = false,
+  canAddContent = false,
+  platformOptions = [],
 }: TalentDetailViewProps) {
   return (
     <div className="space-y-6">
@@ -39,6 +45,15 @@ export function TalentDetailView({
           email={recordEmail ?? talent.email}
           inviteCode={inviteCode}
         />
+      ) : null}
+
+      {canAddContent ? (
+        <Suspense fallback={null}>
+          <RecordContentForm
+            recordId={talent.id}
+            platformOptions={platformOptions}
+          />
+        </Suspense>
       ) : null}
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(16rem,1fr)] lg:gap-8">

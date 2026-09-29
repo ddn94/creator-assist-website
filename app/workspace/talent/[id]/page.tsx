@@ -6,6 +6,7 @@ import { getTalentRecord } from "@/lib/data/talentRecords";
 import { getLinkedTalentAvatars } from "@/lib/data/linkedTalent";
 import { listContentForTalentRecord } from "@/lib/data/contentQueries";
 import { buildTalentDetailFromRecord } from "@/lib/data/selectors";
+import { contentPlatformOptions } from "@/lib/platforms";
 
 type TalentDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -43,6 +44,10 @@ export default async function TalentDetailPage({
         backHref={fromOverview ? "/workspace" : "/workspace/talent"}
         backLabel={fromOverview ? "Overview" : "Talent"}
         fromOverview={fromOverview}
+        canAddContent={record.status === "record"}
+        platformOptions={contentPlatformOptions(
+          record.platform ? [record.platform] : [],
+        )}
       />
     </AppFrame>
   );
