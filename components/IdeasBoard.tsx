@@ -201,11 +201,15 @@ export function IdeasBoard({ ideas }: IdeasBoardProps) {
         />
       </div>
 
-      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {filtered.map((idea) => (
+      <div
+        className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2"
+        data-tour="tour-idea-fallback"
+      >
+        {filtered.map((idea, index) => (
           <IdeaCard
             key={idea.id}
             idea={idea}
+            tourAnchor={index === 0}
             onUpdate={(next) => {
               if (next.id.startsWith("pending-")) return;
               const previous = rows;

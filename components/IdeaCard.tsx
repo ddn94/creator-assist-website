@@ -19,6 +19,7 @@ type IdeaCardProps = {
   onUpdate: (idea: IdeaItem) => void;
   onDelete: (id: string) => void;
   onTurnIntoContent: (id: string) => void;
+  tourAnchor?: boolean;
 };
 
 export function IdeaCard({
@@ -26,6 +27,7 @@ export function IdeaCard({
   onUpdate,
   onDelete,
   onTurnIntoContent,
+  tourAnchor = false,
 }: IdeaCardProps) {
   const [editing, setEditing] = useState(false);
   const pending = idea.id.startsWith("pending-");
@@ -41,6 +43,7 @@ export function IdeaCard({
       <CategoryCard
         category={category}
         className={`flex h-full flex-col border p-6 sm:p-8 ${border}`}
+        tour={tourAnchor ? "tour-idea" : undefined}
       >
         <div className="flex items-start justify-between gap-3">
           <CategoryPill category={ideaStatusCategory(idea.status)}>

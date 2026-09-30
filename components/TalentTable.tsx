@@ -74,7 +74,10 @@ export function TalentTable({ items, className = "" }: TalentTableProps) {
     <div className={className}>
       <FilterPills items={pills} value={filter} onChange={onFilterChange} />
 
-      <div className="mt-4 overflow-hidden rounded-card border border-card-border bg-card shadow-card">
+      <div
+        className="mt-4 overflow-hidden rounded-card border border-card-border bg-card shadow-card"
+        data-tour="tour-roster-fallback"
+      >
         <div
           className={`hidden gap-3 border-b border-card-border bg-background/70 px-4 py-3 lg:grid ${COLUMNS}`}
         >
@@ -95,7 +98,13 @@ export function TalentTable({ items, className = "" }: TalentTableProps) {
         </div>
 
         {visible.length > 0 ? (
-          visible.map((talent) => <TalentRow key={talent.id} talent={talent} />)
+          visible.map((talent, index) => (
+            <TalentRow
+              key={talent.id}
+              talent={talent}
+              tourAnchor={index === 0}
+            />
+          ))
         ) : (
           <div className="px-4 py-8 text-center">
             <Text variant="description">

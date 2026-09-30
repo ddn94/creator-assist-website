@@ -161,7 +161,10 @@ export function PaymentList({ mode, items, className = "" }: PaymentListProps) {
       : "No payments in this filter.";
 
   const table = (
-    <div className="overflow-x-auto rounded-card border border-card-border bg-card shadow-card">
+    <div
+      className="overflow-x-auto rounded-card border border-card-border bg-card shadow-card"
+      data-tour="tour-payments"
+    >
       <table
         className={[
           "w-full min-w-5xl border-collapse text-left",
@@ -281,7 +284,7 @@ export function PaymentList({ mode, items, className = "" }: PaymentListProps) {
         value={filter}
         onChange={(id) => setFilter(id as PaymentFilter)}
       />
-      <div className="mt-3 space-y-3 md:hidden">
+      <div className="mt-3 space-y-3 md:hidden" data-tour="tour-payments">
         {filtered.map((payment) => (
           <PaymentCard
             key={payment.id}

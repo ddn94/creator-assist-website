@@ -17,12 +17,14 @@ type TrackerItemCardProps = {
   item: TrackerItem;
   onAdvance?: (id: string) => void;
   onRevisionBack?: (id: string) => void;
+  tourAnchor?: boolean;
 };
 
 export function TrackerItemCard({
   item,
   onAdvance,
   onRevisionBack,
+  tourAnchor = false,
 }: TrackerItemCardProps) {
   const category = contentCategory(item.type);
   const pending = item.id.startsWith("pending-");
@@ -37,7 +39,11 @@ export function TrackerItemCard({
     .join(" · ");
 
   return (
-    <CategoryCard category={category} className="p-4">
+    <CategoryCard
+      category={category}
+      className="p-4"
+      tour={tourAnchor ? "tour-content" : undefined}
+    >
       <CategoryPill category={category}>{contentPillLabel(item.type)}</CategoryPill>
       {pending ? (
         <span className="mt-2.5 block font-display text-sm font-bold leading-snug text-ink sm:text-base">

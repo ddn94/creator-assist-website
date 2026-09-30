@@ -6,13 +6,14 @@ import { dealPaymentTone, type TalentDeal } from "@/lib/talent";
 type DealRowProps = {
   deal: TalentDeal;
   href?: string;
+  tourAnchor?: boolean;
 };
 
 function dash(value: string | null) {
   return value ?? "—";
 }
 
-export function DealRow({ deal, href }: DealRowProps) {
+export function DealRow({ deal, href, tourAnchor = false }: DealRowProps) {
   const payment =
     deal.payment && deal.paymentLabel ? (
       <StatusTag
@@ -74,7 +75,10 @@ export function DealRow({ deal, href }: DealRowProps) {
 
   if (href) {
     return (
-      <div className="border-b border-card-border last:border-b-0">
+      <div
+        className="border-b border-card-border last:border-b-0"
+        data-tour={tourAnchor ? "tour-deal" : undefined}
+      >
         <Link
           href={href}
           className="block cursor-pointer transition-colors hover:bg-background/60"
@@ -87,7 +91,10 @@ export function DealRow({ deal, href }: DealRowProps) {
   }
 
   return (
-    <div className="border-b border-card-border last:border-b-0">
+    <div
+      className="border-b border-card-border last:border-b-0"
+      data-tour={tourAnchor ? "tour-deal" : undefined}
+    >
       {mobile}
       {desktop}
     </div>

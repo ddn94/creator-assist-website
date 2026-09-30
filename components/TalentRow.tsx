@@ -10,18 +10,25 @@ import { talentStatusTone, type TalentItem } from "@/lib/talent";
 type TalentRowProps = {
   talent: TalentItem;
   className?: string;
+  tourAnchor?: boolean;
 };
 
 function dash(value: string | null) {
   return value ?? "—";
 }
 
-export function TalentRow({ talent, className = "" }: TalentRowProps) {
+export function TalentRow({
+  talent,
+  className = "",
+  tourAnchor = false,
+}: TalentRowProps) {
   const tone = talentStatusTone[talent.status];
   const href = `/workspace/talent/${talent.id}`;
 
   return (
     <div
+      data-tour={tourAnchor ? "tour-roster" : undefined}
+      data-tour-href={tourAnchor ? href : undefined}
       className={[
         "border-b border-card-border last:border-b-0",
         className,

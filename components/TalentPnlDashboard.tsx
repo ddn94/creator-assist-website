@@ -56,7 +56,7 @@ export function TalentPnlDashboard({
         onChange={setFilter}
       />
 
-      <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4" data-tour="tour-pnl">
         <StatCard label="Total revenue" value={money(revenue)} tone="collab" />
         <StatCard
           label="Total expenses"
