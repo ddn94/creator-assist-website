@@ -2,6 +2,11 @@
 
 import { getProfile } from "@/lib/auth/session";
 import {
+  contentChangeSummaries,
+  recordContentChanges,
+  type SavedContentSnapshot,
+} from "@/lib/data/contentChanges";
+import {
   revalidateContent,
   requireTalentId,
 } from "@/lib/data/actionHelpers";
@@ -87,6 +92,9 @@ export async function addContentForRecordAction(
       .select("id")
       .single();
     if (error || !data) return { error: "Could not add content." };
+    await recordContentChanges(supabase, profile, data.id, [
+      `Added "${payload.title.trim()}"`,
+    ]);
     revalidateContent([`/workspace/talent/${recordId}`]);
     return { id: data.id };
   } catch (error) {
@@ -130,6 +138,12 @@ export async function addContentAction(payload: {
       .select("id")
       .single();
     if (error || !data) return { error: "Could not add content." };
+    const profile = await getProfile();
+    if (profile) {
+      await recordContentChanges(supabase, profile, data.id, [
+        `Added "${payload.title.trim()}"`,
+      ]);
+    }
     revalidateContent([`/home/tracker/${data.id}`]);
     return { id: data.id };
   } catch (error) {
@@ -215,6 +229,13 @@ export async function upsertContentAction(
       return { error: "Could not save content." };
     }
     const supabase = unclaimed ?? (await createClient());
+    const { data: previous } = await supabase
+      .from("content_items")
+      .select(
+        "title, notes, type, fee_agreed, payment_terms, date_delivered, date_invoiced, date_paid, content_deliverables (id, type, quantity, rate), content_expenses (id, category, amount, note, expense_date)",
+      )
+      .eq("id", item.id)
+      .maybeSingle();
     const isPaid = item.type === "paid_collab";
     let update = supabase
       .from("content_items")
@@ -283,6 +304,15 @@ export async function upsertContentAction(
         .from("content_expenses")
         .insert(rows);
       if (eError) return { error: "Could not save expenses." };
+    }
+
+    if (previous) {
+      await recordContentChanges(
+        supabase,
+        profile,
+        item.id,
+        contentChangeSummaries(previous as SavedContentSnapshot, item),
+      );
     }
 
     revalidateContent([`/home/tracker/${item.id}`]);

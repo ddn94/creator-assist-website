@@ -5,6 +5,10 @@ import {
   revalidateContent,
   requireTalentId,
 } from "@/lib/data/actionHelpers";
+import {
+  invoiceChangeSummaries,
+  recordContentChanges,
+} from "@/lib/data/contentChanges";
 import { mergeTimestamp, nowTimestamp } from "@/lib/timestamps";
 import { createClient } from "@/lib/supabase/server";
 import type { PaymentTerms } from "@/lib/tracker";
@@ -15,10 +19,12 @@ export async function markContentPaidAction(
   try {
     await requireTalentId();
     const paid = nowTimestamp();
+    const profile = await getProfile();
+    if (!profile) return { error: "Sign in required." };
     const supabase = await createClient();
     const { data } = await supabase
       .from("content_items")
-      .select("id")
+      .select("id, title")
       .eq("id", contentId)
       .maybeSingle();
     if (!data) return { error: "Content not found." };
@@ -27,6 +33,10 @@ export async function markContentPaidAction(
       .update({ date_paid: paid })
       .eq("id", contentId);
     if (error) return { error: "Could not mark paid." };
+    const title = typeof data.title === "string" ? data.title : "this content";
+    await recordContentChanges(supabase, profile, contentId, [
+      `Marked "${title}" as paid`,
+    ]);
     revalidateContent([`/home/tracker/${contentId}`]);
     return { error: null };
   } catch (error) {
@@ -43,10 +53,12 @@ export async function markContentInvoicedAction(
   try {
     await requireTalentId();
     const invoiced = nowTimestamp();
+    const profile = await getProfile();
+    if (!profile) return { error: "Sign in required." };
     const supabase = await createClient();
     const { data } = await supabase
       .from("content_items")
-      .select("id")
+      .select("id, title")
       .eq("id", contentId)
       .maybeSingle();
     if (!data) return { error: "Content not found." };
@@ -59,6 +71,10 @@ export async function markContentInvoicedAction(
       })
       .eq("id", contentId);
     if (error) return { error: "Could not mark invoiced." };
+    const title = typeof data.title === "string" ? data.title : "this content";
+    await recordContentChanges(supabase, profile, contentId, [
+      `Marked "${title}" as invoiced`,
+    ]);
     revalidateContent([`/home/tracker/${contentId}`]);
     return { error: null };
   } catch (error) {
@@ -92,7 +108,7 @@ export async function updateContentInvoiceAction(
     const supabase = await createClient();
     const { data } = await supabase
       .from("content_items")
-      .select("date_delivered, date_invoiced, date_paid")
+      .select("title, payment_terms, date_delivered, date_invoiced, date_paid")
       .eq("id", contentId)
       .maybeSingle();
     if (!data) return { error: "Content not found." };
@@ -117,6 +133,27 @@ export async function updateContentInvoiceAction(
       })
       .eq("id", contentId);
     if (error) return { error: "Could not update invoice." };
+    const title = typeof data.title === "string" ? data.title : "";
+    await recordContentChanges(
+      supabase,
+      profile,
+      contentId,
+      invoiceChangeSummaries(
+        title,
+        {
+          payment_terms:
+            typeof data.payment_terms === "string" ? data.payment_terms : null,
+          date_invoiced:
+            typeof data.date_invoiced === "string" ? data.date_invoiced : null,
+          date_paid: typeof data.date_paid === "string" ? data.date_paid : null,
+        },
+        {
+          paymentTerms: payload.paymentTerms,
+          dateInvoiced: invoicedDay,
+          datePaid: paidDay,
+        },
+      ),
+    );
     revalidateContent([`/home/tracker/${contentId}`]);
     return { error: null };
   } catch (error) {
