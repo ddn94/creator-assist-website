@@ -16,17 +16,20 @@ import { PAYMENT_TERM_OPTIONS, type PaymentTerms } from "@/lib/tracker";
 type InvoicingCardProps = {
   invoicing: TalentInvoicing;
   className?: string;
+  readOnly?: boolean;
 };
 
 export function InvoicingCard({
   invoicing,
   className = "",
+  readOnly = false,
 }: InvoicingCardProps) {
   return (
     <InvoicingEditor
       key={`${invoicing.contentId}:${invoicing.dateInvoiced}:${invoicing.paymentTerms}:${invoicing.datePaid}:${invoicing.dueNote}`}
       invoicing={invoicing}
       className={className}
+      readOnly={readOnly}
     />
   );
 }
@@ -34,6 +37,7 @@ export function InvoicingCard({
 function InvoicingEditor({
   invoicing,
   className,
+  readOnly = false,
 }: InvoicingCardProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -44,6 +48,7 @@ function InvoicingEditor({
   const [saved, setSaved] = useState(false);
 
   async function save() {
+    if (readOnly) return;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(invoiced)) return;
     if (paid && !/^\d{4}-\d{2}-\d{2}$/.test(paid)) return;
     setError(null);
@@ -71,7 +76,10 @@ function InvoicingEditor({
         <button
           type="button"
           aria-expanded={open}
-          onClick={() => setOpen((prev) => !prev)}
+          onClick={() => {
+            if (!readOnly) setOpen((prev) => !prev);
+          }}
+          disabled={readOnly}
           className="flex w-full cursor-pointer items-start justify-between gap-3 text-left"
         >
           <div className="min-w-0">
@@ -82,16 +90,18 @@ function InvoicingEditor({
               {invoicing.summary}
             </Text>
           </div>
-          <span
-            className="inline-flex size-8 shrink-0 items-center justify-center text-muted"
-            aria-hidden
-          >
-            <CaretDownIcon
-              size={18}
-              weight="bold"
-              className={`transition-transform ${open ? "rotate-180" : ""}`}
-            />
-          </span>
+          {readOnly ? null : (
+            <span
+              className="inline-flex size-8 shrink-0 items-center justify-center text-muted"
+              aria-hidden
+            >
+              <CaretDownIcon
+                size={18}
+                weight="bold"
+                className={`transition-transform ${open ? "rotate-180" : ""}`}
+              />
+            </span>
+          )}
         </button>
 
         {open ? (

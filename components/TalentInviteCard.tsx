@@ -17,7 +17,7 @@ function InviteButton({ label }: { label: string }) {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" size="sm" disabled={pending}>
-      {pending ? "Creating code…" : label}
+      {pending ? "Sending…" : label}
     </Button>
   );
 }
@@ -26,9 +26,15 @@ type TalentInviteCardProps = {
   id: string;
   email: string | null;
   inviteCode: string | null;
+  status?: "record" | "invited" | "disconnected" | "requested";
 };
 
-export function TalentInviteCard({ id, email, inviteCode }: TalentInviteCardProps) {
+export function TalentInviteCard({
+  id,
+  email,
+  inviteCode,
+  status = "record",
+}: TalentInviteCardProps) {
   const router = useRouter();
   const [state, action] = useActionState(inviteTalent, EMPTY_AUTH_STATE);
   const toasted = useRef<string | null>(null);
@@ -40,7 +46,24 @@ export function TalentInviteCard({ id, email, inviteCode }: TalentInviteCardProp
     router.refresh();
   }, [state.message, router]);
 
-  if (inviteCode) {
+  if (status === "requested") {
+    return (
+      <Card className="p-4 sm:p-5">
+        <Text variant="title" className="text-base">
+          Request sent
+        </Text>
+        <Text variant="description" className="mt-1">
+          {email ?? "This talent"} already has an account. They can accept the
+          request from their profile. Until they do, you only see deals on this
+          card.
+        </Text>
+      </Card>
+    );
+  }
+
+  const reconnect = status === "disconnected";
+
+  if (inviteCode && !reconnect) {
     return (
       <Card className="p-4 sm:p-5">
         <Text variant="label">Invite code</Text>
@@ -58,16 +81,19 @@ export function TalentInviteCard({ id, email, inviteCode }: TalentInviteCardProp
   return (
     <Card className="p-4 sm:p-5">
       <Text variant="title" className="text-base">
-        Invite this talent
+        {reconnect ? "Reconnect this talent" : "Invite this talent"}
       </Text>
       <Text variant="description" className="mt-1">
-        A record stays private until you send a code. They sign up with that code
-        and this email.
+        {reconnect
+          ? "They already have an account. Send a request. They accept it from their profile. You will see new content from the moment they accept, plus deals already on this card."
+          : "A record stays private until you send a code. If this email already has an account, they get a request instead of a code."}
       </Text>
       <form action={action} className="mt-4 space-y-3">
         <input type="hidden" name="id" value={id} />
         {email ? (
-          <Text variant="description">Invite {email}</Text>
+          <Text variant="description">
+            {reconnect ? `Request ${email}` : `Invite ${email}`}
+          </Text>
         ) : (
           <Field id="invite-email" label="Email">
             <TextField
@@ -82,7 +108,15 @@ export function TalentInviteCard({ id, email, inviteCode }: TalentInviteCardProp
           </Field>
         )}
         <FormAlert error={state.error} />
-        <InviteButton label={email ? "Create invite code" : "Save email and create code"} />
+        <InviteButton
+          label={
+            reconnect
+              ? "Send connection request"
+              : email
+                ? "Create invite code"
+                : "Save email and create code"
+          }
+        />
       </form>
     </Card>
   );

@@ -45,6 +45,7 @@ export function PaymentRow({
   const tone = paymentStatusTone[payment.status];
   const overdue = payment.status === "overdue";
   const agency = mode === "agency";
+  const canEdit = agency && payment.action !== "none";
 
   function openEditor(event?: MouseEvent) {
     event?.stopPropagation();
@@ -53,7 +54,7 @@ export function PaymentRow({
   }
 
   function onRowKeyDown(event: KeyboardEvent<HTMLTableRowElement>) {
-    if (!agency) return;
+    if (!canEdit) return;
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       setOpen(true);
@@ -78,7 +79,7 @@ export function PaymentRow({
     </Text>
   );
 
-  const actionCell = agency ? (
+  const actionCell = agency && !canEdit ? null : canEdit ? (
     payment.action === "setInvoice" ? (
       <Button
         type="button"
@@ -142,12 +143,12 @@ export function PaymentRow({
   return (
     <>
       <tr
-        tabIndex={agency ? 0 : undefined}
-        onClick={agency ? () => setOpen(true) : undefined}
+        tabIndex={canEdit ? 0 : undefined}
+        onClick={canEdit ? () => setOpen(true) : undefined}
         onKeyDown={onRowKeyDown}
         className={[
           "border-b border-card-border last:border-b-0",
-          agency
+          canEdit
             ? "cursor-pointer transition-colors hover:bg-background/50"
             : "",
           overdue ? (agency ? "bg-organic" : "bg-organic/60") : "bg-card",

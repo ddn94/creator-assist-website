@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { BackLink } from "@/components/BackLink";
 import { DealTable } from "@/components/DealTable";
+import { DisconnectLink } from "@/components/DisconnectLink";
 import { FormAlert } from "@/components/FormAlert";
 import { InvoicingCard } from "@/components/InvoicingCard";
 import { RecordContentForm } from "@/components/RecordContentForm";
@@ -41,6 +42,7 @@ export function TalentDetailView({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const canDelete = talent.status === "record";
+  const canDisconnect = talent.status === "active";
 
   async function handleDelete() {
     if (!canDelete || pending) return;
@@ -73,16 +75,23 @@ export function TalentDetailView({
               <TrashIcon size={18} weight="regular" aria-hidden />
             </button>
           ) : null}
+          {canDisconnect ? (
+            <DisconnectLink recordId={talent.id} name={talent.name} side="agency" />
+          ) : null}
         </div>
         {error ? <FormAlert error={error} /> : null}
         <TalentProfileHeader talent={talent} />
       </div>
 
-      {talent.status !== "active" ? (
+      {talent.status === "record" ||
+      talent.status === "invited" ||
+      talent.status === "disconnected" ||
+      talent.status === "requested" ? (
         <TalentInviteCard
           id={talent.id}
           email={recordEmail ?? talent.email}
           inviteCode={inviteCode}
+          status={talent.status}
         />
       ) : null}
 
@@ -103,7 +112,10 @@ export function TalentDetailView({
             fromOverview={fromOverview}
           />
           {talent.invoicing ? (
-            <InvoicingCard invoicing={talent.invoicing} />
+            <InvoicingCard
+              invoicing={talent.invoicing}
+              readOnly={talent.status === "disconnected"}
+            />
           ) : null}
           {talent.deals.length === 0 && !talent.invoicing ? (
             <Text variant="description">No deals yet for this talent.</Text>

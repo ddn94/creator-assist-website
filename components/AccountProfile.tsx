@@ -1,4 +1,6 @@
 import { CategoryPill } from "@/components/CategoryPill";
+import { ConnectionRequests } from "@/components/ConnectionRequests";
+import { DisconnectLink } from "@/components/DisconnectLink";
 import { ProfilePhoto } from "@/components/ProfilePhoto";
 import { SettingsRow } from "@/components/SettingsRow";
 import { Text } from "@/components/Text";
@@ -10,6 +12,7 @@ import {
   readPlatforms,
   readString,
 } from "@/lib/auth/profileAnswers";
+import type { AgencyLink, ConnectionRequest } from "@/lib/data/talentRecords";
 import type { Profile } from "@/lib/auth/types";
 import { countryName } from "@/lib/countries";
 import { fmtFollowers, ROSTER_OPTIONS } from "@/lib/profileFormOptions";
@@ -20,6 +23,8 @@ type AccountProfileProps = {
   profile: Profile;
   editHref: string;
   showAppLinks?: boolean;
+  agencyLink?: AgencyLink | null;
+  connectionRequests?: ConnectionRequest[];
 };
 
 function rosterLabel(value: string) {
@@ -30,6 +35,8 @@ export function AccountProfile({
   profile,
   editHref,
   showAppLinks = false,
+  agencyLink = null,
+  connectionRequests = [],
 }: AccountProfileProps) {
   const name = displayName(profile);
   const platforms = readPlatforms(profile.onboarding);
@@ -76,6 +83,8 @@ export function AccountProfile({
         ) : null}
       </div>
 
+      <ConnectionRequests requests={connectionRequests} />
+
       <Text variant="label" className="mb-2 px-1">
         Account
       </Text>
@@ -89,6 +98,19 @@ export function AccountProfile({
           }
           href={editHref}
         />
+        {agencyLink?.status === "active" ? (
+          <DisconnectLink
+            recordId={agencyLink.recordId}
+            name={agencyLink.agencyName}
+            side="talent"
+          />
+        ) : null}
+        {agencyLink?.status === "disconnected" ? (
+          <Text variant="description" className="px-1">
+            Disconnected from {agencyLink.agencyName}. Deals from before that
+            stay on both sides. New content stays private.
+          </Text>
+        ) : null}
       </div>
 
       {showAppLinks ? (

@@ -48,6 +48,7 @@ export default async function AgencyTalentContentPage({
             : `/workspace/talent/${talentId}`
         }
         mode={item.creatorId ? "agency" : "record"}
+        dealLocked={record.status === "disconnected"}
       />
     </AppFrame>
   );

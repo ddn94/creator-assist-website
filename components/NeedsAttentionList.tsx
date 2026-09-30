@@ -44,10 +44,14 @@ export function NeedsAttentionList({
             detail={item.detail}
             amount={item.amount}
             overdue={item.overdue}
-            onOpen={() => {
-              setSaveError(null);
-              setOpenId(item.id);
-            }}
+            onOpen={
+              item.readOnly
+                ? undefined
+                : () => {
+                    setSaveError(null);
+                    setOpenId(item.id);
+                  }
+            }
           />
         )}
       />

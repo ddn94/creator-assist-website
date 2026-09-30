@@ -68,6 +68,8 @@ type ContentDetailViewProps = {
    * record: agency logging content for someone who has not joined yet.
    */
   mode?: "talent" | "agency" | "record";
+  /** Connected talent who has been disconnected: show the deal, do not edit it. */
+  dealLocked?: boolean;
 };
 
 export function ContentDetailView({
@@ -76,6 +78,7 @@ export function ContentDetailView({
   currency,
   backHref = "/home/tracker",
   mode = "talent",
+  dealLocked = false,
 }: ContentDetailViewProps) {
   return (
     <ContentDetailEditor
@@ -85,6 +88,7 @@ export function ContentDetailView({
       currency={currency}
       backHref={backHref}
       mode={mode}
+      dealLocked={dealLocked}
     />
   );
 }
@@ -95,12 +99,14 @@ function ContentDetailEditor({
   currency,
   backHref,
   mode,
+  dealLocked,
 }: {
   initial: TrackerDetail;
   platformOptions: { value: string; label: string }[];
   currency: string;
   backHref: string;
   mode: "talent" | "agency" | "record";
+  dealLocked: boolean;
 }) {
   const router = useRouter();
   const [item, setItem] = useState(initial);
@@ -204,6 +210,7 @@ function ContentDetailEditor({
 
   async function handleDealSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (dealLocked) return;
     const deal = item.deal ?? (draftType === "paid_collab" ? EMPTY_DEAL : null);
     if (!deal) return;
     const data = new FormData(event.currentTarget);
@@ -484,6 +491,7 @@ function ContentDetailEditor({
                 name="paymentTerms"
                 defaultValue={visibleDeal.paymentTerms}
                 options={[...PAYMENT_TERM_OPTIONS]}
+                disabled={locked || dealLocked}
                 size="sm"
                 full
               />
@@ -503,7 +511,8 @@ function ContentDetailEditor({
                 id="dateInvoiced"
                 name="dateInvoiced"
                 defaultValue={toDateInput(visibleDeal.dateInvoiced)}
-                required={isAgency}
+                required={isAgency && !dealLocked}
+                disabled={dealLocked}
                 size="sm"
                 full
               />
@@ -513,23 +522,22 @@ function ContentDetailEditor({
                 id="datePaid"
                 name="datePaid"
                 defaultValue={toDateInput(visibleDeal.datePaid)}
+                disabled={dealLocked}
                 size="sm"
                 full
               />
             </Field>
             <div className="flex flex-wrap items-center gap-3 md:col-span-3">
-              <Button
-                type="submit"
-                size="sm"
-                className="h-10"
-                disabled={invoiceSaving}
-              >
-                {isAgency
-                  ? invoiceSaving
-                    ? "Saving…"
-                    : "Save deal"
-                  : "Save deal"}
-              </Button>
+              {dealLocked ? null : (
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="h-10"
+                  disabled={invoiceSaving}
+                >
+                  {invoiceSaving ? "Saving…" : "Save deal"}
+                </Button>
+              )}
               <Text variant="caption" className="text-sm">
                 Due date:{" "}
                 <span className="font-semibold text-ink">

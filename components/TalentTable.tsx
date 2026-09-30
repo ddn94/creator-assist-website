@@ -14,6 +14,8 @@ const FILTERS = [
   { id: "active", label: "Active" },
   { id: "invited", label: "Invited" },
   { id: "record", label: "Record only" },
+  { id: "disconnected", label: "Disconnected" },
+  { id: "requested", label: "Requested" },
 ] as const;
 
 type TalentFilter = (typeof FILTERS)[number]["id"];
@@ -31,7 +33,14 @@ export function TalentTable({ items, className = "" }: TalentTableProps) {
   const [page, setPage] = useState(0);
 
   const counts = useMemo(() => {
-    const next = { all: items.length, active: 0, invited: 0, record: 0 };
+    const next = {
+      all: items.length,
+      active: 0,
+      invited: 0,
+      record: 0,
+      disconnected: 0,
+      requested: 0,
+    };
     for (const item of items) {
       next[item.status] += 1;
     }
