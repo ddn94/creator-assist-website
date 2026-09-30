@@ -280,6 +280,9 @@ export async function saveProfileAnswers(
   }
 
   const onboarding = { ...profile.onboarding, ...cleaned };
+  if (complete && !profile.onboarding_completed_at) {
+    onboarding.productTour = "pending";
+  }
   const patch: Record<string, unknown> = { onboarding };
 
   if ("name" in cleaned) patch.display_name = name || profile.display_name;
@@ -313,6 +316,16 @@ export async function saveProfileAnswers(
     );
   }
   return { error: null };
+}
+
+export async function completeProductTour(): Promise<void> {
+  if (!hasSupabaseEnv()) return;
+  const profile = await getProfile();
+  if (!profile) return;
+  const onboarding = { ...profile.onboarding, productTour: "done" };
+  const supabase = await createClient();
+  await supabase.from("profiles").update({ onboarding }).eq("id", profile.id);
+  revalidatePath("/", "layout");
 }
 
 export async function setAvatarPath(path: string): Promise<{ error: string | null }> {
