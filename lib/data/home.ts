@@ -1,3 +1,4 @@
+import type { TalentStatus } from "@/lib/talent";
 import type { Category } from "@/lib/ui";
 import { convertAmount } from "@/lib/fx";
 import type { IdeaItem } from "@/lib/ideas";
@@ -19,6 +20,7 @@ export type AttentionItem = {
   detail: string;
   amount: string;
   overdue?: boolean;
+  readOnly?: boolean;
 };
 
 export type OverviewStats = {
@@ -152,12 +154,17 @@ export function buildAgencyOverviewMoney(
 }
 
 export function buildAgencyAttention(
-  rows: { content: TrackerDetail; talentName: string; currency: string }[],
+  rows: {
+    content: TrackerDetail;
+    talentName: string;
+    currency: string;
+    recordStatus?: TalentStatus;
+  }[],
   today = new Date(),
 ): AttentionItem[] {
   const items: AttentionItem[] = [];
 
-  for (const { content, talentName, currency } of rows) {
+  for (const { content, talentName, currency, recordStatus } of rows) {
     if (!content.deal || content.type !== "paid_collab") continue;
     const status = computeDealStatus(content.deal, today);
     const fee = fmtMoney(content.deal.feeAgreed, currency || "USD");
@@ -176,6 +183,7 @@ export function buildAgencyAttention(
       detail,
       amount: fee,
       overdue: status === "overdue",
+      readOnly: recordStatus === "disconnected",
     });
   }
 

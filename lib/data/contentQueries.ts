@@ -6,6 +6,7 @@ import {
   type ContentRow,
 } from "@/lib/data/map";
 import type { TalentRecord } from "@/lib/data/talentRecords";
+import type { TalentStatus } from "@/lib/talent";
 import type { TrackerDetail, TrackerItem } from "@/lib/tracker";
 import { createClient } from "@/lib/supabase/server";
 
@@ -41,6 +42,7 @@ type RosterContentRow = {
   name: string;
   linked_user_id: string | null;
   currency: string | null;
+  status: TalentStatus;
 };
 
 function contentFilterForRecords(records: RosterContentRow[]): string | null {
@@ -62,6 +64,7 @@ export async function listAgencyLinkedContent(): Promise<
     talentName: string;
     currency: string;
     talentId: string;
+    recordStatus: TalentStatus;
   }[]
 > {
   const profile = await getProfile();
@@ -70,7 +73,7 @@ export async function listAgencyLinkedContent(): Promise<
   const supabase = await createClient();
   const { data: records } = await supabase
     .from("talent_records")
-    .select("id, name, linked_user_id, currency")
+    .select("id, name, linked_user_id, currency, status")
     .eq("agency_id", profile.id);
 
   const roster = (records ?? []).flatMap((row) => {
@@ -82,6 +85,13 @@ export async function listAgencyLinkedContent(): Promise<
         linked_user_id:
           typeof row.linked_user_id === "string" ? row.linked_user_id : null,
         currency: typeof row.currency === "string" ? row.currency : null,
+        status:
+          row.status === "active" ||
+          row.status === "invited" ||
+          row.status === "disconnected" ||
+          row.status === "requested"
+            ? row.status
+            : "record",
       } satisfies RosterContentRow,
     ];
   });
@@ -142,6 +152,7 @@ export async function listAgencyLinkedContent(): Promise<
         talentName: live?.displayName || record.name,
         currency: live?.currency || record.currency || "USD",
         talentId: record.id,
+        recordStatus: record.status,
       },
     ];
   });
@@ -157,6 +168,7 @@ export async function listContentForTalentRecord(
       name: record.name,
       linked_user_id: record.linked_user_id,
       currency: record.currency,
+      status: record.status,
     },
   ]);
   if (!filter) return [];
