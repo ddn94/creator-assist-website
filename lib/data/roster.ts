@@ -17,105 +17,9 @@ import {
   STAGE_LABELS,
   computeDueDate,
   fmtMoney,
-  formatLiveDate,
   type Stage,
   type TrackerDetail,
 } from "@/lib/tracker";
-
-/**
- * Derives a real, chronological activity feed from the timestamps actually
- * stored on each piece of content (created_at, date_delivered,
- * date_invoiced, date_paid, updated_at). No separate event log exists yet,
- * so each milestone a creator hits generates one entry, sorted by when it
- * really happened.
- */
-export function buildTalentActivity(
-  items: TrackerDetail[],
-  currency: string,
-  today = new Date(),
-): TalentActivityItem[] {
-  const todayIso = today.toISOString().slice(0, 10);
-  const events: (TalentActivityItem & { sort: string })[] = [];
-
-  for (const item of items) {
-    events.push({
-      id: `${item.id}-created`,
-      title: `Added "${item.title}"`,
-      detail: item.platform,
-      when: item.createdAtIso ?? item.createdAt,
-      sort: item.createdAtIso ?? item.createdAt,
-    });
-
-    if (item.deal?.dateDelivered) {
-      events.push({
-        id: `${item.id}-delivered`,
-        title: `Delivered "${item.title}"`,
-        detail: item.brandName ?? item.platform,
-        when: item.deal.dateDelivered,
-        sort: item.deal.dateDelivered,
-      });
-    }
-
-    if (item.deal?.dateInvoiced) {
-      events.push({
-        id: `${item.id}-invoiced`,
-        title: `Invoiced "${item.title}"`,
-        detail: fmtMoney(item.deal.feeAgreed, currency),
-        when: item.deal.dateInvoiced,
-        sort: item.deal.dateInvoiced,
-      });
-    }
-
-    if (item.deal?.datePaid) {
-      events.push({
-        id: `${item.id}-paid`,
-        title: `Payment received for "${item.title}"`,
-        detail: fmtMoney(item.deal.feeAgreed, currency),
-        when: item.deal.datePaid,
-        sort: item.deal.datePaid,
-      });
-    }
-
-    if (item.goLiveDate && item.goLiveDate.slice(0, 10) <= todayIso) {
-      events.push({
-        id: `${item.id}-live`,
-        title: `"${item.title}" went live`,
-        detail: item.platform,
-        when: item.goLiveDate,
-        sort: item.goLiveDate,
-      });
-    }
-
-    const knownDates = new Set(
-      [
-        item.createdAt,
-        item.deal?.dateDelivered,
-        item.deal?.dateInvoiced,
-        item.deal?.datePaid,
-        item.goLiveDate,
-      ]
-        .filter((d): d is string => !!d)
-        .map((d) => d.slice(0, 10)),
-    );
-    if (!knownDates.has(item.updatedAt.slice(0, 10))) {
-      events.push({
-        id: `${item.id}-updated`,
-        title: `Updated "${item.title}"`,
-        detail: STAGE_LABELS[item.stage as Stage] ?? item.stage,
-        when: item.updatedAtIso ?? item.updatedAt,
-        sort: item.updatedAtIso ?? item.updatedAt,
-      });
-    }
-  }
-
-  return events
-    .sort((a, b) => b.sort.localeCompare(a.sort))
-    .slice(0, 8)
-    .map(({ sort: _sort, ...rest }) => {
-      void _sort;
-      return rest;
-    });
-}
 
 /**
  * Fills in the roster table's "Live deals" and "Outstanding" columns from
@@ -163,6 +67,7 @@ export function buildTalentDetailFromRecord(
   items: TrackerDetail[],
   today = new Date(),
   avatar?: LinkedTalentMeta | null,
+  activity: TalentActivityItem[] = [],
 ): TalentDetail {
   const base: TalentItem = toTalentItem(record, avatar);
   const currency = avatar
@@ -217,12 +122,6 @@ export function buildTalentDetailFromRecord(
         : "Not invoiced",
     };
   }
-
-  const activity: TalentActivityItem[] = buildTalentActivity(
-    items,
-    currency,
-    today,
-  );
 
   return {
     ...base,

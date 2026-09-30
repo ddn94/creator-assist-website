@@ -4,9 +4,11 @@ import { AppFrame } from "@/components/AppFrame";
 import { requireProfile } from "@/lib/auth/session";
 import { getTalentRecord } from "@/lib/data/talentRecords";
 import { getLinkedTalentAvatars } from "@/lib/data/linkedTalent";
+import { listContentChanges } from "@/lib/data/contentChanges";
 import { listContentForTalentRecord } from "@/lib/data/contentQueries";
 import { buildTalentDetailFromRecord } from "@/lib/data/selectors";
 import { contentPlatformOptions } from "@/lib/platforms";
+import { createClient } from "@/lib/supabase/server";
 
 type TalentDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -24,15 +26,21 @@ export default async function TalentDetailPage({
   const record = await getTalentRecord(id);
   if (!record) notFound();
 
+  const supabase = await createClient();
   const [content, avatars] = await Promise.all([
     listContentForTalentRecord(record),
     getLinkedTalentAvatars(profile.id),
   ]);
+  const activity = await listContentChanges(
+    supabase,
+    content.map((item) => item.id),
+  );
   const talent = buildTalentDetailFromRecord(
     record,
     content,
     new Date(),
     avatars.get(record.id) ?? null,
+    activity,
   );
 
   return (

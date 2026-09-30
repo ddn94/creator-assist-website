@@ -22,7 +22,9 @@ export function ActivityFeed({ items, className = "" }: ActivityFeedProps) {
               <li key={item.id}>
                 <Text variant="cardTitle">{item.title}</Text>
                 <Text variant="caption" className="mt-0.5" suppressHydrationWarning>
-                  {item.detail} · {activityWhen(item.when)}
+                  {item.detail
+                    ? `${item.detail} · ${activityWhen(item.when)}`
+                    : activityWhen(item.when)}
                 </Text>
               </li>
             ))}
