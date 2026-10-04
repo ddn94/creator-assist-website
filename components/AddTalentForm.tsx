@@ -19,22 +19,26 @@ function SaveButton({
   status,
   children,
   variant = "primary",
+  action,
 }: {
   status: "invited" | "record";
   children: string;
   variant?: "primary" | "secondary";
+  action: (formData: FormData) => void;
 }) {
   const { pending, data } = useFormStatus();
   const submitting = pending && data?.get("status") === status;
   return (
     <Button
       type="submit"
-      name="status"
-      value={status}
       size="sm"
       variant={variant}
       className="w-full sm:w-auto"
       disabled={pending}
+      formAction={(formData) => {
+        formData.set("status", status);
+        action(formData);
+      }}
     >
       {submitting ? "Saving…" : children}
     </Button>
@@ -69,7 +73,7 @@ export function AddTalentForm({ className = "" }: AddTalentFormProps) {
         <Field
           id="email"
           label="Email"
-          hint="Leave blank to keep this as a record you track privately."
+          hint="Optional. Saving as a record stays private."
         >
           <TextField
             id="email"
@@ -77,7 +81,7 @@ export function AddTalentForm({ className = "" }: AddTalentFormProps) {
             type="email"
             size="sm"
             full
-            placeholder="Optional — needed only to send an invite"
+            placeholder="Optional — needed only to invite them"
           />
         </Field>
 
@@ -138,10 +142,12 @@ export function AddTalentForm({ className = "" }: AddTalentFormProps) {
       <FormAlert error={state.error} />
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        <SaveButton status="invited">Save and send invite</SaveButton>
-        <SaveButton status="record" variant="secondary">
-          Save as a record
-        </SaveButton>
+          <SaveButton status="invited" action={action}>
+            Invite
+          </SaveButton>
+          <SaveButton status="record" variant="secondary" action={action}>
+            Save as a record
+          </SaveButton>
         <Text variant="caption" className="sm:ml-1">
           You can invite a record later
         </Text>

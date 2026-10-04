@@ -14,6 +14,14 @@ function followersFrom(raw: string) {
   return digits ? Number(digits) : 0;
 }
 
+function rosterDuplicateMessage(message: string) {
+  const marker = " is already on your roster";
+  const at = message.toLowerCase().indexOf(marker);
+  const before = at >= 0 ? message.slice(0, at) : "";
+  const name = before.split(/[:\n]/).pop()?.trim() || "This person";
+  return `${name} is already on your roster. Reconnect that card.`;
+}
+
 export const addTalent = withSupabaseAuthAction(
   async (_prev, formData): Promise<AuthFormState> => {
     const status = formData.get("status") === "invited" ? "invited" : "record";
@@ -21,7 +29,7 @@ export const addTalent = withSupabaseAuthAction(
     const email = String(formData.get("email") ?? "").trim();
     if (!name) return { error: "Name is required.", message: null };
     if (status === "invited" && !email) {
-      return { error: "Add an email to send an invite.", message: null };
+      return { error: "Add an email to invite them.", message: null };
     }
 
     const supabase = await createClient();
@@ -38,6 +46,15 @@ export const addTalent = withSupabaseAuthAction(
 
     if (error || data == null || data === "") {
       const message = error?.message ?? "";
+      if (message.toLowerCase().includes("already on your roster")) {
+        return { error: rosterDuplicateMessage(message), message: null };
+      }
+      if (message.toLowerCase().includes("agency account")) {
+        return {
+          error: "This email is an agency account. Use a talent email.",
+          message: null,
+        };
+      }
       if (message.toLowerCase().includes("already connected")) {
         return {
           error: "This talent is already connected to an agency.",
@@ -45,7 +62,7 @@ export const addTalent = withSupabaseAuthAction(
         };
       }
       if (message.toLowerCase().includes("email")) {
-        return { error: "Add an email to send an invite.", message: null };
+        return { error: "Add an email to invite them.", message: null };
       }
       if (message.toLowerCase().includes("only an agency")) {
         return { error: "Only an agency can add talent.", message: null };
@@ -54,7 +71,20 @@ export const addTalent = withSupabaseAuthAction(
     }
 
     revalidatePath("/workspace/talent");
-    await flashToast(`“${name}” was added.`);
+    if (status === "invited") {
+      const { data: row } = await supabase
+        .from("talent_records")
+        .select("status")
+        .eq("id", String(data))
+        .maybeSingle();
+      await flashToast(
+        row?.status === "requested"
+          ? "Connection request sent."
+          : "Invite code created. Send it to them.",
+      );
+    } else {
+      await flashToast(`“${name}” was added.`);
+    }
     redirect(`/workspace/talent/${String(data)}`);
   },
 );
@@ -73,6 +103,15 @@ export const inviteTalent = withSupabaseAuthAction(
 
     if (error) {
       const message = error.message.toLowerCase();
+      if (message.includes("already on your roster")) {
+        return { error: rosterDuplicateMessage(error.message), message: null };
+      }
+      if (message.includes("agency account")) {
+        return {
+          error: "This email is an agency account. Use a talent email.",
+          message: null,
+        };
+      }
       if (message.includes("already connected")) {
         return {
           error: "This talent is already connected to an agency.",
@@ -80,7 +119,7 @@ export const inviteTalent = withSupabaseAuthAction(
         };
       }
       if (message.includes("email")) {
-        return { error: "Add an email to send an invite.", message: null };
+        return { error: "Add an email to invite them.", message: null };
       }
       if (message.includes("already")) {
         return {
@@ -89,16 +128,20 @@ export const inviteTalent = withSupabaseAuthAction(
         };
       }
       return {
-        error: "Could not create an invite code. Try again.",
+        error: "Could not invite them. Try again.",
         message: null,
       };
     }
 
     revalidatePath(`/workspace/talent/${id}`);
+    revalidatePath("/home");
     revalidatePath("/home/profile");
     return {
       error: null,
-      message: data === "request" ? "Request sent." : "Invite sent.",
+      message:
+        data === "request"
+          ? "Connection request sent."
+          : "Invite code created. Send it to them.",
     };
   },
 );
@@ -115,8 +158,12 @@ export async function deleteTalentRecordAction(
   const { error } = await supabase.rpc("agency_delete_record", { p_id: id });
   if (error) {
     const message = error.message.toLowerCase();
-    if (message.includes("not been invited") || message.includes("only a record")) {
-      return { error: "Only a record that has not been invited can be removed." };
+    if (
+      message.includes("not been invited") ||
+      message.includes("only a record") ||
+      message.includes("not been joined")
+    ) {
+      return { error: "Only a card that has not been joined can be removed." };
     }
     if (message.includes("only an agency")) {
       return { error: "Only an agency can remove a record." };
@@ -148,6 +195,7 @@ export async function disconnectTalentLinkAction(
   }
 
   revalidateContent();
+  revalidatePath("/home");
   revalidatePath("/home/profile");
   revalidatePath(`/workspace/talent/${id}`);
   return { error: null };
@@ -179,6 +227,7 @@ export async function respondConnectionRequestAction(
   }
 
   revalidateContent();
+  revalidatePath("/home");
   revalidatePath("/home/profile");
   return { error: null };
 }

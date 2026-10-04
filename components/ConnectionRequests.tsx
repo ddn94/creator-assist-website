@@ -12,15 +12,20 @@ import type { ConnectionRequest } from "@/lib/data/talentRecords";
 
 export function ConnectionRequests({
   requests,
+  currentAgency = null,
 }: {
   requests: ConnectionRequest[];
+  currentAgency?: string | null;
 }) {
   const router = useRouter();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const alreadyConnected = Boolean(currentAgency);
+
   async function answer(request: ConnectionRequest, accept: boolean) {
     if (pendingId) return;
+    if (accept && alreadyConnected) return;
     setPendingId(request.recordId);
     setError(null);
     const result = await respondConnectionRequestAction(request.recordId, accept);
@@ -51,14 +56,16 @@ export function ConnectionRequests({
             {request.agencyName}
           </Text>
           <Text variant="description" className="mt-1">
-            Wants to connect. They will see deals on your roster card and
-            content you add after you accept. Older tracker items stay private.
+            {currentAgency
+              ? `You’re connected to ${currentAgency}. Disconnect from them before you accept. Past deals stay with ${currentAgency}. ${request.agencyName} only sees posts you add after you accept.`
+              : "Wants to connect. They will see your deals and content you add after you accept. Older tracker items stay private."}
           </Text>
           <div className="mt-4 flex flex-wrap gap-2">
             <Button
               type="button"
               size="sm"
-              disabled={pendingId === request.recordId}
+              disabled={alreadyConnected || pendingId === request.recordId}
+              className="disabled:cursor-not-allowed"
               onClick={() => void answer(request, true)}
             >
               Accept
