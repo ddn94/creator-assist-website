@@ -23,6 +23,20 @@ import type {
 } from "@/lib/tracker";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+function isUuid(id: string) {
+  return /^[0-9a-f-]{36}$/i.test(id);
+}
+
+function saveFailure(message: string) {
+  if (message.includes("Could not save deliverables")) {
+    return "Could not save deliverables.";
+  }
+  if (message.includes("Could not save expenses")) {
+    return "Could not save expenses.";
+  }
+  return "Could not save content.";
+}
+
 function keptCurrency(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const code = value.trim().toUpperCase();
@@ -307,77 +321,45 @@ export async function upsertContentAction(
     const dealCurrency = isPaid
       ? (previousDealCurrency ?? freshCurrency)
       : null;
-    let update = supabase
-      .from("content_items")
-      .update({
-        title: item.title.trim(),
-        platform: item.platform,
-        niche: item.niche,
-        type: item.type,
-        brand_name: isPaid ? item.brandName : null,
-        stage: item.stage,
-        go_live_date: toTimestamp(item.goLiveDate),
-        shot_list: item.shotList,
-        notes: item.notes,
-        idea_title: item.ideaTitle,
-        fee_agreed: isPaid ? (item.deal?.feeAgreed ?? 0) : null,
-        currency: dealCurrency,
-        payment_terms: isPaid ? (item.deal?.paymentTerms ?? "net_30") : null,
-        date_delivered: isPaid ? toTimestamp(item.deal?.dateDelivered) : null,
-        date_invoiced: isPaid ? toTimestamp(item.deal?.dateInvoiced) : null,
-        date_paid: isPaid ? toTimestamp(item.deal?.datePaid) : null,
-      })
-      .eq("id", item.id);
-    if (profile.role === "agency" && !editable?.claimed) {
-      update = update.is("owner_id", null);
-    } else if (profile.role !== "agency") {
-      update = update.eq("owner_id", profile.id);
-    }
-    const { error } = await update;
-    if (error) return { error: "Could not save content." };
-
-    await supabase.from("content_deliverables").delete().eq("content_id", item.id);
-    await supabase.from("content_expenses").delete().eq("content_id", item.id);
-
-    if (isPaid && item.deal?.deliverables.length) {
-      const rows = item.deal.deliverables.map(
-        (row: TrackerDeliverable, index) => {
-          const base = {
-            content_id: item.id,
+    const deliverables =
+      isPaid && item.deal?.deliverables.length
+        ? item.deal.deliverables.map((row: TrackerDeliverable) => ({
+            id: isUuid(row.id) ? row.id : null,
             type: row.type,
             quantity: row.quantity,
             rate: row.rate,
-            sort_order: index,
-          };
-          return /^[0-9a-f-]{36}$/i.test(row.id)
-            ? { id: row.id, ...base }
-            : base;
-        },
-      );
-      const { error: dError } = await supabase
-        .from("content_deliverables")
-        .insert(rows);
-      if (dError) return { error: "Could not save deliverables." };
-    }
-
-    if (item.expenses.length) {
-      const rows = item.expenses.map((row: TrackerExpense, index) => {
-        const base = {
-          content_id: item.id,
-          category: row.category,
-          amount: row.amount,
-          note: row.note,
-          expense_date: row.date,
-          currency: previousExpenses.get(row.id) ?? freshCurrency,
-          sort_order: index,
-        };
-        return /^[0-9a-f-]{36}$/i.test(row.id) ? { id: row.id, ...base } : base;
-      });
-      const { error: eError } = await supabase
-        .from("content_expenses")
-        .insert(rows);
-      if (eError) return { error: "Could not save expenses." };
-    }
+          }))
+        : [];
+    const expenses = item.expenses.map((row: TrackerExpense) => ({
+      id: isUuid(row.id) ? row.id : null,
+      category: row.category,
+      amount: row.amount,
+      note: row.note,
+      expense_date: row.date,
+      currency: previousExpenses.get(row.id) ?? freshCurrency,
+    }));
+    const { error } = await supabase.rpc("save_content", {
+      p_id: item.id,
+      p_title: item.title.trim(),
+      p_platform: item.platform,
+      p_niche: item.niche,
+      p_type: item.type,
+      p_brand_name: isPaid ? item.brandName : null,
+      p_stage: item.stage,
+      p_go_live_date: toTimestamp(item.goLiveDate),
+      p_shot_list: item.shotList,
+      p_notes: item.notes,
+      p_idea_title: item.ideaTitle,
+      p_fee_agreed: isPaid ? (item.deal?.feeAgreed ?? 0) : null,
+      p_currency: dealCurrency,
+      p_payment_terms: isPaid ? (item.deal?.paymentTerms ?? "net_30") : null,
+      p_date_delivered: isPaid ? toTimestamp(item.deal?.dateDelivered) : null,
+      p_date_invoiced: isPaid ? toTimestamp(item.deal?.dateInvoiced) : null,
+      p_date_paid: isPaid ? toTimestamp(item.deal?.datePaid) : null,
+      p_deliverables: deliverables,
+      p_expenses: expenses,
+    });
+    if (error) return { error: saveFailure(error.message) };
 
     if (previous) {
       await recordContentChanges(
