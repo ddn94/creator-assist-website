@@ -45,7 +45,9 @@ export function CurrencySummaryCard({
             value={metric.value}
             footer={"\u00a0"}
             tone={metricTone[metric.tone]}
-            valueClassName={metric.emphasize ? "text-danger!" : ""}
+            valueClassName={
+              metric.valueClassName || (metric.emphasize ? "text-danger!" : "")
+            }
           />
         ))}
       </div>

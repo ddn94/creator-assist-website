@@ -3,10 +3,13 @@
 import { TrashIcon } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
+import { calendarDay } from "@/lib/calendarDay";
+import { ActivityFeed } from "@/components/ActivityFeed";
 import { BackLink } from "@/components/BackLink";
 import { showToast } from "@/components/Toast";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { CategoryCard } from "@/components/CategoryCard";
 import { CategoryPill } from "@/components/CategoryPill";
 import { DateField } from "@/components/DateField";
@@ -20,6 +23,7 @@ import { Text } from "@/components/Text";
 import { TextArea } from "@/components/TextArea";
 import { TextField } from "@/components/TextField";
 import { toDateInput } from "@/lib/timestamps";
+import { convertAmount } from "@/lib/fx";
 import {
   deleteContentAction,
   updateContentInvoiceAction,
@@ -47,6 +51,7 @@ import {
   type TrackerDeliverable,
   type TrackerExpense,
 } from "@/lib/tracker";
+import type { TalentActivityItem } from "@/lib/talent";
 
 const EMPTY_DEAL: TrackerDeal = {
   feeAgreed: 0,
@@ -65,11 +70,13 @@ type ContentDetailViewProps = {
   /**
    * talent: the owner edits everything.
    * agency: linked talent; only invoice dates and terms stay editable.
-   * record: agency logging content for someone who has not joined yet.
+   * record: a private card, or a deal the agency logged that both sides still edit.
    */
   mode?: "talent" | "agency" | "record";
   /** Connected talent who has been disconnected: show the deal, do not edit it. */
   dealLocked?: boolean;
+  /** Agency edits on this item. Talent tracker pages pass this. */
+  activity?: TalentActivityItem[];
 };
 
 export function ContentDetailView({
@@ -79,6 +86,7 @@ export function ContentDetailView({
   backHref = "/home/tracker",
   mode = "talent",
   dealLocked = false,
+  activity,
 }: ContentDetailViewProps) {
   return (
     <ContentDetailEditor
@@ -89,6 +97,7 @@ export function ContentDetailView({
       backHref={backHref}
       mode={mode}
       dealLocked={dealLocked}
+      activity={activity}
     />
   );
 }
@@ -100,6 +109,7 @@ function ContentDetailEditor({
   backHref,
   mode,
   dealLocked,
+  activity,
 }: {
   initial: TrackerDetail;
   platformOptions: { value: string; label: string }[];
@@ -107,6 +117,7 @@ function ContentDetailEditor({
   backHref: string;
   mode: "talent" | "agency" | "record";
   dealLocked: boolean;
+  activity?: TalentActivityItem[];
 }) {
   const router = useRouter();
   const [item, setItem] = useState(initial);
@@ -117,6 +128,11 @@ function ContentDetailEditor({
   const [invoiceError, setInvoiceError] = useState<string | null>(null);
   const isAgency = mode === "agency";
   const locked = isAgency;
+  const canDelete = mode === "talent" || (mode === "record" && !initial.creatorId);
+  const [removeTarget, setRemoveTarget] = useState<
+    "post" | { kind: "deliverable" | "expense"; id: string } | null
+  >(null);
+  const [removePending, setRemovePending] = useState(false);
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("section") !== "deal") {
@@ -141,7 +157,17 @@ function ContentDetailEditor({
 
   const isPaid = draftType === "paid_collab";
   const visibleDeal = isPaid ? (item.deal ?? EMPTY_DEAL) : null;
-  const totalExpenses = item.expenses.reduce((sum, e) => sum + e.amount, 0);
+  const dealCurrency = visibleDeal?.currency?.trim() || currency;
+  const totalExpenses = item.expenses.reduce(
+    (sum, expense) =>
+      sum +
+      convertAmount(
+        expense.amount,
+        expense.currency?.trim() || dealCurrency,
+        dealCurrency,
+      ),
+    0,
+  );
   const fee = visibleDeal?.feeAgreed ?? 0;
   const dealStatus = visibleDeal ? computeDealStatus(visibleDeal) : null;
   const dueDate = visibleDeal ? computeDueDate(visibleDeal) : null;
@@ -172,6 +198,7 @@ function ContentDetailEditor({
 
   function removeDeliverable(deliverableId: string) {
     if (!item.deal || isAgency) return;
+    setRemoveTarget(null);
     void commit(
       {
         ...item,
@@ -188,6 +215,7 @@ function ContentDetailEditor({
 
   function removeExpense(expenseId: string) {
     if (isAgency) return;
+    setRemoveTarget(null);
     void commit(
       {
         ...item,
@@ -197,15 +225,25 @@ function ContentDetailEditor({
     );
   }
 
-  async function handleDelete() {
-    if (isAgency) return;
-    const result = await deleteContentAction(item.id);
-    if (result.error) {
-      setSaveError(result.error);
+  async function confirmRemove() {
+    if (!removeTarget || removePending) return;
+    if (removeTarget === "post") {
+      if (!canDelete) return;
+      setRemovePending(true);
+      setSaveError(null);
+      const result = await deleteContentAction(item.id);
+      setRemovePending(false);
+      if (result.error) {
+        setSaveError(result.error);
+        return;
+      }
+      setRemoveTarget(null);
+      showToast("Content deleted.", "danger");
+      router.push(mode === "record" ? backHref : "/home/tracker");
       return;
     }
-    showToast("Content deleted.", "danger");
-    router.push(mode === "record" ? backHref : "/home/tracker");
+    if (removeTarget.kind === "deliverable") removeDeliverable(removeTarget.id);
+    else removeExpense(removeTarget.id);
   }
 
   async function handleDealSubmit(event: FormEvent<HTMLFormElement>) {
@@ -268,25 +306,35 @@ function ContentDetailEditor({
     }, { message: "Deal saved." });
   }
 
-  const money = (amount: number) => fmtMoney(amount, currency);
+  const money = (amount: number) => fmtMoney(amount, dealCurrency);
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <div className="mb-3 flex items-center justify-between">
+    <div
+      className={
+        activity
+          ? "lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(16rem,1fr)] lg:gap-x-8"
+          : "mx-auto max-w-3xl"
+      }
+    >
+      <div className="mb-3 flex items-center justify-between lg:col-start-1">
         <BackLink href={backHref} label="Back" />
         <button
           type="button"
           aria-label="Delete content item"
           title="Delete"
-          onClick={handleDelete}
-          disabled={locked}
+          onClick={() => {
+            if (!canDelete) return;
+            setSaveError(null);
+            setRemoveTarget("post");
+          }}
+          disabled={!canDelete}
           className="inline-flex size-10 cursor-pointer items-center justify-center rounded-full bg-card text-danger shadow-card transition-colors hover:bg-organic disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-card"
         >
           <TrashIcon size={18} weight="regular" aria-hidden />
         </button>
       </div>
 
-      <div className="mb-5">
+      <div className="mb-5 lg:col-start-1">
         <CategoryPill category={contentCategory(draftType)}>
           {contentPillLabel(draftType)}
         </CategoryPill>
@@ -300,6 +348,7 @@ function ContentDetailEditor({
         ) : null}
       </div>
 
+      <div className="min-w-0 lg:col-start-1">
       <Card className="mb-5">
         <Text variant="title" className="mb-3 text-base">
           Details
@@ -336,6 +385,7 @@ function ContentDetailEditor({
                       dateInvoiced: null,
                       datePaid: null,
                       deliverables: [],
+                      currency,
                     }
                   : null,
             }, { message: "Details have been saved." });
@@ -472,7 +522,7 @@ function ContentDetailEditor({
             className="grid grid-cols-1 gap-3 md:grid-cols-3"
             onSubmit={handleDealSubmit}
           >
-            <Field id="feeAgreed" label={`Fee agreed (${currency})`}>
+            <Field id="feeAgreed" label={`Fee agreed (${dealCurrency})`}>
               <TextField
                 id="feeAgreed"
                 name="feeAgreed"
@@ -558,8 +608,16 @@ function ContentDetailEditor({
             </Text>
             <DeliverableTable
               deliverables={visibleDeal.deliverables}
-              onRemove={locked ? undefined : removeDeliverable}
+              onRemove={
+                locked
+                  ? undefined
+                  : (id) => {
+                      setSaveError(null);
+                      setRemoveTarget({ kind: "deliverable", id });
+                    }
+              }
               variant="plain"
+              currency={dealCurrency}
             />
             {visibleDeal.deliverables.length > 0 &&
             deliverableSum !== visibleDeal.feeAgreed ? (
@@ -629,7 +687,7 @@ function ContentDetailEditor({
               </Field>
               <Field
                 id="rate"
-                label={`Rate (${currency} per unit)`}
+                label={`Rate (${dealCurrency} per unit)`}
                 className="min-w-0"
               >
                 <TextField
@@ -667,8 +725,16 @@ function ContentDetailEditor({
         </Text>
         <ExpenseTable
           expenses={item.expenses}
-          onRemove={locked ? undefined : removeExpense}
+          onRemove={
+            locked
+              ? undefined
+              : (id) => {
+                  setSaveError(null);
+                  setRemoveTarget({ kind: "expense", id });
+                }
+          }
           variant="plain"
+          currency={dealCurrency}
         />
         <form
           key={`expense-${formGeneration}`}
@@ -692,7 +758,8 @@ function ContentDetailEditor({
                   note: String(data.get("note") ?? "").trim() || null,
                   date:
                     String(data.get("date") ?? "") ||
-                    new Date().toISOString().slice(0, 10),
+                    calendarDay(new Date()),
+                  currency,
                 },
                 ...item.expenses,
               ],
@@ -797,6 +864,36 @@ function ContentDetailEditor({
             )}
           </Text>
         </Card>
+      ) : null}
+
+      <ConfirmModal
+        open={removeTarget !== null}
+        title={
+          removeTarget === "post"
+            ? "Delete this post"
+            : removeTarget?.kind === "deliverable"
+              ? "Remove this deliverable"
+              : "Remove this expense"
+        }
+        question={
+          removeTarget === "post"
+            ? `Are you sure you want to delete “${item.title}”?`
+            : removeTarget?.kind === "deliverable"
+              ? "Are you sure you want to remove this deliverable?"
+              : "Are you sure you want to remove this expense?"
+        }
+        confirmLabel={removeTarget === "post" ? "Delete" : "Remove"}
+        pendingLabel={removeTarget === "post" ? "Deleting…" : "Removing…"}
+        pending={removePending}
+        error={removeTarget === "post" ? saveError : null}
+        onClose={() => setRemoveTarget(null)}
+        onConfirm={() => void confirmRemove()}
+      />
+      </div>
+      {activity ? (
+        <aside className="mt-8 min-w-0 lg:col-start-2 lg:row-start-2 lg:row-span-2 lg:mt-0 lg:grid lg:grid-rows-subgrid">
+          <ActivityFeed items={activity} className="contents" />
+        </aside>
       ) : null}
     </div>
   );

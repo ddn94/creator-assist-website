@@ -11,6 +11,7 @@ import {
   buildAgencyPnlTalent,
 } from "@/lib/data/selectors";
 import type { PnlDateFilter } from "@/lib/pnlRange";
+import type { TalentStatus } from "@/lib/talent";
 import type { TrackerDetail } from "@/lib/tracker";
 
 type LinkedRow = {
@@ -18,6 +19,7 @@ type LinkedRow = {
   talentName: string;
   currency: string;
   talentId: string;
+  recordStatus?: TalentStatus;
 };
 
 type PnlDashboardProps = {

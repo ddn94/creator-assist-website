@@ -7,17 +7,12 @@ type PnlTalentTableProps = {
   className?: string;
 };
 
-const HEADERS = [
-  "Talent",
-  "Currency",
-  "Billed",
-  "Received",
-  "Outstanding",
-  "Overdue",
-] as const;
+const HEADERS = ["Talent", "Currency", "Revenue", "Expenses", "Profit"] as const;
 
-function dash(value: string | null) {
-  return value ?? "—";
+function profitClass(value: string) {
+  return value.includes("-")
+    ? "font-medium text-danger!"
+    : "font-medium text-primary-hover!";
 }
 
 export function PnlTalentTable({ rows, className = "" }: PnlTalentTableProps) {
@@ -41,7 +36,7 @@ export function PnlTalentTable({ rows, className = "" }: PnlTalentTableProps) {
         {rows.length === 0 ? (
           <div className="px-4 py-8 text-center">
             <Text variant="description">
-              No billed deals in this period.
+              No financial activity in this period.
             </Text>
           </div>
         ) : null}
@@ -58,21 +53,13 @@ export function PnlTalentTable({ rows, className = "" }: PnlTalentTableProps) {
             </div>
             <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
               <Text variant="caption" className="text-ink">
-                Billed {row.billed}
-              </Text>
-              <Text variant="caption" className="text-primary-hover">
-                Received {row.received}
+                Revenue {row.revenue}
               </Text>
               <Text variant="caption" className="text-ink">
-                Outstanding {row.outstanding}
+                Expenses {row.expenses}
               </Text>
-              <Text
-                variant="caption"
-                className={
-                  row.overdue ? "font-medium text-danger!" : "text-ink"
-                }
-              >
-                Overdue {dash(row.overdue)}
+              <Text variant="caption" className={profitClass(row.profit)}>
+                Profit {row.profit}
               </Text>
             </div>
           </div>
@@ -101,7 +88,7 @@ export function PnlTalentTable({ rows, className = "" }: PnlTalentTableProps) {
                   className="px-4 py-8 text-center"
                 >
                   <Text variant="description">
-                    No billed deals in this period.
+                    No financial activity in this period.
                   </Text>
                 </td>
               </tr>
@@ -126,29 +113,17 @@ export function PnlTalentTable({ rows, className = "" }: PnlTalentTableProps) {
                 </td>
                 <td className="px-3 py-3 whitespace-nowrap">
                   <Text variant="caption" className="text-ink!">
-                    {row.billed}
-                  </Text>
-                </td>
-                <td className="px-3 py-3 whitespace-nowrap">
-                  <Text variant="caption" className="text-primary-hover!">
-                    {row.received}
+                    {row.revenue}
                   </Text>
                 </td>
                 <td className="px-3 py-3 whitespace-nowrap">
                   <Text variant="caption" className="text-ink!">
-                    {row.outstanding}
+                    {row.expenses}
                   </Text>
                 </td>
                 <td className="px-3 py-3 last:pr-5 whitespace-nowrap">
-                  <Text
-                    variant="caption"
-                    className={
-                      row.overdue
-                        ? "font-medium text-danger!"
-                        : "text-ink!"
-                    }
-                  >
-                    {dash(row.overdue)}
+                  <Text variant="caption" className={profitClass(row.profit)}>
+                    {row.profit}
                   </Text>
                 </td>
               </tr>

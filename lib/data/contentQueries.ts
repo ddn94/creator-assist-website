@@ -37,6 +37,22 @@ export async function getContentById(id: string): Promise<TrackerDetail | null> 
   return mapContent(data as ContentRow);
 }
 
+/** Agency snapshot taken when this deal was disconnected from the record. */
+export async function getAgencyCopyId(
+  contentId: string,
+  recordId: string,
+): Promise<string | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("content_items")
+    .select("id")
+    .eq("agency_copy_of", contentId)
+    .eq("talent_record_id", recordId)
+    .maybeSingle();
+  if (error || typeof data?.id !== "string") return null;
+  return data.id;
+}
+
 type RosterContentRow = {
   id: string;
   name: string;

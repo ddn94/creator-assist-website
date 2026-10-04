@@ -18,6 +18,7 @@ type ExpenseTableProps = {
   onRemove?: (id: string) => void;
   variant?: DataTableVariant;
   className?: string;
+  currency?: string;
 };
 
 const COLUMNS =
@@ -28,8 +29,11 @@ export function ExpenseTable({
   onRemove,
   variant = "card",
   className = "",
+  currency = "USD",
 }: ExpenseTableProps) {
   const pad = dataTableRowPad(variant);
+  const money = (item: TrackerExpense) =>
+    fmtMoney(item.amount, item.currency?.trim() || currency);
 
   if (expenses.length === 0) {
     return (
@@ -64,7 +68,7 @@ export function ExpenseTable({
             </div>
             <div className="flex shrink-0 items-center gap-3">
               <Text variant="caption" className="font-medium text-ink">
-                {fmtMoney(item.amount)}
+                {money(item)}
               </Text>
               {onRemove ? (
                 <button
@@ -89,7 +93,7 @@ export function ExpenseTable({
               {item.note ?? "—"}
             </Text>
             <Text variant="caption" className="text-right text-ink">
-              {fmtMoney(item.amount)}
+              {money(item)}
             </Text>
             <div className="justify-self-end">
               {onRemove ? (

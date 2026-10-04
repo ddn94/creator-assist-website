@@ -10,6 +10,7 @@ import {
   formatDeliverables,
 } from "@/lib/data/format";
 import { fmtMoney, type TrackerDetail, type TrackerDeal } from "@/lib/tracker";
+import { moneyCode } from "@/lib/fx";
 import type { TalentStatus } from "@/lib/talent";
 
 type PaidDealSource = {
@@ -48,7 +49,7 @@ function paymentItemFromDeal(
     content: content.title,
     brand: content.brandName ?? "—",
     platform: content.platform,
-    fee: fmtMoney(deal.feeAgreed, currency),
+    fee: fmtMoney(deal.feeAgreed, moneyCode(deal.currency, currency)),
     talentName: extras.talentName,
     deliverables: formatDeliverables(deal.deliverables),
     contentHref: extras.contentHref,
@@ -89,8 +90,8 @@ export function buildAgencyPayments(
   }[],
   today = new Date(),
 ): PaymentItem[] {
-  return mapPaidDeals(rows, ({ content, deal, currency, talentName, recordStatus }) => {
-    const item = paymentItemFromDeal(
+  return mapPaidDeals(rows, ({ content, deal, currency, talentName }) =>
+    paymentItemFromDeal(
       "agency",
       content,
       deal,
@@ -101,8 +102,6 @@ export function buildAgencyPayments(
         contentHref: null,
       },
       today,
-    );
-    if (recordStatus === "disconnected") return { ...item, action: "none" };
-    return item;
-  });
+    ),
+  );
 }

@@ -20,6 +20,7 @@ type DeliverableTableProps = {
   onRemove?: (id: string) => void;
   variant?: DataTableVariant;
   className?: string;
+  currency?: string;
 };
 
 const COLUMNS = "grid-cols-[minmax(6rem,1.2fr)_4.5rem_5rem_5.5rem_4rem]";
@@ -29,8 +30,10 @@ export function DeliverableTable({
   onRemove,
   variant = "card",
   className = "",
+  currency = "USD",
 }: DeliverableTableProps) {
   const pad = dataTableRowPad(variant);
+  const money = (amount: number) => fmtMoney(amount, currency);
 
   if (deliverables.length === 0) {
     return (
@@ -61,12 +64,12 @@ export function DeliverableTable({
                 {DELIVERABLE_TYPE_LABELS[item.type]}
               </Text>
               <Text variant="caption" className="mt-0.5">
-                {item.quantity} × {fmtMoney(item.rate)}
+                {item.quantity} × {money(item.rate)}
               </Text>
             </div>
             <div className="flex shrink-0 items-center gap-3">
               <Text variant="caption" className="font-medium text-ink">
-                {fmtMoney(item.quantity * item.rate)}
+                {money(item.quantity * item.rate)}
               </Text>
               {onRemove ? (
                 <button
@@ -88,10 +91,10 @@ export function DeliverableTable({
               {item.quantity}
             </Text>
             <Text variant="caption" className="text-right text-ink">
-              {fmtMoney(item.rate)}
+              {money(item.rate)}
             </Text>
             <Text variant="caption" className="text-right font-medium text-ink">
-              {fmtMoney(item.quantity * item.rate)}
+              {money(item.quantity * item.rate)}
             </Text>
             <div className="justify-self-end">
               {onRemove ? (
@@ -119,7 +122,7 @@ export function DeliverableTable({
           variant="caption"
           className="font-semibold text-ink md:text-right"
         >
-          {fmtMoney(total)}
+          {money(total)}
         </Text>
         <span className="hidden md:block" />
       </DataTableFooter>
