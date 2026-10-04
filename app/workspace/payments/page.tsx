@@ -3,11 +3,12 @@ import { AppFrame } from "@/components/AppFrame";
 import { requireProfile } from "@/lib/auth/session";
 import { listAgencyLinkedContent } from "@/lib/data/contentQueries";
 import { buildAgencyPayments } from "@/lib/data/selectors";
+import { localToday } from "@/lib/localToday";
 
 export default async function WorkspacePaymentsPage() {
   await requireProfile("agency");
   const linked = await listAgencyLinkedContent();
-  const items = buildAgencyPayments(linked);
+  const items = buildAgencyPayments(linked, await localToday());
 
   return (
     <AppFrame

@@ -12,6 +12,7 @@ import {
   buildAgencyPayments,
 } from "@/lib/data/selectors";
 import { talentStatusTone, type TalentItem } from "@/lib/talent";
+import { localToday } from "@/lib/localToday";
 
 function rosterItems(items: TalentItem[]): RosterItem[] {
   return items.map((item) => ({
@@ -49,9 +50,10 @@ export default async function WorkspaceOverviewPage() {
   );
   const brand = profile.agency_name?.trim() || "Workspace";
   const homeCurrency = profile.currency?.trim() || "USD";
-  const moneyStats = buildAgencyOverviewMoney(linked, homeCurrency);
-  const attention = buildAgencyAttention(linked);
-  const payments = buildAgencyPayments(linked);
+  const today = await localToday();
+  const moneyStats = buildAgencyOverviewMoney(linked, homeCurrency, today);
+  const attention = buildAgencyAttention(linked, today);
+  const payments = buildAgencyPayments(linked, today);
 
   return (
     <AppFrame

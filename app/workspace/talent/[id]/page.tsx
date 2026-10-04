@@ -8,6 +8,7 @@ import { listContentChanges } from "@/lib/data/contentChanges";
 import { listContentForTalentRecord } from "@/lib/data/contentQueries";
 import { buildTalentDetailFromRecord } from "@/lib/data/selectors";
 import { contentPlatformOptions } from "@/lib/platforms";
+import { localToday } from "@/lib/localToday";
 import { createClient } from "@/lib/supabase/server";
 
 type TalentDetailPageProps = {
@@ -38,7 +39,7 @@ export default async function TalentDetailPage({
   const talent = buildTalentDetailFromRecord(
     record,
     content,
-    new Date(),
+    await localToday(),
     avatars.get(record.id) ?? null,
     activity,
   );
@@ -48,11 +49,13 @@ export default async function TalentDetailPage({
       <TalentDetailView
         talent={talent}
         inviteCode={record.invite_code}
+        declinedAt={record.declined_at}
         recordEmail={record.email}
         backHref={fromOverview ? "/workspace" : "/workspace/talent"}
         backLabel={fromOverview ? "Overview" : "Talent"}
         fromOverview={fromOverview}
         canAddContent={record.status === "record"}
+        joined={record.linked_user_id != null}
         platformOptions={contentPlatformOptions(
           record.platform ? [record.platform] : [],
         )}

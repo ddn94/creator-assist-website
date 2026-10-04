@@ -1,3 +1,4 @@
+import { calendarDay } from "@/lib/calendarDay";
 import {
   displayDate,
   displayShortDate,
@@ -171,7 +172,7 @@ export function withInvoice(
 /** Optimistic talent “mark paid”. */
 export function markPaid(
   item: PaymentItem,
-  today = new Date().toISOString().slice(0, 10),
+  today = calendarDay(new Date()),
 ): PaymentItem {
   const fields = paymentRowFields(
     {
@@ -195,7 +196,7 @@ export function markPaid(
 export function markInvoiced(
   item: PaymentItem,
   terms: PaymentTerms,
-  today = new Date().toISOString().slice(0, 10),
+  today = calendarDay(new Date()),
 ): PaymentItem {
   const fields = paymentRowFields(
     {
