@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { MobileBottomNav } from "@/components/MobileBottomNav";
+import { MobileBottomNav, mobileNavRole } from "@/components/MobileBottomNav";
 import { Navbar, type NavItem } from "@/components/Navbar";
 import { PageHeader } from "@/components/PageHeader";
 
@@ -32,7 +32,7 @@ export function PageWrapper({
   navItems,
   children,
 }: PageWrapperProps) {
-  const talentMobileNav = brand === "Creator Assist";
+  const mobileNav = mobileNavRole(navItems);
   const hasAdminNav = navItems.some((item) => item.href.startsWith("/admin"));
 
   return (
@@ -45,12 +45,12 @@ export function PageWrapper({
         userEmail={userEmail}
         avatarUrl={avatarUrl}
         profileHref={profileHref}
-        hideMobileMenu={talentMobileNav && !hasAdminNav}
+        hideMobileMenu={Boolean(mobileNav) && !hasAdminNav}
       />
       <main
         className={[
           "mx-auto w-full max-w-7xl px-3 py-4 sm:px-4 sm:py-6 lg:px-5",
-          talentMobileNav
+          mobileNav
             ? "pb-[calc(9rem+env(safe-area-inset-bottom))] md:pb-6"
             : "",
         ]
@@ -71,7 +71,7 @@ export function PageWrapper({
           children
         )}
       </main>
-      {talentMobileNav ? <MobileBottomNav /> : null}
+      {mobileNav ? <MobileBottomNav role={mobileNav} /> : null}
     </div>
   );
 }
