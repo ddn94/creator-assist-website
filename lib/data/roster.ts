@@ -1,4 +1,5 @@
 import { daysBetween, displayShortDate } from "@/lib/data/format";
+import { moneyCode, totalInCurrency } from "@/lib/fx";
 import type { LinkedTalentMeta } from "@/lib/data/linkedTalent";
 import type { TalentRecord } from "@/lib/data/talentRecords";
 import { toTalentItem } from "@/lib/data/talentItem";
@@ -49,15 +50,18 @@ export function buildTalentRoster(
     const openDeals = items.filter(
       (item) => item.type === "paid_collab" && item.deal && !item.deal.datePaid,
     );
-    const outstanding = openDeals.reduce(
-      (sum, item) => sum + (item.deal?.feeAgreed ?? 0),
-      0,
+    const outstanding = totalInCurrency(
+      openDeals.map((item) => ({
+        amount: item.deal?.feeAgreed ?? 0,
+        currency: item.deal?.currency,
+      })),
+      currency,
     );
 
     return {
       ...base,
       liveDeals: String(openDeals.length),
-      outstanding: fmtMoney(outstanding, currency),
+      outstanding: fmtMoney(outstanding.amount, outstanding.currency),
     };
   });
 }
@@ -83,7 +87,9 @@ export function buildTalentDetailFromRecord(
       content: item.title,
       brand: item.brandName,
       platform: item.platform,
-      fee: item.deal ? fmtMoney(item.deal.feeAgreed, currency) : null,
+      fee: item.deal
+        ? fmtMoney(item.deal.feeAgreed, moneyCode(item.deal.currency, currency))
+        : null,
       stage: STAGE_LABELS[item.stage as Stage] ?? item.stage,
       payment,
       paymentLabel: payment && fields ? fields.statusLabel : null,
@@ -95,33 +101,40 @@ export function buildTalentDetailFromRecord(
     const fields = paymentRowFields(item.deal, displayShortDate, today);
     return [{ item, fields }];
   });
-  const invoiceSource =
-    withFields.find(({ fields }) => fields.status === "overdue") ??
-    withFields.find(({ fields }) => fields.status === "awaiting_payment") ??
-    null;
-
-  let invoicing: TalentInvoicing | null = null;
-  if (invoiceSource) {
-    const { item, fields } = invoiceSource;
-    const deal = item.deal!;
-    const fee = fmtMoney(deal.feeAgreed, currency);
-    const dueIso = computeDueDate(deal);
-    invoicing = {
-      contentId: item.id,
-      dealTitle: item.title,
-      summary: `${fee} · delivered ${fields.delivered ?? "—"}`,
-      dateInvoiced: fields.dateInvoicedIso ?? "",
-      paymentTerms: deal.paymentTerms,
-      datePaid: fields.datePaidIso ?? "",
-      dueNote: fields.due
-        ? `Due ${fields.due}${
-            fields.status === "overdue" && dueIso
-              ? ` · ${daysBetween(dueIso, today)} days overdue`
-              : ""
-          }`
-        : "Not invoiced",
-    };
-  }
+  const invoicing = withFields
+    .filter(
+      ({ fields }) =>
+        fields.status === "overdue" || fields.status === "awaiting_payment",
+    )
+    .sort((a, b) => {
+      if (a.fields.status !== b.fields.status) {
+        return a.fields.status === "overdue" ? -1 : 1;
+      }
+      const aDue = a.item.deal ? computeDueDate(a.item.deal) : null;
+      const bDue = b.item.deal ? computeDueDate(b.item.deal) : null;
+      if (aDue && bDue && aDue !== bDue) return aDue < bDue ? -1 : 1;
+      return 0;
+    })
+    .map(({ item, fields }): TalentInvoicing => {
+      const deal = item.deal!;
+      const fee = fmtMoney(deal.feeAgreed, moneyCode(deal.currency, currency));
+      const dueIso = computeDueDate(deal);
+      return {
+        contentId: item.id,
+        dealTitle: item.title,
+        summary: `${fee} · delivered ${fields.delivered ?? "—"}`,
+        dateInvoiced: fields.dateInvoicedIso ?? "",
+        paymentTerms: deal.paymentTerms,
+        datePaid: fields.datePaidIso ?? "",
+        dueNote: fields.due
+          ? `Due ${fields.due}${
+              fields.status === "overdue" && dueIso
+                ? ` · ${daysBetween(dueIso, today)} days overdue`
+                : ""
+            }`
+          : "Not invoiced",
+      };
+    });
 
   return {
     ...base,

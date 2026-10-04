@@ -98,8 +98,12 @@ export async function turnIdeaIntoContentAction(
       .from("ideas")
       .select("*")
       .eq("id", ideaId)
+      .eq("owner_id", ownerId)
       .maybeSingle();
     if (!idea) return { error: "Idea not found." };
+    if (typeof idea.linked_content_id === "string" && idea.linked_content_id) {
+      return { id: idea.linked_content_id };
+    }
 
     const created = await addContentAction({
       title: idea.title,
@@ -113,11 +117,28 @@ export async function turnIdeaIntoContentAction(
     });
     if ("error" in created) return created;
 
-    await supabase
+    const { data: linked, error: linkError } = await supabase
       .from("ideas")
       .update({ status: "used", linked_content_id: created.id })
       .eq("id", ideaId)
-      .eq("owner_id", ownerId);
+      .eq("owner_id", ownerId)
+      .is("linked_content_id", null)
+      .select("id")
+      .maybeSingle();
+
+    if (linkError || !linked) {
+      await supabase.rpc("delete_owned_content", { p_id: created.id });
+      const { data: current } = await supabase
+        .from("ideas")
+        .select("linked_content_id")
+        .eq("id", ideaId)
+        .eq("owner_id", ownerId)
+        .maybeSingle();
+      if (typeof current?.linked_content_id === "string" && current.linked_content_id) {
+        return { id: current.linked_content_id };
+      }
+      return { error: "Could not turn this idea into a post." };
+    }
 
     revalidateContent([`/home/tracker/${created.id}`]);
     return { id: created.id };
@@ -126,7 +147,7 @@ export async function turnIdeaIntoContentAction(
       error:
         error instanceof Error
           ? error.message
-          : "Could not turn idea into content.",
+          : "Could not turn this idea into a post.",
     };
   }
 }

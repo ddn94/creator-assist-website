@@ -67,7 +67,7 @@ export type TalentDetail = TalentItem & {
   firstName: string;
   notes: string | null;
   deals: TalentDeal[];
-  invoicing: TalentInvoicing | null;
+  invoicing: TalentInvoicing[];
   activity: TalentActivityItem[];
 };
 

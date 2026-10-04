@@ -12,6 +12,7 @@ export type TalentRecord = {
   invite_code: string | null;
   linked_user_id: string | null;
   disconnected_at: string | null;
+  declined_at: string | null;
   platform: string | null;
   handle: string | null;
   followers: number | null;
@@ -26,9 +27,9 @@ export type TalentRecord = {
 function asRecord(row: Record<string, unknown>): TalentRecord {
   const status: TalentStatus =
     row.status === "active" ||
-    row.status === "invited" ||
-    row.status === "disconnected" ||
-    row.status === "requested"
+      row.status === "invited" ||
+      row.status === "disconnected" ||
+      row.status === "requested"
       ? row.status
       : "record";
   return {
@@ -42,6 +43,7 @@ function asRecord(row: Record<string, unknown>): TalentRecord {
       typeof row.linked_user_id === "string" ? row.linked_user_id : null,
     disconnected_at:
       typeof row.disconnected_at === "string" ? row.disconnected_at : null,
+    declined_at: typeof row.declined_at === "string" ? row.declined_at : null,
     platform: typeof row.platform === "string" ? row.platform : null,
     handle: typeof row.handle === "string" ? row.handle : null,
     followers: typeof row.followers === "number" ? row.followers : null,
@@ -155,8 +157,8 @@ export async function getMyConnectionRequests(): Promise<ConnectionRequest[]> {
     (agencies ?? []).map((row) => [
       String(row.id),
       (typeof row.agency_name === "string" && row.agency_name.trim()) ||
-        (typeof row.display_name === "string" && row.display_name.trim()) ||
-        "An agency",
+      (typeof row.display_name === "string" && row.display_name.trim()) ||
+      "An agency",
     ]),
   );
 

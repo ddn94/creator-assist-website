@@ -14,31 +14,43 @@ import type { TalentInvoicing } from "@/lib/talent";
 import { PAYMENT_TERM_OPTIONS, type PaymentTerms } from "@/lib/tracker";
 
 type InvoicingCardProps = {
-  invoicing: TalentInvoicing;
+  items: TalentInvoicing[];
   className?: string;
   readOnly?: boolean;
 };
 
 export function InvoicingCard({
-  invoicing,
+  items,
   className = "",
   readOnly = false,
 }: InvoicingCardProps) {
+  if (items.length === 0) return null;
+
   return (
-    <InvoicingEditor
-      key={`${invoicing.contentId}:${invoicing.dateInvoiced}:${invoicing.paymentTerms}:${invoicing.datePaid}:${invoicing.dueNote}`}
-      invoicing={invoicing}
-      className={className}
-      readOnly={readOnly}
-    />
+    <section className={className}>
+      <Text variant="title" className="mb-3 text-lg">
+        Invoicing
+      </Text>
+      <div className="space-y-3">
+        {items.map((invoicing) => (
+          <InvoicingEditor
+            key={`${invoicing.contentId}:${invoicing.dateInvoiced}:${invoicing.paymentTerms}:${invoicing.datePaid}:${invoicing.dueNote}`}
+            invoicing={invoicing}
+            readOnly={readOnly}
+          />
+        ))}
+      </div>
+    </section>
   );
 }
 
 function InvoicingEditor({
   invoicing,
-  className,
   readOnly = false,
-}: InvoicingCardProps) {
+}: {
+  invoicing: TalentInvoicing;
+  readOnly?: boolean;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [invoiced, setInvoiced] = useState(toDateInput(invoicing.dateInvoiced));
@@ -68,11 +80,7 @@ function InvoicingEditor({
   }
 
   return (
-    <section className={className}>
-      <Text variant="title" className="mb-3 text-lg">
-        Invoicing
-      </Text>
-      <div className="rounded-card border border-card-border bg-card p-4 shadow-card sm:p-5">
+    <div className="rounded-card border border-card-border bg-card p-4 shadow-card sm:p-5">
         <button
           type="button"
           aria-expanded={open}
@@ -89,6 +97,11 @@ function InvoicingEditor({
             <Text variant="caption" className="mt-1">
               {invoicing.summary}
             </Text>
+            {open ? null : (
+              <Text variant="caption" className="mt-1">
+                {invoicing.dueNote}
+              </Text>
+            )}
           </div>
           {readOnly ? null : (
             <span
@@ -171,7 +184,6 @@ function InvoicingEditor({
             </div>
           </>
         ) : null}
-      </div>
-    </section>
+    </div>
   );
 }

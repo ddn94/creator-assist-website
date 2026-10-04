@@ -2,8 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/Button";
 import { FormAlert } from "@/components/FormAlert";
+import { Modal } from "@/components/Modal";
 import { SettingsRow } from "@/components/SettingsRow";
+import { Text } from "@/components/Text";
 import { showToast } from "@/components/Toast";
 import { disconnectTalentLinkAction } from "@/lib/data/talentActions";
 
@@ -15,16 +18,26 @@ type DisconnectLinkProps = {
 
 export function DisconnectLink({ recordId, name, side }: DisconnectLinkProps) {
   const router = useRouter();
+  const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const talent = side === "talent";
+  const title = talent ? `Disconnect from ${name}` : `Disconnect ${name}`;
+  const question = talent
+    ? `Are you sure you want to disconnect from ${name}?`
+    : `Are you sure you want to disconnect ${name}?`;
+  const detail = talent
+    ? `Past deals stay with ${name}. A new agency does not see them. Anything you add after this is private until you connect with someone else.`
+    : "Past deals stay shared. Anything they add after disconnecting is private.";
 
-  async function onClick() {
+  function ask() {
     if (pending) return;
-    const message =
-      side === "talent"
-        ? `Disconnect from ${name}? They keep deals from before today. Anything you add after this stays private.`
-        : `Disconnect ${name}? You keep deals from before today. Anything they add after this stays private.`;
-    if (!window.confirm(message)) return;
+    setError(null);
+    setOpen(true);
+  }
+
+  async function confirm() {
+    if (pending) return;
     setPending(true);
     setError(null);
     const result = await disconnectTalentLinkAction(recordId);
@@ -33,44 +46,82 @@ export function DisconnectLink({ recordId, name, side }: DisconnectLinkProps) {
       setPending(false);
       return;
     }
-    showToast(
-      side === "talent"
-        ? `Disconnected from ${name}.`
-        : `${name} was disconnected.`,
-    );
+    setOpen(false);
+    showToast(talent ? `Disconnected from ${name}.` : `${name} was disconnected.`);
     router.refresh();
     setPending(false);
   }
+
+  const dialog = (
+    <Modal
+      open={open}
+      onClose={() => {
+        if (!pending) setOpen(false);
+      }}
+      title={title}
+      footer={
+        <>
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            className="w-full sm:w-auto"
+            disabled={pending}
+            onClick={() => setOpen(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            className="w-full bg-danger hover:bg-danger sm:w-auto"
+            disabled={pending}
+            onClick={() => void confirm()}
+          >
+            {pending ? "Disconnecting…" : "Disconnect"}
+          </Button>
+        </>
+      }
+    >
+      <Text variant="body" className="text-sm">
+        {question}
+      </Text>
+      <Text variant="caption" className="mt-2 leading-relaxed">
+        {detail}
+      </Text>
+      {error ? (
+        <div className="mt-3">
+          <FormAlert error={error} />
+        </div>
+      ) : null}
+    </Modal>
+  );
 
   if (side === "agency") {
     return (
       <div className="text-right">
         <button
           type="button"
-          onClick={() => void onClick()}
+          onClick={ask}
           disabled={pending}
           className="cursor-pointer font-sans text-sm font-medium text-danger disabled:opacity-40"
         >
-          {pending ? "Disconnecting…" : "Disconnect"}
+          Disconnect
         </button>
-        {error ? (
-          <div className="mt-2">
-            <FormAlert error={error} />
-          </div>
-        ) : null}
+        {dialog}
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
+    <>
       <SettingsRow
-        title={pending ? "Disconnecting…" : `Disconnect from ${name}`}
-        description="They keep deals from before today. New content stays private."
+        title={`Disconnect from ${name}`}
+        description="Past deals stay with them. A new agency does not see them."
         danger
-        onClick={() => void onClick()}
+        onClick={ask}
       />
-      {error ? <FormAlert error={error} /> : null}
-    </div>
+      {dialog}
+    </>
   );
 }

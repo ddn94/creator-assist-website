@@ -136,6 +136,7 @@ export function PaymentList({ mode, items, className = "" }: PaymentListProps) {
     const result = await markContentPaidAction(id);
     if (result.error) {
       replaceRow(current);
+      showToast(result.error, "danger");
       return;
     }
     showToast(`“${current.content}” was marked as paid.`);
@@ -149,6 +150,7 @@ export function PaymentList({ mode, items, className = "" }: PaymentListProps) {
     const result = await markContentInvoicedAction(id, terms as PaymentTerms);
     if (result.error) {
       replaceRow(current);
+      showToast(result.error, "danger");
       return;
     }
     showToast(`“${current.content}” was marked as invoiced.`);

@@ -18,11 +18,18 @@ function activityLabel(
   record: TalentRecord,
   lastSeenAt?: string | null,
 ): string {
+  if (
+    record.declined_at &&
+    (record.status === "record" || record.status === "disconnected")
+  ) {
+    return `Declined on ${formatShortDayMonth(record.declined_at)}`;
+  }
+
   if (lastSeenAt) return formatRelativeActivity(lastSeenAt);
 
   if (record.status === "invited") {
     const when = record.updated_at || record.created_at;
-    return `Invite sent on ${formatShortDayMonth(when)}`;
+    return `Invited on ${formatShortDayMonth(when)}`;
   }
 
   if (record.status === "requested") {

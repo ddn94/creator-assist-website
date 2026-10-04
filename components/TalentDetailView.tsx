@@ -5,9 +5,9 @@ import { TrashIcon } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { BackLink } from "@/components/BackLink";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { DealTable } from "@/components/DealTable";
 import { DisconnectLink } from "@/components/DisconnectLink";
-import { FormAlert } from "@/components/FormAlert";
 import { InvoicingCard } from "@/components/InvoicingCard";
 import { RecordContentForm } from "@/components/RecordContentForm";
 import { showToast } from "@/components/Toast";
@@ -20,29 +20,44 @@ import type { TalentDetail } from "@/lib/talent";
 type TalentDetailViewProps = {
   talent: TalentDetail;
   inviteCode?: string | null;
+  declinedAt?: string | null;
   recordEmail?: string | null;
   backHref?: string;
   backLabel?: string;
   fromOverview?: boolean;
   canAddContent?: boolean;
+  joined?: boolean;
   platformOptions?: { value: string; label: string }[];
 };
 
 export function TalentDetailView({
   talent,
   inviteCode = null,
+  declinedAt = null,
   recordEmail = null,
   backHref = "/workspace/talent",
   backLabel = "Talent",
   fromOverview = false,
   canAddContent = false,
+  joined = false,
   platformOptions = [],
 }: TalentDetailViewProps) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const canDelete = talent.status === "record";
+  const canDelete =
+    !joined &&
+    (talent.status === "record" ||
+      talent.status === "invited" ||
+      talent.status === "requested");
   const canDisconnect = talent.status === "active";
+
+  function askDelete() {
+    if (!canDelete || pending) return;
+    setError(null);
+    setConfirming(true);
+  }
 
   async function handleDelete() {
     if (!canDelete || pending) return;
@@ -54,6 +69,7 @@ export function TalentDetailView({
       setPending(false);
       return;
     }
+    setConfirming(false);
     showToast(`“${talent.name}” was removed.`, "danger");
     router.push(backHref);
   }
@@ -68,7 +84,7 @@ export function TalentDetailView({
               type="button"
               aria-label="Delete record"
               title="Delete"
-              onClick={() => void handleDelete()}
+              onClick={askDelete}
               disabled={pending}
               className="inline-flex size-10 cursor-pointer items-center justify-center rounded-full bg-card text-danger shadow-card transition-colors hover:bg-organic disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-card"
             >
@@ -79,18 +95,36 @@ export function TalentDetailView({
             <DisconnectLink recordId={talent.id} name={talent.name} side="agency" />
           ) : null}
         </div>
-        {error ? <FormAlert error={error} /> : null}
         <TalentProfileHeader talent={talent} />
+        <ConfirmModal
+          open={canDelete && confirming}
+          title={`Remove ${talent.name}`}
+          question={`Are you sure you want to remove ${talent.name}?`}
+          detail={
+            talent.status === "invited"
+              ? "This cancels the invite code and deletes this card and every deal logged on it."
+              : talent.status === "requested"
+                ? "This cancels the connection request and deletes this card and every deal logged on it."
+                : "This deletes the private card and every deal logged on it."
+          }
+          confirmLabel="Remove"
+          pendingLabel="Removing…"
+          pending={pending}
+          error={error}
+          onClose={() => setConfirming(false)}
+          onConfirm={() => void handleDelete()}
+        />
       </div>
 
       {talent.status === "record" ||
-      talent.status === "invited" ||
-      talent.status === "disconnected" ||
-      talent.status === "requested" ? (
+        talent.status === "invited" ||
+        talent.status === "disconnected" ||
+        talent.status === "requested" ? (
         <TalentInviteCard
           id={talent.id}
           email={recordEmail ?? talent.email}
           inviteCode={inviteCode}
+          declinedAt={declinedAt}
           status={talent.status}
         />
       ) : null}
@@ -111,13 +145,13 @@ export function TalentDetailView({
             talentId={talent.id}
             fromOverview={fromOverview}
           />
-          {talent.invoicing ? (
+          {talent.invoicing.length > 0 ? (
             <InvoicingCard
-              invoicing={talent.invoicing}
+              items={talent.invoicing}
               readOnly={talent.status === "disconnected"}
             />
           ) : null}
-          {talent.deals.length === 0 && !talent.invoicing ? (
+          {talent.deals.length === 0 && talent.invoicing.length === 0 ? (
             <Text variant="description">No deals yet for this talent.</Text>
           ) : null}
         </div>
@@ -126,6 +160,19 @@ export function TalentDetailView({
           <ActivityFeed items={talent.activity} />
         </aside>
       </div>
+
+      {talent.status === "active" ? (
+        <Text variant="caption">
+          Note: Only {talent.firstName} can add a new deal. You can still edit deals
+          you already logged.
+        </Text>
+      ) : talent.status === "invited" || talent.status === "requested" ? (
+        <Text variant="caption">
+          Note: You can still edit deals you already logged. You can’t add another
+          while this {talent.status === "invited" ? "invite" : "request"} is
+          out.
+        </Text>
+      ) : null}
     </div>
   );
 }
