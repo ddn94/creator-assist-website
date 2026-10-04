@@ -23,6 +23,8 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  new_id uuid;
 begin
   insert into public.content_items (
     owner_id,
@@ -49,7 +51,7 @@ begin
     'Example',
     'paid_collab',
     'Sample brand',
-    'delivered',
+    case when p_owner is null then 'delivered' else 'concept' end,
     'Example deal so Payments and P&L are not empty. Delete it anytime.',
     1000,
     'net_30',
@@ -57,6 +59,17 @@ begin
     now(),
     now(),
     p_agency_visible
+  )
+  returning id into new_id;
+
+  insert into public.content_deliverables (content_id, type, quantity, rate)
+  values (new_id, 'video', 1, 1000);
+
+  insert into public.content_expenses (
+    content_id, category, amount, note, expense_date
+  )
+  values (
+    new_id, 'editor', 150, 'Example expense. Delete it anytime.', current_date
   );
 end;
 $$;
