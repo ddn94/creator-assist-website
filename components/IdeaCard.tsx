@@ -4,6 +4,7 @@ import { PencilSimpleIcon, TrashIcon } from "@phosphor-icons/react";
 import { useState } from "react";
 import { Button } from "@/components/Button";
 import { CategoryCard } from "@/components/CategoryCard";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { CategoryPill } from "@/components/CategoryPill";
 import { IdeaEditModal } from "@/components/IdeaEditModal";
 import { Text } from "@/components/Text";
@@ -19,6 +20,7 @@ type IdeaCardProps = {
   onUpdate: (idea: IdeaItem) => void;
   onDelete: (id: string) => void;
   onTurnIntoContent: (id: string) => void;
+  turning?: boolean;
   tourAnchor?: boolean;
 };
 
@@ -27,9 +29,11 @@ export function IdeaCard({
   onUpdate,
   onDelete,
   onTurnIntoContent,
+  turning = false,
   tourAnchor = false,
 }: IdeaCardProps) {
   const [editing, setEditing] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const pending = idea.id.startsWith("pending-");
   const category = ideaStatusCategory(idea.status);
   const border = {
@@ -86,10 +90,13 @@ export function IdeaCard({
               type="button"
               size="sm"
               className="h-10"
-              disabled={pending}
-              onClick={() => onTurnIntoContent(idea.id)}
+              disabled={pending || turning}
+              onClick={() => {
+                if (turning) return;
+                onTurnIntoContent(idea.id);
+              }}
             >
-              Turn into content →
+              {turning ? "Turning into content…" : "Turn into content →"}
             </Button>
           )}
           <div className="ml-auto flex shrink-0 items-center gap-1">
@@ -97,7 +104,7 @@ export function IdeaCard({
               type="button"
               aria-label="Delete"
               disabled={pending}
-              onClick={() => onDelete(idea.id)}
+              onClick={() => setConfirming(true)}
               className="inline-flex size-9 cursor-pointer items-center justify-center rounded-full text-muted transition-colors hover:bg-card hover:text-danger disabled:cursor-not-allowed disabled:opacity-40"
             >
               <TrashIcon size={18} weight="regular" aria-hidden />
@@ -115,6 +122,17 @@ export function IdeaCard({
         </div>
       </CategoryCard>
 
+      <ConfirmModal
+        open={confirming}
+        title="Delete this idea"
+        question={`Are you sure you want to delete “${idea.title}”?`}
+        confirmLabel="Delete"
+        onClose={() => setConfirming(false)}
+        onConfirm={() => {
+          setConfirming(false);
+          onDelete(idea.id);
+        }}
+      />
       <IdeaEditModal
         idea={idea}
         open={editing}

@@ -1,8 +1,9 @@
 "use client";
 
 import { MagnifyingGlassIcon } from "@phosphor-icons/react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { calendarDay } from "@/lib/calendarDay";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { FilterPills } from "@/components/FilterPills";
@@ -37,6 +38,8 @@ export function IdeasBoard({ ideas }: IdeasBoardProps) {
   const [status, setStatus] = useState<string>("all");
   const [query, setQuery] = useState("");
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [turningId, setTurningId] = useState<string | null>(null);
+  const turningRef = useRef<string | null>(null);
   const serverKey = ideas
     .map(
       (idea) =>
@@ -92,7 +95,7 @@ export function IdeasBoard({ ideas }: IdeasBoardProps) {
       body: payload.body,
       tags: parseTags(payload.tags),
       status: nextStatus,
-      createdAt: new Date().toISOString().slice(0, 10),
+      createdAt: calendarDay(new Date()),
       linkedContentItemId: null,
     };
     const previous = rows;
@@ -210,6 +213,7 @@ export function IdeasBoard({ ideas }: IdeasBoardProps) {
             key={idea.id}
             idea={idea}
             tourAnchor={index === 0}
+            turning={turningId === idea.id}
             onUpdate={(next) => {
               if (next.id.startsWith("pending-")) return;
               const previous = rows;
@@ -248,14 +252,22 @@ export function IdeasBoard({ ideas }: IdeasBoardProps) {
               });
             }}
             onTurnIntoContent={async (id) => {
+              if (turningRef.current) return;
+              turningRef.current = id;
+              setTurningId(id);
+              setSaveError(null);
               const idea = rows.find((row) => row.id === id);
               const result = await turnIdeaIntoContentAction(id);
-              if ("id" in result) {
-                showToast(
-                  `Content added from your idea “${idea?.title ?? "Idea"}”.`,
-                );
-                router.push(`/home/tracker/${result.id}`);
-              } else router.refresh();
+              turningRef.current = null;
+              setTurningId(null);
+              if ("error" in result) {
+                setSaveError(result.error);
+                return;
+              }
+              showToast(
+                `Content added from your idea “${idea?.title ?? "Idea"}”.`,
+              );
+              router.push(`/home/tracker/${result.id}`);
             }}
           />
         ))}

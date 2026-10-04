@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { LinkSimpleIcon } from "@phosphor-icons/react";
 import { Avatar } from "@/components/Avatar";
 import { CategoryCard } from "@/components/CategoryCard";
+import { ConnectionRequests } from "@/components/ConnectionRequests";
 import { CategoryPill } from "@/components/CategoryPill";
 import { StatCard } from "@/components/StatCard";
 import { Text } from "@/components/Text";
@@ -10,6 +12,7 @@ import type {
   ContinueFeedItem,
   OverviewStats,
 } from "@/lib/data/selectors";
+import type { ConnectionRequest } from "@/lib/data/talentRecords";
 import { JUMP_TILES, greeting } from "@/lib/home";
 
 type TalentOverviewProps = {
@@ -17,6 +20,8 @@ type TalentOverviewProps = {
   avatarUrl?: string | null;
   stats: OverviewStats;
   feed: ContinueFeedItem[];
+  agencyName?: string | null;
+  connectionRequests?: ConnectionRequest[];
 };
 
 export function TalentOverview({
@@ -24,6 +29,8 @@ export function TalentOverview({
   avatarUrl,
   stats,
   feed,
+  agencyName,
+  connectionRequests = [],
 }: TalentOverviewProps) {
   const displayName = userName.trim() || "there";
   const firstName = displayName.split(/\s+/)[0] || displayName;
@@ -32,7 +39,7 @@ export function TalentOverview({
     <div>
       <div className="mb-5 flex items-center gap-3.5">
         <Avatar name={displayName} size="lg" src={avatarUrl} />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <Text variant="heading" className="truncate text-2xl md:text-3xl">
             {greeting()}, {firstName}
           </Text>
@@ -40,7 +47,26 @@ export function TalentOverview({
             {stats.inProgress} in progress · {stats.paymentsDue} payments due
           </Text>
         </div>
+        {agencyName ? (
+          <div className="flex items-center gap-2 rounded-full bg-collab px-3.5 py-3">
+            <LinkSimpleIcon
+              size={16}
+              weight="bold"
+              className="shrink-0 text-primary"
+              aria-hidden
+            />
+            <Text as="span" variant="caption" className="truncate text-sm">
+              Connected with{" "}
+              <span className="font-medium text-ink">{agencyName}</span>
+            </Text>
+          </div>
+        ) : null}
       </div>
+
+      <ConnectionRequests
+        requests={connectionRequests}
+        currentAgency={agencyName}
+      />
 
       <div className="mb-6 grid grid-cols-2 gap-3">
         <StatCard label="Revenue (paid)" value={stats.revenue} tone="collab" />

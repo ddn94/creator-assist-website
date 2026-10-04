@@ -56,7 +56,7 @@ const agencySteps: TourStep[] = [
     href: "/workspace/talent",
     matches: (pathname) => pathname === "/workspace/talent",
     target: "tour-roster",
-    fallback: "tour-roster-fallback",
+    fallback: "tour-roster",
     title: "Talent",
     body: "This is someone on your roster. You can track a record before they join.",
   },
@@ -66,7 +66,7 @@ const agencySteps: TourStep[] = [
     matches: (pathname) =>
       /^\/workspace\/talent\/(?!new$)[^/]+$/.test(pathname),
     target: "tour-deal",
-    fallback: "tour-deal-fallback",
+    fallback: "tour-deal",
     title: "Deal",
     body: "This is a deal logged for them. After they create an account, it shows up in theirs.",
   },
@@ -86,7 +86,7 @@ const agencySteps: TourStep[] = [
     target: "tour-pnl",
     fallback: "tour-pnl-fallback",
     title: "P&L",
-    body: "This is profit and loss across the roster: what’s billed, received, and still out.",
+    body: "This is profit and loss across the roster: revenue, expenses, and what’s left.",
   },
 ];
 

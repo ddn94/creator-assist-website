@@ -12,10 +12,10 @@ type ActivityFeedProps = {
 export function ActivityFeed({ items, className = "" }: ActivityFeedProps) {
   return (
     <section className={className}>
-      <Text variant="title" className="mb-3 text-lg">
+      <Text variant="title" className="mb-3 text-lg lg:self-end">
         Recent changes
       </Text>
-      <div className="rounded-card border border-card-border bg-card p-4 shadow-card sm:p-5">
+      <div className="rounded-card border border-card-border bg-card p-4 shadow-card sm:p-5 lg:self-start">
         {items.length > 0 ? (
           <ul className="space-y-3.5">
             {items.map((item) => (

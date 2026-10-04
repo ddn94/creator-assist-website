@@ -7,11 +7,36 @@ import { Button } from "@/components/Button";
 import { Text } from "@/components/Text";
 import { completeProductTour } from "@/lib/auth/actions";
 import type { UserRole } from "@/lib/auth/types";
+import { appHomePath } from "@/lib/auth/access";
 import { TOUR_HREF_KEY, TOUR_STEP_KEY, tourSteps } from "@/lib/tour";
 
-type Box = { top: number; left: number; width: number; height: number };
+type Box = {
+  stepId: string;
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+  radius: number;
+};
 
-const PAD = 8;
+function cornerRadius(node: HTMLElement): number {
+  const value = Number.parseFloat(getComputedStyle(node).borderTopLeftRadius);
+  return Number.isFinite(value) ? value : 0;
+}
+
+/** Card radius, or the shared radius of a group of cards (the P&L stats). */
+function spotlightRadius(node: HTMLElement): number {
+  const own = cornerRadius(node);
+  if (own > 0) return own;
+  const kids = [...node.children].filter(
+    (child): child is HTMLElement => child instanceof HTMLElement,
+  );
+  if (kids.length === 0) return 0;
+  const radii = kids.map(cornerRadius);
+  const first = radii[0];
+  if (first > 0 && radii.every((radius) => radius === first)) return first;
+  return 0;
+}
 
 function findVisible(name: string): HTMLElement | null {
   const nodes = document.querySelectorAll<HTMLElement>(`[data-tour="${name}"]`);
@@ -70,10 +95,12 @@ export function ProductTour({ role }: { role: UserRole }) {
       }
       const rect = node.getBoundingClientRect();
       setBox({
-        top: Math.max(8, rect.top - PAD),
-        left: Math.max(8, rect.left - PAD),
-        width: Math.min(rect.width + PAD * 2, window.innerWidth - 16),
-        height: rect.height + PAD * 2,
+        stepId: step.id,
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+        radius: spotlightRadius(node),
       });
     },
     [pathname, step],
@@ -81,33 +108,42 @@ export function ProductTour({ role }: { role: UserRole }) {
 
   useEffect(() => {
     if (!ready || closed) return;
-    const timers = [0, 120, 320].map((delay, attempt) =>
-      window.setTimeout(() => measure(attempt === 0), delay),
-    );
+    let attempts = 0;
+    measure(true);
+    const timer = window.setInterval(() => {
+      attempts += 1;
+      const node =
+        step && step.matches(pathname)
+          ? (findVisible(step.target) ?? findVisible(step.fallback))
+          : null;
+      measure(false);
+      if (node || attempts >= 40) window.clearInterval(timer);
+    }, 50);
     function onMove() {
       measure(false);
     }
     window.addEventListener("resize", onMove);
     window.addEventListener("scroll", onMove, true);
     return () => {
-      timers.forEach((timer) => window.clearTimeout(timer));
+      window.clearInterval(timer);
       window.removeEventListener("resize", onMove);
       window.removeEventListener("scroll", onMove, true);
     };
   }, [ready, closed, measure]);
 
-  const finish = useCallback(async () => {
+  const finish = useCallback(async (goHome = false) => {
     setClosed(true);
     sessionStorage.removeItem(TOUR_STEP_KEY);
     sessionStorage.removeItem(TOUR_HREF_KEY);
     await completeProductTour();
-    router.refresh();
-  }, [router]);
+    if (goHome) router.push(appHomePath(role));
+    else router.refresh();
+  }, [role, router]);
 
   function next() {
     if (!step) return;
     if (index >= steps.length - 1) {
-      void finish();
+      void finish(true);
       return;
     }
     const node = findVisible(step.target);
@@ -130,26 +166,24 @@ export function ProductTour({ role }: { role: UserRole }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [ready, closed, finish]);
 
-  if (!ready || closed || !step || !step.matches(pathname) || typeof document === "undefined") {
+  const placed = box && box.stepId === step?.id ? box : null;
+
+  if (
+    !ready ||
+    closed ||
+    !step ||
+    !step.matches(pathname) ||
+    !placed ||
+    typeof document === "undefined"
+  ) {
     return null;
   }
 
-  const tip = placeTip(box, role === "talent");
+  const tip = placeTip(placed, role === "talent");
 
   return createPortal(
     <div className="fixed inset-0 z-[90]" role="dialog" aria-modal="true" aria-label={step.title}>
-      <Dimmer box={box} />
-      {box ? (
-        <div
-          className="pointer-events-none fixed z-[91] rounded-card ring-2 ring-primary"
-          style={{
-            top: box.top,
-            left: box.left,
-            width: box.width,
-            height: box.height,
-          }}
-        />
-      ) : null}
+      <Dimmer box={placed} />
       <div
         className="fixed z-[92] w-[18rem] max-w-[calc(100vw-2rem)] rounded-card border border-card-border bg-card p-4 shadow-card"
         style={{ top: tip.top, left: tip.left }}
@@ -197,22 +231,38 @@ function placeTip(box: Box | null, talent: boolean): { top: number; left: number
 }
 
 function Dimmer({ box }: { box: Box | null }) {
-  const shade = "bg-ink/50";
-  if (!box) return <div className={`fixed inset-0 ${shade}`} />;
-  const right = Math.max(0, box.left);
-  const bottom = box.top + box.height;
+  if (!box) return <div className="fixed inset-0 bg-ink/50" />;
+  const shade = "rgba(32, 37, 43, 0.5)";
   return (
     <>
-      <div className={`fixed left-0 right-0 top-0 ${shade}`} style={{ height: box.top }} />
+      <svg className="pointer-events-none fixed inset-0 h-full w-full" aria-hidden>
+        <defs>
+          <mask id="tour-spotlight">
+            <rect width="100%" height="100%" fill="white" />
+            <rect
+              x={box.left}
+              y={box.top}
+              width={box.width}
+              height={box.height}
+              rx={box.radius}
+              ry={box.radius}
+              fill="black"
+            />
+          </mask>
+        </defs>
+        <rect width="100%" height="100%" fill={shade} mask="url(#tour-spotlight)" />
+      </svg>
       <div
-        className={`fixed left-0 ${shade}`}
-        style={{ top: box.top, width: right, height: box.height }}
+        className="pointer-events-none fixed"
+        style={{
+          top: box.top,
+          left: box.left,
+          width: box.width,
+          height: box.height,
+          borderRadius: box.radius,
+          boxShadow: "0 14px 36px rgba(32, 37, 43, 0.28)",
+        }}
       />
-      <div
-        className={`fixed right-0 ${shade}`}
-        style={{ top: box.top, left: box.left + box.width, height: box.height }}
-      />
-      <div className={`fixed left-0 right-0 bottom-0 ${shade}`} style={{ top: bottom }} />
     </>
   );
 }

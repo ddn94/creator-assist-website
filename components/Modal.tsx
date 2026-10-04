@@ -69,7 +69,7 @@ export function Modal({
           .filter(Boolean)
           .join(" ")}
       >
-        <div className="flex items-start justify-between gap-3 border-b border-card-border px-4 py-4 sm:px-5">
+        <div className="flex items-center justify-between gap-3 border-b border-card-border px-4 py-4 sm:px-5">
           <div className="min-w-0">
             <Text id={titleId} variant="title" className="text-lg">
               {title}
