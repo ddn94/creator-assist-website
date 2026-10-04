@@ -33,20 +33,21 @@ In the [Supabase dashboard](https://supabase.com/dashboard):
 
 ## 2. Run the SQL in both projects
 
-For **each** project:
+These four files create the finished database the first time they run. Use them on a **new** project only. A project that already has the tables should be left as it is.
 
-1. Open **SQL Editor → New query**.
-2. Paste the full file `supabase/migrations/20260923120000_auth.sql`.
-3. Run it once.
-4. Paste and run `supabase/migrations/20260923200000_content.sql` (content tracker, ideas, deliverables, expenses, and agency read access to linked talent profiles — requires auth migration first).
-5. Paste and run `supabase/migrations/20260929180000_record_content.sql` (agency can log content on a private record; signup claims those rows onto the new talent account).
+For **each** new project, open **SQL Editor → New query** and run these in order:
+
+1. `supabase/migrations/20261005000000_accounts.sql` — profiles, waitlist, invite lookup, profile photos
+2. `supabase/migrations/20261005000100_roster.sql` — talent cards, invites, connection requests, one email per card
+3. `supabase/migrations/20261005000200_content.sql` — posts, deals, ideas, who can see them, the frozen copy after a split, and saving a post with its line items in one step
+4. `supabase/migrations/20261005000300_signup_examples.sql` — account creation, linking a roster card, and the sample deal and idea
 
 That creates:
 
 - `waitlist` — email plus a unique invite code
 - `profiles` — app user row (role, name, photo, flexible onboarding jsonb). Not `auth.users`
 - `talent_records` — agency roster rows. A record is not an account. An invite adds a unique code. Signup links the account and marks the row active
-- `content_items`, `content_deliverables`, `content_expenses`, `ideas` — talent tracker and ideas. An agency can log content on a private record; when that person signs up, those items move onto their account. For linked talent, the agency can view content and update invoices
+- `content_items`, `content_deliverables`, `content_expenses`, `ideas`, `content_changes` — talent tracker, ideas, and change history. An agency can log content on a private record; when that person signs up, those items move onto their account. After a split, the agency keeps a frozen copy
 - `avatars` storage bucket
 - the trigger that creates a profile only when the invite code matches
 

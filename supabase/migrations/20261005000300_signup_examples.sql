@@ -1,17 +1,9 @@
--- One example paid collab (and, for a solo talent, one idea) on signup.
--- A talent who joins from an agency invite gets a private example. The
--- agency cannot read that row. The agency's own example is a record-only
--- person plus one paid collab, which the agency can see.
--- An agency can also delete a record-only talent. Content on that record
--- is removed with it. Invited and joined talent stay.
--- Run after 20260929180000_record_content.sql.
-
-alter table public.content_items
-  add column if not exists agency_visible boolean not null default true;
-
--- ---------------------------------------------------------------------------
--- Example rows
--- ---------------------------------------------------------------------------
+-- Signup and starter examples.
+-- Creating an account saves the profile, uses the invite, links a roster
+-- card when the code belongs to one, and moves deals logged on that card
+-- onto the new account. A sample deal (and, for a waitlist talent, a
+-- sample idea) is added so Payments and P&L are not empty.
+-- Run last, after 20261005000200_content.sql.
 
 create or replace function public.seed_example_collab(
   p_owner uuid,
@@ -25,7 +17,20 @@ set search_path = public
 as $$
 declare
   new_id uuid;
+  money_code text;
 begin
+  select nullif(trim(p.currency), '') into money_code
+  from public.profiles p
+  where p.id = p_owner;
+
+  if money_code is null and p_record is not null then
+    select nullif(trim(t.currency), '') into money_code
+    from public.talent_records t
+    where t.id = p_record;
+  end if;
+
+  money_code := coalesce(money_code, 'USD');
+
   insert into public.content_items (
     owner_id,
     talent_record_id,
@@ -37,11 +42,13 @@ begin
     stage,
     notes,
     fee_agreed,
+    currency,
     payment_terms,
     date_delivered,
     date_invoiced,
     date_paid,
-    agency_visible
+    agency_visible,
+    agency_created
   )
   values (
     p_owner,
@@ -54,11 +61,13 @@ begin
     case when p_owner is null then 'delivered' else 'concept' end,
     'Example deal so Payments and P&L are not empty. Delete it anytime.',
     1000,
+    money_code,
     'net_30',
     now(),
     now(),
     now(),
-    p_agency_visible
+    p_agency_visible,
+    p_record is not null
   )
   returning id into new_id;
 
@@ -66,20 +75,13 @@ begin
   values (new_id, 'video', 1, 1000);
 
   insert into public.content_expenses (
-    content_id, category, amount, note, expense_date
+    content_id, category, amount, note, expense_date, currency
   )
   values (
-    new_id, 'editor', 150, 'Example expense. Delete it anytime.', current_date
+    new_id, 'editor', 150, 'Example expense. Delete it anytime.', current_date, money_code
   );
 end;
 $$;
-
-revoke all on function public.seed_example_collab(uuid, uuid, boolean) from public;
-revoke all on function public.seed_example_collab(uuid, uuid, boolean) from anon, authenticated;
-
--- ---------------------------------------------------------------------------
--- Signup
--- ---------------------------------------------------------------------------
 
 create or replace function public.handle_new_user()
 returns trigger
@@ -220,133 +222,11 @@ begin
 end;
 $$;
 
--- ---------------------------------------------------------------------------
--- Agency cannot read a private example
--- ---------------------------------------------------------------------------
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
 
-drop policy if exists content_select_own_or_agency on public.content_items;
-create policy content_select_own_or_agency
-  on public.content_items
-  for select
-  to authenticated
-  using (
-    owner_id = (select auth.uid())
-    or (
-      agency_visible
-      and public.is_agency_of_owner(owner_id)
-    )
-    or (
-      agency_visible
-      and public.agency_owns_record(talent_record_id)
-    )
-  );
-
-drop policy if exists content_update_own_or_agency on public.content_items;
-create policy content_update_own_or_agency
-  on public.content_items
-  for update
-  to authenticated
-  using (
-    owner_id = (select auth.uid())
-    or (
-      agency_visible
-      and public.is_agency_of_owner(owner_id)
-    )
-    or (
-      owner_id is null
-      and agency_visible
-      and public.agency_owns_record(talent_record_id)
-    )
-  )
-  with check (
-    owner_id = (select auth.uid())
-    or (
-      agency_visible
-      and public.is_agency_of_owner(owner_id)
-    )
-    or (
-      owner_id is null
-      and agency_visible
-      and public.agency_owns_record(talent_record_id)
-    )
-  );
-
-drop policy if exists deliverables_select on public.content_deliverables;
-create policy deliverables_select
-  on public.content_deliverables
-  for select
-  to authenticated
-  using (
-    exists (
-      select 1 from public.content_items c
-      where c.id = content_id
-        and (
-          c.owner_id = (select auth.uid())
-          or (
-            c.agency_visible
-            and public.is_agency_of_owner(c.owner_id)
-          )
-          or (
-            c.agency_visible
-            and public.agency_owns_record(c.talent_record_id)
-          )
-        )
-    )
-  );
-
-drop policy if exists expenses_select on public.content_expenses;
-create policy expenses_select
-  on public.content_expenses
-  for select
-  to authenticated
-  using (
-    exists (
-      select 1 from public.content_items c
-      where c.id = content_id
-        and (
-          c.owner_id = (select auth.uid())
-          or (
-            c.agency_visible
-            and public.is_agency_of_owner(c.owner_id)
-          )
-          or (
-            c.agency_visible
-            and public.agency_owns_record(c.talent_record_id)
-          )
-        )
-    )
-  );
-
--- ---------------------------------------------------------------------------
--- Delete a record-only talent
--- ---------------------------------------------------------------------------
-
-create or replace function public.agency_delete_record(p_id uuid)
-returns void
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  uid uuid := auth.uid();
-begin
-  if not exists (
-    select 1 from public.profiles where id = uid and role = 'agency'
-  ) then
-    raise exception 'Only an agency can remove a record';
-  end if;
-
-  delete from public.talent_records
-  where id = p_id
-    and agency_id = uid
-    and status = 'record'
-    and linked_user_id is null;
-
-  if not found then
-    raise exception 'Only a record that has not been invited can be removed';
-  end if;
-end;
-$$;
-
-revoke all on function public.agency_delete_record(uuid) from public;
-grant execute on function public.agency_delete_record(uuid) to authenticated;
+revoke all on function public.seed_example_collab(uuid, uuid, boolean) from public;
+revoke all on function public.seed_example_collab(uuid, uuid, boolean) from anon, authenticated;
+revoke all on function public.handle_new_user() from public;
+grant execute on function public.handle_new_user() to supabase_auth_admin;

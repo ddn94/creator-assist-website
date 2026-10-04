@@ -1,5 +1,99 @@
--- One email, one card on this agency's roster.
--- A second card is refused. Reconnecting the original card is unchanged.
+-- Roster: talent cards and how an agency and a talent connect.
+-- A card is not an account. Status is record, invited, requested,
+-- active, or disconnected. One email can sit on one card per agency.
+-- Run after 20261005000000_accounts.sql.
+
+-- ---------------------------------------------------------------------------
+-- Table
+-- ---------------------------------------------------------------------------
+
+create table public.talent_records (
+  id uuid primary key default gen_random_uuid(),
+  agency_id uuid not null references public.profiles (id) on delete cascade,
+  name text not null,
+  email text,
+  status text not null default 'record'
+    check (status in ('record', 'invited', 'active', 'disconnected', 'requested')),
+  invite_code text unique,
+  linked_user_id uuid references public.profiles (id) on delete set null,
+  request_user_id uuid references public.profiles (id) on delete set null,
+  connected_at timestamptz,
+  disconnected_at timestamptz,
+  declined_at timestamptz,
+  platform text,
+  handle text,
+  followers integer,
+  niche text,
+  notes text,
+  location text,
+  currency text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index talent_records_agency_id_idx on public.talent_records (agency_id);
+
+-- First time a card becomes active, remember when the link started.
+-- A later reconnect keeps the original connected_at.
+create or replace function public.stamp_connected_at()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if new.status = 'active'
+     and new.linked_user_id is not null
+     and new.connected_at is null then
+    new.connected_at := now();
+  end if;
+  return new;
+end;
+$$;
+
+create trigger talent_records_stamp_connected
+  before update of status, linked_user_id on public.talent_records
+  for each row execute function public.stamp_connected_at();
+
+-- ---------------------------------------------------------------------------
+-- Who can see a linked person
+-- ---------------------------------------------------------------------------
+
+-- Live link only. Writes and new content use this.
+create or replace function public.is_agency_of_owner(p_owner uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.talent_records t
+    where t.agency_id = (select auth.uid())
+      and t.linked_user_id = p_owner
+      and t.status = 'active'
+  );
+$$;
+
+create or replace function public.agency_can_read_talent_profile(p_profile uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.talent_records t
+    where t.agency_id = (select auth.uid())
+      and t.linked_user_id = p_profile
+      and t.status in ('active', 'disconnected')
+  );
+$$;
+
+-- ---------------------------------------------------------------------------
+-- One email, one card
+-- ---------------------------------------------------------------------------
 
 create or replace function public.roster_name_for_email(
   p_agency uuid,
@@ -26,9 +120,7 @@ as $$
   limit 1;
 $$;
 
-revoke all on function public.roster_name_for_email(uuid, text, uuid) from public;
-revoke all on function public.roster_name_for_email(uuid, text, uuid) from anon, authenticated;
-
+-- Save as a record never looks up an account. Invite does.
 create or replace function public.agency_add_talent(
   p_name text,
   p_email text,
@@ -284,3 +376,91 @@ begin
   return code;
 end;
 $$;
+
+-- A card they never joined can be removed. A joined card stays.
+create or replace function public.agency_delete_record(p_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  uid uuid := auth.uid();
+begin
+  if not exists (
+    select 1 from public.profiles where id = uid and role = 'agency'
+  ) then
+    raise exception 'Only an agency can remove a record';
+  end if;
+
+  delete from public.talent_records
+  where id = p_id
+    and agency_id = uid
+    and status in ('record', 'invited', 'requested')
+    and linked_user_id is null;
+
+  if not found then
+    raise exception 'Only a card that has not been joined can be removed';
+  end if;
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- Access
+-- ---------------------------------------------------------------------------
+
+alter table public.talent_records enable row level security;
+
+create policy talent_records_select_own
+  on public.talent_records
+  for select
+  to authenticated
+  using (agency_id = (select auth.uid()));
+
+create policy talent_records_select_self
+  on public.talent_records
+  for select
+  to authenticated
+  using (
+    linked_user_id = (select auth.uid())
+    or request_user_id = (select auth.uid())
+  );
+
+create policy profiles_select_linked_talent
+  on public.profiles
+  for select
+  to authenticated
+  using (public.agency_can_read_talent_profile(id));
+
+create policy profiles_select_my_agency
+  on public.profiles
+  for select
+  to authenticated
+  using (
+    exists (
+      select 1
+      from public.talent_records t
+      where t.agency_id = profiles.id
+        and t.status in ('active', 'disconnected', 'requested')
+        and (
+          t.linked_user_id = (select auth.uid())
+          or t.request_user_id = (select auth.uid())
+        )
+    )
+  );
+
+grant select on public.talent_records to authenticated;
+
+revoke all on function public.is_agency_of_owner(uuid) from public;
+revoke all on function public.agency_can_read_talent_profile(uuid) from public;
+revoke all on function public.roster_name_for_email(uuid, text, uuid) from public;
+revoke all on function public.roster_name_for_email(uuid, text, uuid) from anon, authenticated;
+revoke all on function public.agency_add_talent(text, text, text, text, text, integer, text, text) from public;
+revoke all on function public.agency_invite_talent(uuid, text) from public;
+revoke all on function public.agency_delete_record(uuid) from public;
+
+grant execute on function public.is_agency_of_owner(uuid) to authenticated;
+grant execute on function public.agency_can_read_talent_profile(uuid) to authenticated;
+grant execute on function public.agency_add_talent(text, text, text, text, text, integer, text, text) to authenticated;
+grant execute on function public.agency_invite_talent(uuid, text) to authenticated;
+grant execute on function public.agency_delete_record(uuid) to authenticated;
