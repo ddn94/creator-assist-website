@@ -37,25 +37,30 @@ export function TalentOverview({
 
   return (
     <div>
-      <div className="mb-5 flex items-center gap-3.5">
-        <Avatar name={displayName} size="lg" src={avatarUrl} />
-        <div className="min-w-0 flex-1">
-          <Text variant="heading" className="truncate text-2xl md:text-3xl">
-            {greeting()}, {firstName}
-          </Text>
-          <Text variant="caption" className="mt-0.5 text-sm">
-            {stats.inProgress} in progress · {stats.paymentsDue} payments due
-          </Text>
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3.5">
+        <div className="flex min-w-0 items-center gap-3.5 sm:flex-1">
+          <Avatar name={displayName} size="lg" src={avatarUrl} />
+          <div className="min-w-0">
+            <Text
+              variant="heading"
+              className="text-2xl! leading-tight text-balance md:truncate md:text-3xl!"
+            >
+              {greeting()}, {firstName}
+            </Text>
+            <Text variant="caption" className="mt-0.5 text-sm! leading-snug">
+              {stats.inProgress} in progress · {stats.paymentsDue} payments due
+            </Text>
+          </div>
         </div>
         {agencyName ? (
-          <div className="flex items-center gap-2 rounded-full bg-collab px-3.5 py-3">
+          <div className="flex w-fit max-w-full items-center gap-2 rounded-full bg-collab px-3.5 py-2.5 sm:max-w-sm sm:shrink-0 sm:py-3">
             <LinkSimpleIcon
               size={16}
               weight="bold"
               className="shrink-0 text-primary"
               aria-hidden
             />
-            <Text as="span" variant="caption" className="truncate text-sm">
+            <Text as="span" variant="caption" className="min-w-0 text-sm! leading-snug sm:truncate">
               Connected with{" "}
               <span className="font-medium text-ink">{agencyName}</span>
             </Text>

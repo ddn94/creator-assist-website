@@ -4,9 +4,10 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CameraIcon } from "@phosphor-icons/react";
 import { Avatar } from "@/components/Avatar";
+import { Button } from "@/components/Button";
 import { showToast } from "@/components/Toast";
 import { Text } from "@/components/Text";
-import { setAvatarPath } from "@/lib/auth/actions";
+import { clearAvatar, setAvatarPath } from "@/lib/auth/actions";
 import { avatarObjectPath } from "@/lib/auth/avatar";
 import { createClient } from "@/lib/supabase/client";
 
@@ -23,6 +24,8 @@ export function ProfilePhoto({ userId, name, src }: ProfilePhotoProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [removedSrc, setRemovedSrc] = useState<string | null>(null);
+  const shown = src && src === removedSrc ? null : src;
 
   async function onFile(file: File | undefined) {
     if (!file) return;
@@ -61,6 +64,22 @@ export function ProfilePhoto({ userId, name, src }: ProfilePhotoProps) {
     }
 
     showToast("Photo updated.");
+    setRemovedSrc(null);
+    router.refresh();
+    setPending(false);
+  }
+
+  async function onRemove() {
+    setError(null);
+    setPending(true);
+    const result = await clearAvatar();
+    if (result.error) {
+      setError(result.error);
+      setPending(false);
+      return;
+    }
+    setRemovedSrc(src);
+    showToast("Photo removed.");
     router.refresh();
     setPending(false);
   }
@@ -68,14 +87,14 @@ export function ProfilePhoto({ userId, name, src }: ProfilePhotoProps) {
   return (
     <div className="flex flex-col items-center">
       <div className="relative inline-flex">
-        <Avatar name={name} size="xl" src={src} />
+        <Avatar name={name} size="xl" src={shown} />
         <button
           type="button"
           className="absolute -right-0.5 -bottom-0.5 flex size-8 items-center justify-center rounded-full bg-primary text-on-primary ring-2 ring-background outline-none hover:bg-primary-hover disabled:opacity-60"
           aria-label={
             pending
-              ? "Uploading photo"
-              : src
+              ? "Updating photo"
+              : shown
                 ? "Change profile photo"
                 : "Upload profile photo"
           }
@@ -96,6 +115,17 @@ export function ProfilePhoto({ userId, name, src }: ProfilePhotoProps) {
           void onFile(file);
         }}
       />
+      {shown ? (
+        <Button
+          type="button"
+          variant="link"
+          className="mt-2"
+          disabled={pending}
+          onClick={() => void onRemove()}
+        >
+          Remove photo
+        </Button>
+      ) : null}
       {error ? (
         <Text variant="caption" className="mt-2 text-danger">
           {error}

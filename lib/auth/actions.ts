@@ -383,3 +383,20 @@ export async function setAvatarPath(path: string): Promise<{ error: string | nul
   revalidatePath("/", "layout");
   return { error: null };
 }
+
+export async function clearAvatar(): Promise<{ error: string | null }> {
+  if (!hasSupabaseEnv()) return supabaseSetupError();
+  const profile = await getProfile();
+  if (!profile) return { error: "Sign in to update your photo." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("profiles")
+    .update({ avatar_path: null })
+    .eq("id", profile.id);
+  if (error) return { error: "Could not remove your photo. Try again." };
+
+  await supabase.storage.from("avatars").remove([avatarObjectPath(profile.id)]);
+  revalidatePath("/", "layout");
+  return { error: null };
+}
