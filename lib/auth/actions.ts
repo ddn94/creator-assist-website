@@ -20,6 +20,7 @@ import type { AuthFormState, UserRole } from "@/lib/auth/types";
 import { avatarObjectPath } from "@/lib/auth/avatar";
 import { hasSupabaseEnv, withSupabaseAuthAction, supabaseSetupError } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
+import { flashToast } from "@/lib/toastFlash";
 
 async function origin() {
   const h = await headers();
@@ -90,7 +91,6 @@ export const signUp = withSupabaseAuthAction(
     );
     const password = String(formData.get("password") ?? "");
     const inviteCode = normalizeCode(String(formData.get("invite") ?? ""));
-    const rosterSize = String(formData.get("rosterSize") ?? "").trim();
 
     if (!inviteCode) return { error: "Enter your invite code.", message: null };
     if (!email) return { error: "Enter your email.", message: null };
@@ -129,7 +129,6 @@ export const signUp = withSupabaseAuthAction(
         data: {
           invite_code: inviteCode,
           role: kind === "talent" ? "talent" : role,
-          roster_size: role === "agency" ? rosterSize : "",
         },
       },
     });
@@ -208,6 +207,44 @@ export const requestPasswordReset = withSupabaseAuthAction(
       message:
         "If an account exists for that email, a reset link is on its way.",
     };
+  },
+);
+
+export const changePassword = withSupabaseAuthAction(
+  async (_prev, formData): Promise<AuthFormState> => {
+    const current = String(formData.get("current") ?? "");
+    const password = String(formData.get("password") ?? "");
+    const confirm = String(formData.get("confirm") ?? "");
+    const profile = await getProfile();
+    if (!profile) {
+      return { error: "Sign in to change your password.", message: null };
+    }
+    if (!current) {
+      return { error: "Enter your current password.", message: null };
+    }
+    if (password.length < 8) {
+      return { error: "Use at least 8 characters.", message: null };
+    }
+    if (password !== confirm) {
+      return { error: "Passwords don’t match.", message: null };
+    }
+
+    const supabase = await createClient();
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: profile.email,
+      password: current,
+    });
+    if (signInError) {
+      return { error: "Current password is incorrect.", message: null };
+    }
+
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) {
+      return { error: "Could not update your password. Try again.", message: null };
+    }
+
+    await flashToast("Password updated.");
+    redirect(profile.role === "agency" ? "/workspace/profile" : "/home/profile");
   },
 );
 
