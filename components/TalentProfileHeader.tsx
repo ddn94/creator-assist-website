@@ -48,17 +48,12 @@ export function TalentProfileHeader({
             {meta}
           </Text>
           {notes ? (
-            <div className="mt-3">
-              <Text variant="caption" className="font-medium text-ink">
-                Notes
-              </Text>
-              <Text
-                variant="description"
-                className="mt-1 whitespace-pre-wrap text-sm leading-relaxed"
-              >
-                {notes}
-              </Text>
-            </div>
+            <Text
+              variant="caption"
+              className="mt-1.5 whitespace-pre-wrap leading-relaxed"
+            >
+              {notes}
+            </Text>
           ) : null}
         </div>
       </div>

@@ -12,6 +12,7 @@ import {
   buildAgencyPayments,
 } from "@/lib/data/selectors";
 import { talentStatusTone, type TalentItem } from "@/lib/talent";
+import { localToday } from "@/lib/localToday";
 
 function rosterItems(items: TalentItem[]): RosterItem[] {
   return items.map((item) => ({
@@ -29,7 +30,12 @@ function talentFooter(items: TalentItem[]) {
   const active = items.filter((item) => item.status === "active").length;
   const invited = items.filter((item) => item.status === "invited").length;
   const record = items.filter((item) => item.status === "record").length;
-  return `${active} active · ${invited} invited · ${record} record`;
+  const disconnected = items.filter((item) => item.status === "disconnected").length;
+  const requested = items.filter((item) => item.status === "requested").length;
+  const summary = `${active} active · ${invited} invited · ${record} record`;
+  return [summary, disconnected ? `${disconnected} disconnected` : "", requested ? `${requested} requested` : ""]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 export default async function WorkspaceOverviewPage() {
@@ -44,9 +50,10 @@ export default async function WorkspaceOverviewPage() {
   );
   const brand = profile.agency_name?.trim() || "Workspace";
   const homeCurrency = profile.currency?.trim() || "USD";
-  const moneyStats = buildAgencyOverviewMoney(linked, homeCurrency);
-  const attention = buildAgencyAttention(linked);
-  const payments = buildAgencyPayments(linked);
+  const today = await localToday();
+  const moneyStats = buildAgencyOverviewMoney(linked, homeCurrency, today);
+  const attention = buildAgencyAttention(linked, today);
+  const payments = buildAgencyPayments(linked, today);
 
   return (
     <AppFrame

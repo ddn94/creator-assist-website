@@ -3,8 +3,10 @@ import { ContentDetailView } from "@/components/ContentDetailView";
 import { AppFrame } from "@/components/AppFrame";
 import { asAnswers, readPlatforms } from "@/lib/auth/profileAnswers";
 import { requireProfile } from "@/lib/auth/session";
+import { listContentChanges } from "@/lib/data/contentChanges";
 import { getContentById } from "@/lib/data/contentQueries";
 import { contentPlatformOptions } from "@/lib/platforms";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function ContentDetailPage({
   params,
@@ -25,6 +27,7 @@ export default async function ContentDetailPage({
     readPlatforms(asAnswers(profile.onboarding)).map((row) => row.platform),
     item.platform,
   );
+  const activity = await listContentChanges(await createClient(), [id]);
 
   return (
     <AppFrame role="talent">
@@ -33,6 +36,7 @@ export default async function ContentDetailPage({
         platformOptions={platformOptions}
         currency={currency}
         backHref={backHref}
+        activity={activity}
       />
     </AppFrame>
   );

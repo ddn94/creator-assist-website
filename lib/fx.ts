@@ -144,6 +144,37 @@ const PER_USD: Record<string, number> = {
   ZMW: 27,
 };
 
+export function moneyCode(
+  code: string | null | undefined,
+  fallback = "USD",
+): string {
+  const value = code?.trim().toUpperCase() ?? "";
+  return value || fallback;
+}
+
+/** Sum amounts that share one code as-is. Mixed codes convert into the fallback. */
+export function totalInCurrency(
+  parts: { amount: number; currency?: string | null }[],
+  fallback: string,
+): { amount: number; currency: string } {
+  const home = moneyCode(fallback);
+  const codes = new Set(parts.map((part) => moneyCode(part.currency, home)));
+  if (codes.size <= 1) {
+    return {
+      amount: parts.reduce((sum, part) => sum + part.amount, 0),
+      currency: [...codes][0] ?? home,
+    };
+  }
+  return {
+    amount: parts.reduce(
+      (sum, part) =>
+        sum + convertAmount(part.amount, moneyCode(part.currency, home), home),
+      0,
+    ),
+    currency: home,
+  };
+}
+
 export function convertAmount(amount: number, from: string, to: string): number {
   const source = from?.toUpperCase() || "USD";
   const target = to?.toUpperCase() || "USD";

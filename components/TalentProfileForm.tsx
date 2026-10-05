@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/Button";
+import { showToast } from "@/components/Toast";
 import { Card } from "@/components/Card";
 import { Field } from "@/components/Field";
 import { FormAlert } from "@/components/FormAlert";
@@ -87,6 +88,7 @@ export function TalentProfileForm({
       return;
     }
     if (!complete) {
+      showToast("Profile saved.");
       router.push("/home/profile");
       router.refresh();
     }

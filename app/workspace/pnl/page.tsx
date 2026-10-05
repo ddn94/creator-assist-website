@@ -9,7 +9,7 @@ export default async function WorkspacePnlPage() {
   const linkedRows = await listAgencyLinkedContent();
 
   return (
-    <AppFrame role="agency" title="P&L" description="Deal value across the roster">
+    <AppFrame role="agency" title="P&L" description="Revenue, expenses, and profit across the roster">
       <PnlDashboard linkedRows={linkedRows} homeCurrency={homeCurrency} />
     </AppFrame>
   );

@@ -20,6 +20,7 @@ import type { AuthFormState, UserRole } from "@/lib/auth/types";
 import { avatarObjectPath } from "@/lib/auth/avatar";
 import { hasSupabaseEnv, withSupabaseAuthAction, supabaseSetupError } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
+import { flashToast } from "@/lib/toastFlash";
 
 async function origin() {
   const h = await headers();
@@ -90,7 +91,6 @@ export const signUp = withSupabaseAuthAction(
     );
     const password = String(formData.get("password") ?? "");
     const inviteCode = normalizeCode(String(formData.get("invite") ?? ""));
-    const rosterSize = String(formData.get("rosterSize") ?? "").trim();
 
     if (!inviteCode) return { error: "Enter your invite code.", message: null };
     if (!email) return { error: "Enter your email.", message: null };
@@ -129,7 +129,6 @@ export const signUp = withSupabaseAuthAction(
         data: {
           invite_code: inviteCode,
           role: kind === "talent" ? "talent" : role,
-          roster_size: role === "agency" ? rosterSize : "",
         },
       },
     });
@@ -211,6 +210,44 @@ export const requestPasswordReset = withSupabaseAuthAction(
   },
 );
 
+export const changePassword = withSupabaseAuthAction(
+  async (_prev, formData): Promise<AuthFormState> => {
+    const current = String(formData.get("current") ?? "");
+    const password = String(formData.get("password") ?? "");
+    const confirm = String(formData.get("confirm") ?? "");
+    const profile = await getProfile();
+    if (!profile) {
+      return { error: "Sign in to change your password.", message: null };
+    }
+    if (!current) {
+      return { error: "Enter your current password.", message: null };
+    }
+    if (password.length < 8) {
+      return { error: "Use at least 8 characters.", message: null };
+    }
+    if (password !== confirm) {
+      return { error: "Passwords don’t match.", message: null };
+    }
+
+    const supabase = await createClient();
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: profile.email,
+      password: current,
+    });
+    if (signInError) {
+      return { error: "Current password is incorrect.", message: null };
+    }
+
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) {
+      return { error: "Could not update your password. Try again.", message: null };
+    }
+
+    await flashToast("Password updated.");
+    redirect(profile.role === "agency" ? "/workspace/profile" : "/home/profile");
+  },
+);
+
 export const updatePassword = withSupabaseAuthAction(
   async (_prev, formData): Promise<AuthFormState> => {
     const password = String(formData.get("password") ?? "");
@@ -280,6 +317,9 @@ export async function saveProfileAnswers(
   }
 
   const onboarding = { ...profile.onboarding, ...cleaned };
+  if (complete && !profile.onboarding_completed_at) {
+    onboarding.productTour = "pending";
+  }
   const patch: Record<string, unknown> = { onboarding };
 
   if ("name" in cleaned) patch.display_name = name || profile.display_name;
@@ -315,6 +355,16 @@ export async function saveProfileAnswers(
   return { error: null };
 }
 
+export async function completeProductTour(): Promise<void> {
+  if (!hasSupabaseEnv()) return;
+  const profile = await getProfile();
+  if (!profile) return;
+  const onboarding = { ...profile.onboarding, productTour: "done" };
+  const supabase = await createClient();
+  await supabase.from("profiles").update({ onboarding }).eq("id", profile.id);
+  revalidatePath("/", "layout");
+}
+
 export async function setAvatarPath(path: string): Promise<{ error: string | null }> {
   if (!hasSupabaseEnv()) return supabaseSetupError();
   const profile = await getProfile();
@@ -330,6 +380,23 @@ export async function setAvatarPath(path: string): Promise<{ error: string | nul
     .eq("id", profile.id);
   if (error) return { error: "Could not save your photo. Try again." };
 
+  revalidatePath("/", "layout");
+  return { error: null };
+}
+
+export async function clearAvatar(): Promise<{ error: string | null }> {
+  if (!hasSupabaseEnv()) return supabaseSetupError();
+  const profile = await getProfile();
+  if (!profile) return { error: "Sign in to update your photo." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("profiles")
+    .update({ avatar_path: null })
+    .eq("id", profile.id);
+  if (error) return { error: "Could not remove your photo. Try again." };
+
+  await supabase.storage.from("avatars").remove([avatarObjectPath(profile.id)]);
   revalidatePath("/", "layout");
   return { error: null };
 }

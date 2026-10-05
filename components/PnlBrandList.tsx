@@ -38,7 +38,14 @@ export function PnlBrandList({
               <Text variant="cardTitle" className="min-w-0 truncate">
                 {row.name}
               </Text>
-              <Text variant="caption" className="shrink-0 font-medium text-ink">
+              <Text
+                variant="caption"
+                className={
+                  row.negative
+                    ? "shrink-0 font-medium text-danger!"
+                    : "shrink-0 font-medium text-primary-hover!"
+                }
+              >
                 {row.value}
               </Text>
             </li>

@@ -12,7 +12,9 @@ import type { IdeaItem, IdeaStatus } from "@/lib/ideas";
 
 export type ContentRow = {
   id: string;
-  owner_id: string;
+  owner_id: string | null;
+  talent_record_id?: string | null;
+  agency_created?: boolean | null;
   title: string;
   platform: string;
   niche: string | null;
@@ -24,6 +26,7 @@ export type ContentRow = {
   notes: string;
   idea_title: string | null;
   fee_agreed: number | string | null;
+  currency?: string | null;
   payment_terms: string | null;
   date_delivered: string | null;
   date_invoiced: string | null;
@@ -51,6 +54,7 @@ export type ExpenseRow = {
   note: string | null;
   expense_date: string;
   sort_order: number;
+  currency?: string | null;
 };
 
 export type IdeaRow = {
@@ -91,6 +95,7 @@ function mapExpense(row: ExpenseRow): TrackerExpense {
     amount: num(row.amount),
     note: row.note,
     date: dateOnly(row.expense_date) ?? row.expense_date,
+    currency: row.currency?.trim() || null,
   };
 }
 
@@ -102,6 +107,7 @@ function mapDeal(row: ContentRow): TrackerDeal | null {
     dateDelivered: row.date_delivered,
     dateInvoiced: row.date_invoiced,
     datePaid: row.date_paid,
+    currency: row.currency?.trim() || null,
     deliverables: (row.content_deliverables ?? [])
       .slice()
       .sort((a, b) => a.sort_order - b.sort_order)
@@ -112,7 +118,9 @@ function mapDeal(row: ContentRow): TrackerDeal | null {
 export function mapContent(row: ContentRow): TrackerDetail {
   return {
     id: row.id,
-    creatorId: row.owner_id,
+    creatorId: row.owner_id ?? "",
+    talentRecordId: row.talent_record_id ?? null,
+    agencyCreated: row.agency_created === true,
     title: row.title,
     platform: row.platform,
     niche: row.niche,

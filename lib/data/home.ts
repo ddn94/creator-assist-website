@@ -1,5 +1,7 @@
+import { addCalendarDays, calendarDay } from "@/lib/calendarDay";
+import type { TalentStatus } from "@/lib/talent";
 import type { Category } from "@/lib/ui";
-import { convertAmount } from "@/lib/fx";
+import { convertAmount, moneyCode, totalInCurrency } from "@/lib/fx";
 import type { IdeaItem } from "@/lib/ideas";
 import {
   STAGE_LABELS,
@@ -45,30 +47,32 @@ export function buildOverviewStats(
   const inProgress = items.filter((item) => item.stage !== "go_live").length;
   const deals = items.filter((item) => item.deal).map((item) => item.deal!);
   const paymentsDue = deals.filter((d) => d.dateInvoiced && !d.datePaid).length;
-  const revenue = deals
-    .filter((d) => d.datePaid)
-    .reduce((sum, d) => sum + d.feeAgreed, 0);
+  const revenue = totalInCurrency(
+    deals
+      .filter((d) => d.datePaid)
+      .map((d) => ({ amount: d.feeAgreed, currency: d.currency })),
+    currency,
+  );
 
-  const todayIso = today.toISOString().slice(0, 10);
-  const todayDate = new Date(`${todayIso}T12:00:00`);
-  const weekAhead = new Date(todayDate);
-  weekAhead.setDate(weekAhead.getDate() + 7);
+  const todayIso = calendarDay(today);
+  const weekEnd = addCalendarDays(todayIso, 7);
 
-  const dueThisWeek = deals
-    .filter((d) => {
-      if (d.datePaid) return false;
-      const due = computeDueDate(d);
-      if (!due) return false;
-      const dueDate = new Date(`${due}T12:00:00`);
-      return dueDate >= todayDate && dueDate <= weekAhead;
-    })
-    .reduce((sum, d) => sum + d.feeAgreed, 0);
+  const dueDeals = deals.filter((d) => {
+    if (d.datePaid) return false;
+    const due = computeDueDate(d);
+    if (!due) return false;
+    return due >= todayIso && due <= weekEnd;
+  });
+  const dueThisWeek = totalInCurrency(
+    dueDeals.map((d) => ({ amount: d.feeAgreed, currency: d.currency })),
+    currency,
+  );
 
   return {
     inProgress,
     paymentsDue,
-    revenue: fmtMoney(revenue, currency),
-    dueThisWeek: fmtMoney(dueThisWeek, currency),
+    revenue: fmtMoney(revenue.amount, revenue.currency),
+    dueThisWeek: fmtMoney(dueThisWeek.amount, dueThisWeek.currency),
   };
 }
 
@@ -112,7 +116,11 @@ export function buildContinueFeed(
 }
 
 export function buildAgencyOverviewMoney(
-  rows: { content: TrackerDetail; currency: string }[],
+  rows: {
+    content: TrackerDetail;
+    currency: string;
+    recordStatus?: TalentStatus;
+  }[],
   homeCurrency: string,
   today = new Date(),
 ) {
@@ -120,22 +128,22 @@ export function buildAgencyOverviewMoney(
   let outstanding = 0;
   let overdue = 0;
   let received = 0;
-  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  const monthStart = `${calendarDay(today).slice(0, 7)}-01`;
 
   for (const { content, currency } of rows) {
     if (!content.deal || content.type !== "paid_collab") continue;
-    const fee = convertAmount(content.deal.feeAgreed, currency || "USD", home);
+    const fee = convertAmount(
+      content.deal.feeAgreed,
+      moneyCode(content.deal.currency, currency || "USD"),
+      home,
+    );
     const status = computeDealStatus(content.deal, today);
     if (!content.deal.datePaid) {
       outstanding += fee;
       if (status === "overdue") overdue += fee;
     } else if (
       content.deal.datePaid &&
-      new Date(
-        content.deal.datePaid.includes("T")
-          ? content.deal.datePaid
-          : `${content.deal.datePaid}T12:00:00`,
-      ) >= monthStart
+      content.deal.datePaid.slice(0, 10) >= monthStart
     ) {
       received += fee;
     }
@@ -152,7 +160,12 @@ export function buildAgencyOverviewMoney(
 }
 
 export function buildAgencyAttention(
-  rows: { content: TrackerDetail; talentName: string; currency: string }[],
+  rows: {
+    content: TrackerDetail;
+    talentName: string;
+    currency: string;
+    recordStatus?: TalentStatus;
+  }[],
   today = new Date(),
 ): AttentionItem[] {
   const items: AttentionItem[] = [];
@@ -160,7 +173,10 @@ export function buildAgencyAttention(
   for (const { content, talentName, currency } of rows) {
     if (!content.deal || content.type !== "paid_collab") continue;
     const status = computeDealStatus(content.deal, today);
-    const fee = fmtMoney(content.deal.feeAgreed, currency || "USD");
+    const fee = fmtMoney(
+      content.deal.feeAgreed,
+      moneyCode(content.deal.currency, currency || "USD"),
+    );
     const due = computeDueDate(content.deal);
 
     const detail = attentionDetail(status, {

@@ -2,11 +2,11 @@
 
 import { Button } from "@/components/Button";
 
-export type SignupType = "talent" | "workspace";
+export type SignupType = "talent" | "agency";
 
 const OPTIONS: { value: SignupType; label: string; href: string }[] = [
   { value: "talent", label: "Talent", href: "/signup/talent" },
-  { value: "workspace", label: "Workspace", href: "/signup/agency" },
+  { value: "agency", label: "Agency", href: "/signup/agency" },
 ];
 
 export function SignupTypeToggle({ active }: { active: SignupType }) {

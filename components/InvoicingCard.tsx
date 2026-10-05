@@ -4,6 +4,7 @@ import { useState } from "react";
 import { CaretDownIcon } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/Button";
+import { showToast } from "@/components/Toast";
 import { DateField } from "@/components/DateField";
 import { Select } from "@/components/Select";
 import { Text } from "@/components/Text";
@@ -13,27 +14,43 @@ import type { TalentInvoicing } from "@/lib/talent";
 import { PAYMENT_TERM_OPTIONS, type PaymentTerms } from "@/lib/tracker";
 
 type InvoicingCardProps = {
-  invoicing: TalentInvoicing;
+  items: TalentInvoicing[];
   className?: string;
+  readOnly?: boolean;
 };
 
 export function InvoicingCard({
-  invoicing,
+  items,
   className = "",
+  readOnly = false,
 }: InvoicingCardProps) {
+  if (items.length === 0) return null;
+
   return (
-    <InvoicingEditor
-      key={`${invoicing.contentId}:${invoicing.dateInvoiced}:${invoicing.paymentTerms}:${invoicing.datePaid}:${invoicing.dueNote}`}
-      invoicing={invoicing}
-      className={className}
-    />
+    <section className={className}>
+      <Text variant="title" className="mb-3 text-lg">
+        Invoicing
+      </Text>
+      <div className="space-y-3">
+        {items.map((invoicing) => (
+          <InvoicingEditor
+            key={`${invoicing.contentId}:${invoicing.dateInvoiced}:${invoicing.paymentTerms}:${invoicing.datePaid}:${invoicing.dueNote}`}
+            invoicing={invoicing}
+            readOnly={readOnly}
+          />
+        ))}
+      </div>
+    </section>
   );
 }
 
 function InvoicingEditor({
   invoicing,
-  className,
-}: InvoicingCardProps) {
+  readOnly = false,
+}: {
+  invoicing: TalentInvoicing;
+  readOnly?: boolean;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [invoiced, setInvoiced] = useState(toDateInput(invoicing.dateInvoiced));
@@ -43,6 +60,7 @@ function InvoicingEditor({
   const [saved, setSaved] = useState(false);
 
   async function save() {
+    if (readOnly) return;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(invoiced)) return;
     if (paid && !/^\d{4}-\d{2}-\d{2}$/.test(paid)) return;
     setError(null);
@@ -57,19 +75,19 @@ function InvoicingEditor({
       setError(result.error);
       return;
     }
+    showToast("Invoicing saved.");
     router.refresh();
   }
 
   return (
-    <section className={className}>
-      <Text variant="title" className="mb-3 text-lg">
-        Invoicing
-      </Text>
-      <div className="rounded-card border border-card-border bg-card p-4 shadow-card sm:p-5">
+    <div className="rounded-card border border-card-border bg-card p-4 shadow-card sm:p-5">
         <button
           type="button"
           aria-expanded={open}
-          onClick={() => setOpen((prev) => !prev)}
+          onClick={() => {
+            if (!readOnly) setOpen((prev) => !prev);
+          }}
+          disabled={readOnly}
           className="flex w-full cursor-pointer items-start justify-between gap-3 text-left"
         >
           <div className="min-w-0">
@@ -79,17 +97,24 @@ function InvoicingEditor({
             <Text variant="caption" className="mt-1">
               {invoicing.summary}
             </Text>
+            {open ? null : (
+              <Text variant="caption" className="mt-1">
+                {invoicing.dueNote}
+              </Text>
+            )}
           </div>
-          <span
-            className="inline-flex size-8 shrink-0 items-center justify-center text-muted"
-            aria-hidden
-          >
-            <CaretDownIcon
-              size={18}
-              weight="bold"
-              className={`transition-transform ${open ? "rotate-180" : ""}`}
-            />
-          </span>
+          {readOnly ? null : (
+            <span
+              className="inline-flex size-8 shrink-0 items-center justify-center text-muted"
+              aria-hidden
+            >
+              <CaretDownIcon
+                size={18}
+                weight="bold"
+                className={`transition-transform ${open ? "rotate-180" : ""}`}
+              />
+            </span>
+          )}
         </button>
 
         {open ? (
@@ -159,7 +184,6 @@ function InvoicingEditor({
             </div>
           </>
         ) : null}
-      </div>
-    </section>
+    </div>
   );
 }

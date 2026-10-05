@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { AppShell } from "@/components/AppShell";
+import { ProductTour } from "@/components/ProductTour";
 import { withAdminNav } from "@/lib/auth/admin";
 import { avatarPublicUrl } from "@/lib/auth/avatar";
 import { displayName } from "@/lib/auth/profileAnswers";
@@ -24,6 +25,9 @@ export function TalentShell({
       navItems={withAdminNav(talentNav, profile.email)}
     >
       {children}
+      {profile.onboarding.productTour === "pending" ? (
+        <ProductTour role="talent" />
+      ) : null}
     </AppShell>
   );
 }
@@ -46,6 +50,9 @@ export function WorkspaceShell({
       navItems={withAdminNav(workspaceNav, profile.email)}
     >
       {children}
+      {profile.onboarding.productTour === "pending" ? (
+        <ProductTour role="agency" />
+      ) : null}
     </AppShell>
   );
 }

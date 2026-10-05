@@ -5,19 +5,17 @@ import { useFormStatus } from "react-dom";
 import { AuthScreen } from "@/components/AuthScreen";
 import { Button } from "@/components/Button";
 import { FormAlert } from "@/components/FormAlert";
-import { Select } from "@/components/Select";
 import { SignupTypeToggle } from "@/components/SignupTypeToggle";
 import { Text } from "@/components/Text";
 import { TextField } from "@/components/TextField";
 import { signUp } from "@/lib/auth/actions";
 import { EMPTY_AUTH_STATE } from "@/lib/auth/types";
-import { ROSTER_OPTIONS } from "@/lib/profileFormOptions";
 
 function CreateButton() {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" size="md" full iconRight="→" className="h-10" disabled={pending}>
-      {pending ? "Creating…" : "Create workspace"}
+      {pending ? "Creating…" : "Create agency account"}
     </Button>
   );
 }
@@ -27,9 +25,9 @@ export default function AgencySignupPage() {
 
   return (
     <AuthScreen
-      title="Create an agency workspace"
+      title="Create an agency account"
       description="Manage your roster’s deals and invoicing in one place."
-      aboveCard={<SignupTypeToggle active="workspace" />}
+      aboveCard={<SignupTypeToggle active="agency" />}
       card={
         state.message ? (
           <FormAlert message={state.message} />
@@ -69,36 +67,21 @@ export default function AgencySignupPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-2.5">
-              <div className="space-y-0.5">
-                <Text as="label" variant="label" htmlFor="rosterSize">
-                  Roster size
-                </Text>
-                <Select
-                  id="rosterSize"
-                  name="rosterSize"
-                  defaultValue="1-10"
-                  options={[...ROSTER_OPTIONS]}
-                  size="sm"
-                  full
-                />
-              </div>
-              <div className="space-y-0.5">
-                <Text as="label" variant="label" htmlFor="password">
-                  Password
-                </Text>
-                <TextField
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="new-password"
-                  placeholder="8+ chars"
-                  minLength={8}
-                  required
-                  size="sm"
-                  full
-                />
-              </div>
+            <div className="space-y-0.5">
+              <Text as="label" variant="label" htmlFor="password">
+                Password
+              </Text>
+              <TextField
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="new-password"
+                placeholder="8+ chars"
+                minLength={8}
+                required
+                size="sm"
+                full
+              />
             </div>
 
             <FormAlert error={state.error} />
@@ -108,7 +91,7 @@ export default function AgencySignupPage() {
       }
       additional={
         <Text variant="description">
-          Already have a workspace? <Button href="/login">Sign in</Button>
+          Already have an account? <Button href="/login">Sign in</Button>
         </Text>
       }
     />

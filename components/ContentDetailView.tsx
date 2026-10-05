@@ -3,9 +3,13 @@
 import { TrashIcon } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
+import { calendarDay } from "@/lib/calendarDay";
+import { ActivityFeed } from "@/components/ActivityFeed";
 import { BackLink } from "@/components/BackLink";
+import { showToast } from "@/components/Toast";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { CategoryCard } from "@/components/CategoryCard";
 import { CategoryPill } from "@/components/CategoryPill";
 import { DateField } from "@/components/DateField";
@@ -19,6 +23,7 @@ import { Text } from "@/components/Text";
 import { TextArea } from "@/components/TextArea";
 import { TextField } from "@/components/TextField";
 import { toDateInput } from "@/lib/timestamps";
+import { convertAmount } from "@/lib/fx";
 import {
   deleteContentAction,
   updateContentInvoiceAction,
@@ -39,19 +44,39 @@ import {
   deliverablesTotal,
   formatLiveDate,
   fmtMoney,
+  type ContentType,
   type PaymentTerms,
+  type TrackerDeal,
   type TrackerDetail,
   type TrackerDeliverable,
   type TrackerExpense,
 } from "@/lib/tracker";
+import type { TalentActivityItem } from "@/lib/talent";
+
+const EMPTY_DEAL: TrackerDeal = {
+  feeAgreed: 0,
+  paymentTerms: "net_30",
+  dateDelivered: null,
+  dateInvoiced: null,
+  datePaid: null,
+  deliverables: [],
+};
 
 type ContentDetailViewProps = {
   initial: TrackerDetail;
   platformOptions: { value: string; label: string }[];
   currency: string;
   backHref?: string;
-  /** Agency sees the same UI; only invoice dates + terms stay editable. */
-  mode?: "talent" | "agency";
+  /**
+   * talent: the owner edits everything.
+   * agency: linked talent; only invoice dates and terms stay editable.
+   * record: a private card, or a deal the agency logged that both sides still edit.
+   */
+  mode?: "talent" | "agency" | "record";
+  /** Connected talent who has been disconnected: show the deal, do not edit it. */
+  dealLocked?: boolean;
+  /** Agency edits on this item. Talent tracker pages pass this. */
+  activity?: TalentActivityItem[];
 };
 
 export function ContentDetailView({
@@ -60,6 +85,8 @@ export function ContentDetailView({
   currency,
   backHref = "/home/tracker",
   mode = "talent",
+  dealLocked = false,
+  activity,
 }: ContentDetailViewProps) {
   return (
     <ContentDetailEditor
@@ -69,6 +96,8 @@ export function ContentDetailView({
       currency={currency}
       backHref={backHref}
       mode={mode}
+      dealLocked={dealLocked}
+      activity={activity}
     />
   );
 }
@@ -79,21 +108,31 @@ function ContentDetailEditor({
   currency,
   backHref,
   mode,
+  dealLocked,
+  activity,
 }: {
   initial: TrackerDetail;
   platformOptions: { value: string; label: string }[];
   currency: string;
   backHref: string;
-  mode: "talent" | "agency";
+  mode: "talent" | "agency" | "record";
+  dealLocked: boolean;
+  activity?: TalentActivityItem[];
 }) {
   const router = useRouter();
   const [item, setItem] = useState(initial);
+  const [draftType, setDraftType] = useState<ContentType>(initial.type);
   const [formGeneration, setFormGeneration] = useState(0);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [invoiceSaving, setInvoiceSaving] = useState(false);
   const [invoiceError, setInvoiceError] = useState<string | null>(null);
   const isAgency = mode === "agency";
   const locked = isAgency;
+  const canDelete = mode === "talent" || (mode === "record" && !initial.creatorId);
+  const [removeTarget, setRemoveTarget] = useState<
+    "post" | { kind: "deliverable" | "expense"; id: string } | null
+  >(null);
+  const [removePending, setRemovePending] = useState(false);
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("section") !== "deal") {
@@ -116,16 +155,30 @@ function ContentDetailEditor({
     };
   }, [item.id]);
 
-  const isPaid = item.type === "paid_collab";
-  const totalExpenses = item.expenses.reduce((sum, e) => sum + e.amount, 0);
-  const fee = item.deal?.feeAgreed ?? 0;
-  const dealStatus = item.deal ? computeDealStatus(item.deal) : null;
-  const dueDate = item.deal ? computeDueDate(item.deal) : null;
-  const deliverableSum = item.deal
-    ? deliverablesTotal(item.deal.deliverables)
+  const isPaid = draftType === "paid_collab";
+  const visibleDeal = isPaid ? (item.deal ?? EMPTY_DEAL) : null;
+  const dealCurrency = visibleDeal?.currency?.trim() || currency;
+  const totalExpenses = item.expenses.reduce(
+    (sum, expense) =>
+      sum +
+      convertAmount(
+        expense.amount,
+        expense.currency?.trim() || dealCurrency,
+        dealCurrency,
+      ),
+    0,
+  );
+  const fee = visibleDeal?.feeAgreed ?? 0;
+  const dealStatus = visibleDeal ? computeDealStatus(visibleDeal) : null;
+  const dueDate = visibleDeal ? computeDueDate(visibleDeal) : null;
+  const deliverableSum = visibleDeal
+    ? deliverablesTotal(visibleDeal.deliverables)
     : 0;
 
-  async function commit(next: TrackerDetail) {
+  async function commit(
+    next: TrackerDetail,
+    notice?: { message: string; tone?: "success" | "danger" },
+  ) {
     if (isAgency) return;
     const previous = item;
     setSaveError(null);
@@ -133,43 +186,71 @@ function ContentDetailEditor({
     const result = await upsertContentAction(next);
     if (result.error) {
       setItem(previous);
+      setDraftType(previous.type);
       setFormGeneration((generation) => generation + 1);
       setSaveError(result.error);
       return;
     }
+    setDraftType(next.type);
+    if (notice) showToast(notice.message, notice.tone ?? "success");
     router.refresh();
   }
 
   function removeDeliverable(deliverableId: string) {
     if (!item.deal || isAgency) return;
-    commit({
-      ...item,
-      deal: {
-        ...item.deal,
-        deliverables: item.deal.deliverables.filter(
-          (d) => d.id !== deliverableId,
-        ),
+    setRemoveTarget(null);
+    void commit(
+      {
+        ...item,
+        deal: {
+          ...item.deal,
+          deliverables: item.deal.deliverables.filter(
+            (d) => d.id !== deliverableId,
+          ),
+        },
       },
-    });
+      { message: "Deliverable removed.", tone: "danger" },
+    );
   }
 
   function removeExpense(expenseId: string) {
     if (isAgency) return;
-    commit({
-      ...item,
-      expenses: item.expenses.filter((e) => e.id !== expenseId),
-    });
+    setRemoveTarget(null);
+    void commit(
+      {
+        ...item,
+        expenses: item.expenses.filter((e) => e.id !== expenseId),
+      },
+      { message: "Expense removed.", tone: "danger" },
+    );
   }
 
-  async function handleDelete() {
-    if (isAgency) return;
-    await deleteContentAction(item.id);
-    router.push("/home/tracker");
+  async function confirmRemove() {
+    if (!removeTarget || removePending) return;
+    if (removeTarget === "post") {
+      if (!canDelete) return;
+      setRemovePending(true);
+      setSaveError(null);
+      const result = await deleteContentAction(item.id);
+      setRemovePending(false);
+      if (result.error) {
+        setSaveError(result.error);
+        return;
+      }
+      setRemoveTarget(null);
+      showToast("Content deleted.", "danger");
+      router.push(mode === "record" ? backHref : "/home/tracker");
+      return;
+    }
+    if (removeTarget.kind === "deliverable") removeDeliverable(removeTarget.id);
+    else removeExpense(removeTarget.id);
   }
 
   async function handleDealSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!item.deal) return;
+    if (dealLocked) return;
+    const deal = item.deal ?? (draftType === "paid_collab" ? EMPTY_DEAL : null);
+    if (!deal) return;
     const data = new FormData(event.currentTarget);
     const paymentTerms = (String(data.get("paymentTerms") ?? "net_30") ||
       "net_30") as PaymentTerms;
@@ -177,6 +258,7 @@ function ContentDetailEditor({
     const datePaid = String(data.get("datePaid") ?? "") || null;
 
     if (isAgency) {
+      if (!item.deal) return;
       if (!dateInvoiced) {
         setInvoiceError("Enter a valid invoice date.");
         return;
@@ -205,44 +287,56 @@ function ContentDetailEditor({
         setInvoiceError(result.error);
         return;
       }
+      showToast("Deal saved.");
       router.refresh();
       return;
     }
 
-    commit({
+    void commit({
       ...item,
+      type: "paid_collab",
       deal: {
-        ...item.deal,
+        ...deal,
         feeAgreed: Number(data.get("feeAgreed") || 0),
         paymentTerms,
         dateDelivered: String(data.get("dateDelivered") ?? "") || null,
         dateInvoiced,
         datePaid,
       },
-    });
+    }, { message: "Deal saved." });
   }
 
-  const money = (amount: number) => fmtMoney(amount, currency);
+  const money = (amount: number) => fmtMoney(amount, dealCurrency);
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <div className="mb-3 flex items-center justify-between">
+    <div
+      className={
+        activity
+          ? "lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(16rem,1fr)] lg:gap-x-8"
+          : "mx-auto max-w-3xl"
+      }
+    >
+      <div className="mb-3 flex items-center justify-between lg:col-start-1">
         <BackLink href={backHref} label="Back" />
         <button
           type="button"
           aria-label="Delete content item"
           title="Delete"
-          onClick={handleDelete}
-          disabled={locked}
+          onClick={() => {
+            if (!canDelete) return;
+            setSaveError(null);
+            setRemoveTarget("post");
+          }}
+          disabled={!canDelete}
           className="inline-flex size-10 cursor-pointer items-center justify-center rounded-full bg-card text-danger shadow-card transition-colors hover:bg-organic disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-card"
         >
           <TrashIcon size={18} weight="regular" aria-hidden />
         </button>
       </div>
 
-      <div className="mb-5">
-        <CategoryPill category={contentCategory(item.type)}>
-          {contentPillLabel(item.type)}
+      <div className="mb-5 lg:col-start-1">
+        <CategoryPill category={contentCategory(draftType)}>
+          {contentPillLabel(draftType)}
         </CategoryPill>
         <Text variant="heading" className="mt-2.5 text-2xl sm:text-3xl">
           {item.title}
@@ -254,6 +348,7 @@ function ContentDetailEditor({
         ) : null}
       </div>
 
+      <div className="min-w-0 lg:col-start-1">
       <Card className="mb-5">
         <Text variant="title" className="mb-3 text-base">
           Details
@@ -290,9 +385,10 @@ function ContentDetailEditor({
                       dateInvoiced: null,
                       datePaid: null,
                       deliverables: [],
+                      currency,
                     }
                   : null,
-            });
+            }, { message: "Details have been saved." });
           }}
         >
           <Field id="title" label="Title" className="md:col-span-2">
@@ -336,6 +432,9 @@ function ContentDetailEditor({
               disabled={locked}
               size="sm"
               full
+              onChange={(value) =>
+                setDraftType(value === "paid_collab" ? "paid_collab" : "organic")
+              }
             />
           </Field>
           <Field id="brandName" label="Brand">
@@ -400,7 +499,7 @@ function ContentDetailEditor({
         </form>
       </Card>
 
-      {isPaid && item.deal ? (
+      {visibleDeal ? (
         <CategoryCard
           id="deal"
           category="payment"
@@ -423,14 +522,14 @@ function ContentDetailEditor({
             className="grid grid-cols-1 gap-3 md:grid-cols-3"
             onSubmit={handleDealSubmit}
           >
-            <Field id="feeAgreed" label={`Fee agreed (${currency})`}>
+            <Field id="feeAgreed" label={`Fee agreed (${dealCurrency})`}>
               <TextField
                 id="feeAgreed"
                 name="feeAgreed"
                 type="number"
                 step="0.01"
                 min="0"
-                defaultValue={item.deal.feeAgreed || ""}
+                defaultValue={visibleDeal.feeAgreed || ""}
                 disabled={locked}
                 size="sm"
                 full
@@ -440,8 +539,9 @@ function ContentDetailEditor({
               <Select
                 id="paymentTerms"
                 name="paymentTerms"
-                defaultValue={item.deal.paymentTerms}
+                defaultValue={visibleDeal.paymentTerms}
                 options={[...PAYMENT_TERM_OPTIONS]}
+                disabled={locked || dealLocked}
                 size="sm"
                 full
               />
@@ -450,7 +550,7 @@ function ContentDetailEditor({
               <DateField
                 id="dateDelivered"
                 name="dateDelivered"
-                defaultValue={toDateInput(item.deal.dateDelivered)}
+                defaultValue={toDateInput(visibleDeal.dateDelivered)}
                 disabled={locked}
                 size="sm"
                 full
@@ -460,8 +560,9 @@ function ContentDetailEditor({
               <DateField
                 id="dateInvoiced"
                 name="dateInvoiced"
-                defaultValue={toDateInput(item.deal.dateInvoiced)}
-                required={isAgency}
+                defaultValue={toDateInput(visibleDeal.dateInvoiced)}
+                required={isAgency && !dealLocked}
+                disabled={dealLocked}
                 size="sm"
                 full
               />
@@ -470,24 +571,23 @@ function ContentDetailEditor({
               <DateField
                 id="datePaid"
                 name="datePaid"
-                defaultValue={toDateInput(item.deal.datePaid)}
+                defaultValue={toDateInput(visibleDeal.datePaid)}
+                disabled={dealLocked}
                 size="sm"
                 full
               />
             </Field>
             <div className="flex flex-wrap items-center gap-3 md:col-span-3">
-              <Button
-                type="submit"
-                size="sm"
-                className="h-10"
-                disabled={invoiceSaving}
-              >
-                {isAgency
-                  ? invoiceSaving
-                    ? "Saving…"
-                    : "Save deal"
-                  : "Save deal"}
-              </Button>
+              {dealLocked ? null : (
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="h-10"
+                  disabled={invoiceSaving}
+                >
+                  {invoiceSaving ? "Saving…" : "Save deal"}
+                </Button>
+              )}
               <Text variant="caption" className="text-sm">
                 Due date:{" "}
                 <span className="font-semibold text-ink">
@@ -507,18 +607,26 @@ function ContentDetailEditor({
               Deliverables
             </Text>
             <DeliverableTable
-              deliverables={item.deal.deliverables}
-              onRemove={locked ? undefined : removeDeliverable}
+              deliverables={visibleDeal.deliverables}
+              onRemove={
+                locked
+                  ? undefined
+                  : (id) => {
+                      setSaveError(null);
+                      setRemoveTarget({ kind: "deliverable", id });
+                    }
+              }
               variant="plain"
+              currency={dealCurrency}
             />
-            {item.deal.deliverables.length > 0 &&
-            deliverableSum !== item.deal.feeAgreed ? (
+            {visibleDeal.deliverables.length > 0 &&
+            deliverableSum !== visibleDeal.feeAgreed ? (
               <Text
                 variant="caption"
                 className="mb-3 rounded-lg border border-idea-pill/40 bg-idea px-2.5 py-1.5 text-xxs text-ink"
               >
                 Deliverables total ({money(deliverableSum)}) differs from the
-                agreed fee ({money(item.deal.feeAgreed)}). P&L uses the agreed
+                agreed fee ({money(visibleDeal.feeAgreed)}). P&L uses the agreed
                 fee.
               </Text>
             ) : null}
@@ -527,7 +635,7 @@ function ContentDetailEditor({
               className="grid grid-cols-3 items-end gap-2 md:grid-cols-[minmax(0,1.4fr)_minmax(0,0.7fr)_minmax(0,1fr)_auto] md:gap-3"
               onSubmit={(event) => {
                 event.preventDefault();
-                if (locked || !item.deal) return;
+                if (locked || !visibleDeal) return;
                 const data = new FormData(event.currentTarget);
                 const type = String(
                   data.get("type") ?? "video",
@@ -537,10 +645,11 @@ function ContentDetailEditor({
                 if (!rate) return;
                 commit({
                   ...item,
+                  type: "paid_collab",
                   deal: {
-                    ...item.deal,
+                    ...visibleDeal,
                     deliverables: [
-                      ...item.deal.deliverables,
+                      ...visibleDeal.deliverables,
                       {
                         id: `d-${Date.now()}`,
                         type,
@@ -549,7 +658,7 @@ function ContentDetailEditor({
                       },
                     ],
                   },
-                });
+                }, { message: "Deliverable added." });
                 event.currentTarget.reset();
               }}
             >
@@ -578,7 +687,7 @@ function ContentDetailEditor({
               </Field>
               <Field
                 id="rate"
-                label={`Rate (${currency} per unit)`}
+                label={`Rate (${dealCurrency} per unit)`}
                 className="min-w-0"
               >
                 <TextField
@@ -616,8 +725,16 @@ function ContentDetailEditor({
         </Text>
         <ExpenseTable
           expenses={item.expenses}
-          onRemove={locked ? undefined : removeExpense}
+          onRemove={
+            locked
+              ? undefined
+              : (id) => {
+                  setSaveError(null);
+                  setRemoveTarget({ kind: "expense", id });
+                }
+          }
           variant="plain"
+          currency={dealCurrency}
         />
         <form
           key={`expense-${formGeneration}`}
@@ -641,11 +758,12 @@ function ContentDetailEditor({
                   note: String(data.get("note") ?? "").trim() || null,
                   date:
                     String(data.get("date") ?? "") ||
-                    new Date().toISOString().slice(0, 10),
+                    calendarDay(new Date()),
+                  currency,
                 },
                 ...item.expenses,
               ],
-            });
+            }, { message: "Expense added." });
             event.currentTarget.reset();
           }}
         >
@@ -746,6 +864,36 @@ function ContentDetailEditor({
             )}
           </Text>
         </Card>
+      ) : null}
+
+      <ConfirmModal
+        open={removeTarget !== null}
+        title={
+          removeTarget === "post"
+            ? "Delete this post"
+            : removeTarget?.kind === "deliverable"
+              ? "Remove this deliverable"
+              : "Remove this expense"
+        }
+        question={
+          removeTarget === "post"
+            ? `Are you sure you want to delete “${item.title}”?`
+            : removeTarget?.kind === "deliverable"
+              ? "Are you sure you want to remove this deliverable?"
+              : "Are you sure you want to remove this expense?"
+        }
+        confirmLabel={removeTarget === "post" ? "Delete" : "Remove"}
+        pendingLabel={removeTarget === "post" ? "Deleting…" : "Removing…"}
+        pending={removePending}
+        error={removeTarget === "post" ? saveError : null}
+        onClose={() => setRemoveTarget(null)}
+        onConfirm={() => void confirmRemove()}
+      />
+      </div>
+      {activity ? (
+        <aside className="mt-8 min-w-0 lg:col-start-2 lg:row-start-2 lg:row-span-2 lg:mt-0 lg:grid lg:grid-rows-subgrid">
+          <ActivityFeed items={activity} className="contents" />
+        </aside>
       ) : null}
     </div>
   );

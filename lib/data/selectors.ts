@@ -28,7 +28,6 @@ export {
 } from "@/lib/data/pnl";
 
 export {
-  buildTalentActivity,
   buildTalentDetailFromRecord,
   buildTalentRoster,
 } from "@/lib/data/roster";

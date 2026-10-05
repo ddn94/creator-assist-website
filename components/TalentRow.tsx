@@ -16,7 +16,10 @@ function dash(value: string | null) {
   return value ?? "—";
 }
 
-export function TalentRow({ talent, className = "" }: TalentRowProps) {
+export function TalentRow({
+  talent,
+  className = "",
+}: TalentRowProps) {
   const tone = talentStatusTone[talent.status];
   const href = `/workspace/talent/${talent.id}`;
 

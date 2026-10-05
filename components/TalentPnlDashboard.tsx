@@ -29,24 +29,24 @@ export function TalentPnlDashboard({
   const [filter, setFilter] = useState<PnlDateFilter>({ range: "all" });
 
   const summary = useMemo(
-    () => buildTalentPnlSummary(allContent, filter),
-    [allContent, filter],
+    () => buildTalentPnlSummary(allContent, filter, undefined, currency),
+    [allContent, filter, currency],
   );
   const rows = useMemo(
-    () => buildTalentPnlRows(allContent, filter),
-    [allContent, filter],
+    () => buildTalentPnlRows(allContent, filter, undefined, currency),
+    [allContent, filter, currency],
   );
   const byBrand = useMemo(
-    () => buildTalentPnlByBrand(allContent, filter),
-    [allContent, filter],
+    () => buildTalentPnlByBrand(allContent, filter, currency),
+    [allContent, filter, currency],
   );
   const byNiche = useMemo(
-    () => buildTalentPnlByNiche(allContent, filter),
-    [allContent, filter],
+    () => buildTalentPnlByNiche(allContent, filter, currency),
+    [allContent, filter, currency],
   );
 
   const { revenue, expenses, net, overdue } = summary;
-  const money = (amount: number) => fmtMoney(amount, currency);
+  const money = (amount: number) => fmtMoney(amount, summary.currency);
 
   return (
     <div className={className}>
@@ -56,7 +56,7 @@ export function TalentPnlDashboard({
         onChange={setFilter}
       />
 
-      <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4" data-tour="tour-pnl">
         <StatCard label="Total revenue" value={money(revenue)} tone="collab" />
         <StatCard
           label="Total expenses"
@@ -94,12 +94,12 @@ export function TalentPnlDashboard({
           <TalentPnlBreakdownList
             title="By brand"
             rows={byBrand}
-            currency={currency}
+            currency={summary.currency}
           />
           <TalentPnlBreakdownList
             title="By niche"
             rows={byNiche}
-            currency={currency}
+            currency={summary.currency}
           />
         </div>
       )}

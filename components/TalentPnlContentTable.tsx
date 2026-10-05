@@ -31,7 +31,8 @@ export function TalentPnlContentTable({
   currency = "USD",
   className = "",
 }: TalentPnlContentTableProps) {
-  const money = (amount: number) => fmtMoney(amount, currency);
+  const money = (amount: number, code?: string) =>
+    fmtMoney(amount, code || currency);
   return (
     <section
       className={[
@@ -65,7 +66,7 @@ export function TalentPnlContentTable({
                   row.profit >= 0 ? "text-primary-hover" : "text-danger",
                 ].join(" ")}
               >
-                {money(row.profit)}
+                {money(row.profit, row.currency)}
               </Text>
             </div>
             <Link
@@ -75,8 +76,8 @@ export function TalentPnlContentTable({
               {row.title}
             </Link>
             <Text variant="caption" className="mt-1 text-xs">
-              {row.fee != null ? `Fee ${money(row.fee)}` : "No fee"} · Expenses{" "}
-              {money(row.expenses)}
+              {row.fee != null ? `Fee ${money(row.fee, row.currency)}` : "No fee"} · Expenses{" "}
+              {money(row.expenses, row.currency)}
             </Text>
           </div>
         ))}
@@ -151,12 +152,12 @@ export function TalentPnlContentTable({
                 </td>
                 <td className="px-3 py-3 text-right whitespace-nowrap">
                   <Text variant="caption" className="text-xs text-ink">
-                    {row.fee != null ? money(row.fee) : "—"}
+                    {row.fee != null ? money(row.fee, row.currency) : "—"}
                   </Text>
                 </td>
                 <td className="px-3 py-3 text-right whitespace-nowrap">
                   <Text variant="caption" className="text-xs text-ink">
-                    {money(row.expenses)}
+                    {money(row.expenses, row.currency)}
                   </Text>
                 </td>
                 <td className="px-4 py-3 text-right whitespace-nowrap">
@@ -169,7 +170,7 @@ export function TalentPnlContentTable({
                         : "text-danger!",
                     ].join(" ")}
                   >
-                    {money(row.profit)}
+                    {money(row.profit, row.currency)}
                   </Text>
                 </td>
               </tr>

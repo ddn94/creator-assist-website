@@ -17,6 +17,7 @@ export function TextArea({
   full = false,
   className = "",
   rows = 3,
+  spellCheck = false,
   ...props
 }: TextAreaProps) {
   return (
@@ -31,6 +32,7 @@ export function TextArea({
       ]
         .filter(Boolean)
         .join(" ")}
+      spellCheck={spellCheck}
       {...props}
     />
   );

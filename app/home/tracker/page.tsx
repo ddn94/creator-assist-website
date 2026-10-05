@@ -14,6 +14,10 @@ export default async function TrackerPage({
   const { add } = await searchParams;
   const profile = await requireProfile("talent");
   const items = await listMyContentItems();
+  const tour = profile.onboarding.productTour === "pending";
+  const tourItem = tour
+    ? items.find((item) => item.title === "Sample paid collab") ?? items[0]
+    : undefined;
   const platformOptions = contentPlatformOptions(
     readPlatforms(asAnswers(profile.onboarding)).map((row) => row.platform),
   );
@@ -25,6 +29,8 @@ export default async function TrackerPage({
           items={items}
           platformOptions={platformOptions}
           defaultAddOpen={add === "1"}
+          initialStage={tourItem?.stage}
+          tourItemId={tourItem?.id}
         />
       </Suspense>
     </AppFrame>

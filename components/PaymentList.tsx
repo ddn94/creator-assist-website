@@ -4,6 +4,7 @@ import { CaretDownIcon, CaretUpIcon } from "@phosphor-icons/react";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FilterPills } from "@/components/FilterPills";
+import { showToast } from "@/components/Toast";
 import { PaymentCard } from "@/components/PaymentCard";
 import { PaymentRow } from "@/components/PaymentRow";
 import { Text } from "@/components/Text";
@@ -14,7 +15,6 @@ import {
 import { markInvoiced, markPaid } from "@/lib/payments";
 import {
   PAYMENT_STATUS_FILTERS,
-  PAYMENT_STATUS_ORDER,
   type PaymentItem,
   type PaymentMode,
   type PaymentStatus,
@@ -22,7 +22,6 @@ import {
 import type { PaymentTerms } from "@/lib/tracker";
 
 type PaymentFilter = (typeof PAYMENT_STATUS_FILTERS)[number]["id"];
-type SortKey = "due" | "status";
 type SortDir = "asc" | "desc";
 
 type PaymentListProps = {
@@ -71,7 +70,6 @@ function headersFor(mode: PaymentMode): string[] {
 export function PaymentList({ mode, items, className = "" }: PaymentListProps) {
   const router = useRouter();
   const [filter, setFilter] = useState<PaymentFilter>("all");
-  const [sort, setSort] = useState<SortKey>("due");
   const [dir, setDir] = useState<SortDir>("asc");
   const headers = headersFor(mode);
   const serverKey = items
@@ -107,20 +105,13 @@ export function PaymentList({ mode, items, className = "" }: PaymentListProps) {
   }, [rows]);
 
   const sorted = useMemo(() => {
-    if (mode !== "talent") return rows;
     const mul = dir === "desc" ? -1 : 1;
     return [...rows].sort((a, b) => {
-      if (sort === "status") {
-        return (
-          mul *
-          (PAYMENT_STATUS_ORDER[a.status] - PAYMENT_STATUS_ORDER[b.status])
-        );
-      }
       const at = parseDue(a.due);
       const bt = parseDue(b.due);
       return mul * (at === bt ? 0 : at < bt ? -1 : 1);
     });
-  }, [rows, sort, dir, mode]);
+  }, [rows, dir]);
 
   const filtered = useMemo(() => {
     if (filter === "all") return sorted;
@@ -134,13 +125,8 @@ export function PaymentList({ mode, items, className = "" }: PaymentListProps) {
       item.id === "all" || item.id === "paid" ? undefined : counts[item.id],
   }));
 
-  function toggleSort(key: SortKey) {
-    if (sort === key) {
-      setDir((prev) => (prev === "asc" ? "desc" : "asc"));
-      return;
-    }
-    setSort(key);
-    setDir("asc");
+  function toggleDueSort() {
+    setDir((prev) => (prev === "asc" ? "desc" : "asc"));
   }
 
   async function onMarkPaid(id: string) {
@@ -150,8 +136,10 @@ export function PaymentList({ mode, items, className = "" }: PaymentListProps) {
     const result = await markContentPaidAction(id);
     if (result.error) {
       replaceRow(current);
+      showToast(result.error, "danger");
       return;
     }
+    showToast(`“${current.content}” was marked as paid.`);
     router.refresh();
   }
 
@@ -162,8 +150,10 @@ export function PaymentList({ mode, items, className = "" }: PaymentListProps) {
     const result = await markContentInvoicedAction(id, terms as PaymentTerms);
     if (result.error) {
       replaceRow(current);
+      showToast(result.error, "danger");
       return;
     }
+    showToast(`“${current.content}” was marked as invoiced.`);
     router.refresh();
   }
 
@@ -173,10 +163,13 @@ export function PaymentList({ mode, items, className = "" }: PaymentListProps) {
       : "No payments in this filter.";
 
   const table = (
-    <div className="overflow-x-auto rounded-card border border-card-border bg-card shadow-card">
+    <div
+      className="overflow-x-auto rounded-card border border-card-border bg-card shadow-card"
+      data-tour="tour-payments"
+    >
       <table
         className={[
-          "w-full min-w-[64rem] border-collapse text-left",
+          "w-full min-w-5xl border-collapse text-left",
           mode === "talent" ? "text-xs" : "",
         ]
           .filter(Boolean)
@@ -185,41 +178,59 @@ export function PaymentList({ mode, items, className = "" }: PaymentListProps) {
         <thead>
           <tr className="border-b border-card-border bg-background/70">
             {headers.map((label) => {
-              const sortable =
-                mode === "talent" && (label === "Due" || label === "Status");
-              const key: SortKey = label === "Status" ? "status" : "due";
-              const active = sortable && sort === key;
+              const sortable = label === "Due";
               return (
                 <th
                   key={label || "action"}
                   scope="col"
+                  aria-sort={
+                    sortable
+                      ? dir === "asc"
+                        ? "ascending"
+                        : "descending"
+                      : undefined
+                  }
                   className="px-3 py-3 first:px-4 last:px-4"
                 >
                   {sortable ? (
                     <button
                       type="button"
-                      onClick={() => toggleSort(key)}
-                      className="inline-flex items-center gap-1 text-left"
+                      onClick={toggleDueSort}
+                      className="inline-flex cursor-pointer items-center gap-1 text-left text-muted"
                     >
                       <Text
+                        as="span"
                         variant="caption"
-                        className="text-xs font-medium"
+                        className={
+                          mode === "talent"
+                            ? "text-xs font-medium leading-none"
+                            : "font-medium leading-none"
+                        }
                       >
                         {label}
                       </Text>
-                      {active ? (
-                        dir === "asc" ? (
-                          <CaretUpIcon size={12} weight="bold" aria-hidden />
-                        ) : (
-                          <CaretDownIcon size={12} weight="bold" aria-hidden />
-                        )
-                      ) : null}
+                      <span
+                        className="relative inline-flex h-[1em] w-2.5 shrink-0 items-center"
+                        aria-hidden
+                      >
+                        <span className="absolute left-0 top-1/2 inline-flex -translate-y-1/2 flex-col leading-none">
+                          <CaretUpIcon size={10} weight="bold" />
+                          <CaretDownIcon
+                            size={10}
+                            weight="bold"
+                            className="-mt-0.5"
+                          />
+                        </span>
+                      </span>
                     </button>
                   ) : label ? (
                     <Text
+                      as="span"
                       variant="caption"
                       className={
-                        mode === "talent" ? "text-xs font-medium" : "font-medium"
+                        mode === "talent"
+                          ? "text-xs font-medium leading-none"
+                          : "font-medium leading-none"
                       }
                     >
                       {label}
@@ -269,30 +280,28 @@ export function PaymentList({ mode, items, className = "" }: PaymentListProps) {
 
   return (
     <div className={className}>
-      <div className="md:hidden">
-        <FilterPills
-          className="flex-nowrap overflow-x-auto"
-          items={pills}
-          value={filter}
-          onChange={(id) => setFilter(id as PaymentFilter)}
-        />
-        <div className="mt-3 space-y-3">
-          {filtered.map((payment) => (
-            <PaymentCard
-              key={payment.id}
-              payment={payment}
-              onMarkPaid={onMarkPaid}
-              onMarkInvoiced={onMarkInvoiced}
-            />
-          ))}
-          {filtered.length === 0 ? (
-            <Text variant="caption" className="py-10 text-center text-sm">
-              No deals in this filter.
-            </Text>
-          ) : null}
-        </div>
+      <FilterPills
+        className="flex-nowrap overflow-x-auto md:flex-wrap md:overflow-visible"
+        items={pills}
+        value={filter}
+        onChange={(id) => setFilter(id as PaymentFilter)}
+      />
+      <div className="mt-3 space-y-3 md:hidden" data-tour="tour-payments">
+        {filtered.map((payment) => (
+          <PaymentCard
+            key={payment.id}
+            payment={payment}
+            onMarkPaid={onMarkPaid}
+            onMarkInvoiced={onMarkInvoiced}
+          />
+        ))}
+        {filtered.length === 0 ? (
+          <Text variant="caption" className="py-10 text-center text-sm">
+            No deals in this filter.
+          </Text>
+        ) : null}
       </div>
-      <div className="hidden md:block">{table}</div>
+      <div className="mt-4 hidden md:block">{table}</div>
     </div>
   );
 }

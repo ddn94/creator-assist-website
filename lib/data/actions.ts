@@ -2,6 +2,7 @@
 
 export {
   addContentAction,
+  addContentForRecordAction,
   deleteContentAction,
   setContentStageAction,
   upsertContentAction,

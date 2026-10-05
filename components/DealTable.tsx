@@ -23,7 +23,10 @@ export function DealTable({
       <Text variant="title" className="mb-3 text-lg">
         Deals
       </Text>
-      <div className="overflow-hidden rounded-card border border-card-border bg-card shadow-card">
+      <div
+        className="overflow-hidden rounded-card border border-card-border bg-card shadow-card"
+        data-tour="tour-deal"
+      >
         <div
           className={`hidden gap-3 border-b border-card-border bg-background/70 px-4 py-3 md:grid ${COLUMNS}`}
         >

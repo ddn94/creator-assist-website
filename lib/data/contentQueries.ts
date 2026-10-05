@@ -6,6 +6,7 @@ import {
   type ContentRow,
 } from "@/lib/data/map";
 import type { TalentRecord } from "@/lib/data/talentRecords";
+import type { TalentStatus } from "@/lib/talent";
 import type { TrackerDetail, TrackerItem } from "@/lib/tracker";
 import { createClient } from "@/lib/supabase/server";
 
@@ -36,12 +37,50 @@ export async function getContentById(id: string): Promise<TrackerDetail | null> 
   return mapContent(data as ContentRow);
 }
 
+/** Agency snapshot taken when this deal was disconnected from the record. */
+export async function getAgencyCopyId(
+  contentId: string,
+  recordId: string,
+): Promise<string | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("content_items")
+    .select("id")
+    .eq("agency_copy_of", contentId)
+    .eq("talent_record_id", recordId)
+    .maybeSingle();
+  if (error || typeof data?.id !== "string") return null;
+  return data.id;
+}
+
+type RosterContentRow = {
+  id: string;
+  name: string;
+  linked_user_id: string | null;
+  currency: string | null;
+  status: TalentStatus;
+};
+
+function contentFilterForRecords(records: RosterContentRow[]): string | null {
+  const ownerIds = records.flatMap((row) =>
+    row.linked_user_id ? [row.linked_user_id] : [],
+  );
+  const recordIds = records.map((row) => row.id);
+  const parts: string[] = [];
+  if (ownerIds.length > 0) parts.push(`owner_id.in.(${ownerIds.join(",")})`);
+  if (recordIds.length > 0) {
+    parts.push(`talent_record_id.in.(${recordIds.join(",")})`);
+  }
+  return parts.length > 0 ? parts.join(",") : null;
+}
+
 export async function listAgencyLinkedContent(): Promise<
   {
     content: TrackerDetail;
     talentName: string;
     currency: string;
     talentId: string;
+    recordStatus: TalentStatus;
   }[]
 > {
   const profile = await getProfile();
@@ -50,23 +89,40 @@ export async function listAgencyLinkedContent(): Promise<
   const supabase = await createClient();
   const { data: records } = await supabase
     .from("talent_records")
-    .select("id, name, linked_user_id, currency")
-    .eq("agency_id", profile.id)
-    .not("linked_user_id", "is", null);
+    .select("id, name, linked_user_id, currency, status")
+    .eq("agency_id", profile.id);
 
-  const linked = (records ?? []).filter(
-    (row): row is typeof row & { linked_user_id: string } =>
-      typeof row.linked_user_id === "string",
+  const roster = (records ?? []).flatMap((row) => {
+    if (typeof row.id !== "string" || typeof row.name !== "string") return [];
+    return [
+      {
+        id: row.id,
+        name: row.name,
+        linked_user_id:
+          typeof row.linked_user_id === "string" ? row.linked_user_id : null,
+        currency: typeof row.currency === "string" ? row.currency : null,
+        status:
+          row.status === "active" ||
+          row.status === "invited" ||
+          row.status === "disconnected" ||
+          row.status === "requested"
+            ? row.status
+            : "record",
+      } satisfies RosterContentRow,
+    ];
+  });
+  const filter = contentFilterForRecords(roster);
+  if (!filter) return [];
+
+  const linkedIds = roster.flatMap((row) =>
+    row.linked_user_id ? [row.linked_user_id] : [],
   );
-  if (linked.length === 0) return [];
-
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("id, display_name, currency")
-    .in(
-      "id",
-      linked.map((row) => row.linked_user_id),
-    );
+  const { data: profiles } = linkedIds.length
+    ? await supabase
+        .from("profiles")
+        .select("id, display_name, currency")
+        .in("id", linkedIds)
+    : { data: [] };
 
   const profileById = new Map(
     (profiles ?? []).map((row) => [
@@ -84,39 +140,35 @@ export async function listAgencyLinkedContent(): Promise<
     ]),
   );
 
+  const byId = new Map(roster.map((row) => [row.id, row]));
   const byOwner = new Map(
-    linked.map((row) => {
-      const live = profileById.get(row.linked_user_id);
-      return [
-        row.linked_user_id,
-        {
-          talentId: String(row.id),
-          name: live?.displayName || String(row.name),
-          currency: live?.currency || "USD",
-        },
-      ] as const;
-    }),
+    roster.flatMap((row) =>
+      row.linked_user_id ? [[row.linked_user_id, row] as const] : [],
+    ),
   );
 
   const { data } = await supabase
     .from("content_items")
     .select(CONTENT_SELECT)
-    .in(
-      "owner_id",
-      linked.map((row) => row.linked_user_id),
-    )
+    .or(filter)
     .order("updated_at", { ascending: false });
 
   return (data ?? []).flatMap((row) => {
     const mapped = mapContent(row as ContentRow);
-    const meta = byOwner.get(mapped.creatorId);
-    if (!meta) return [];
+    const record =
+      (mapped.talentRecordId ? byId.get(mapped.talentRecordId) : undefined) ??
+      (mapped.creatorId ? byOwner.get(mapped.creatorId) : undefined);
+    if (!record) return [];
+    const live = record.linked_user_id
+      ? profileById.get(record.linked_user_id)
+      : undefined;
     return [
       {
         content: mapped,
-        talentName: meta.name,
-        currency: meta.currency,
-        talentId: meta.talentId,
+        talentName: live?.displayName || record.name,
+        currency: live?.currency || record.currency || "USD",
+        talentId: record.id,
+        recordStatus: record.status,
       },
     ];
   });
@@ -125,12 +177,21 @@ export async function listAgencyLinkedContent(): Promise<
 export async function listContentForTalentRecord(
   record: TalentRecord,
 ): Promise<TrackerDetail[]> {
-  if (!record.linked_user_id) return [];
   const supabase = await createClient();
+  const filter = contentFilterForRecords([
+    {
+      id: record.id,
+      name: record.name,
+      linked_user_id: record.linked_user_id,
+      currency: record.currency,
+      status: record.status,
+    },
+  ]);
+  if (!filter) return [];
   const { data } = await supabase
     .from("content_items")
     .select(CONTENT_SELECT)
-    .eq("owner_id", record.linked_user_id)
+    .or(filter)
     .order("updated_at", { ascending: false });
   return (data ?? []).map((row) => mapContent(row as ContentRow));
 }

@@ -1,4 +1,5 @@
 import { CategoryPill } from "@/components/CategoryPill";
+import { DisconnectLink } from "@/components/DisconnectLink";
 import { ProfilePhoto } from "@/components/ProfilePhoto";
 import { SettingsRow } from "@/components/SettingsRow";
 import { Text } from "@/components/Text";
@@ -10,6 +11,7 @@ import {
   readPlatforms,
   readString,
 } from "@/lib/auth/profileAnswers";
+import type { AgencyLink } from "@/lib/data/talentRecords";
 import type { Profile } from "@/lib/auth/types";
 import { countryName } from "@/lib/countries";
 import { fmtFollowers, ROSTER_OPTIONS } from "@/lib/profileFormOptions";
@@ -20,6 +22,7 @@ type AccountProfileProps = {
   profile: Profile;
   editHref: string;
   showAppLinks?: boolean;
+  agencyLink?: AgencyLink | null;
 };
 
 function rosterLabel(value: string) {
@@ -30,6 +33,7 @@ export function AccountProfile({
   profile,
   editHref,
   showAppLinks = false,
+  agencyLink = null,
 }: AccountProfileProps) {
   const name = displayName(profile);
   const platforms = readPlatforms(profile.onboarding);
@@ -89,6 +93,22 @@ export function AccountProfile({
           }
           href={editHref}
         />
+        <SettingsRow
+          title="Change password"
+          description="Update the password you use to sign in"
+          href={
+            profile.role === "agency"
+              ? "/workspace/profile/password"
+              : "/home/profile/password"
+          }
+        />
+        {agencyLink?.status === "active" ? (
+          <DisconnectLink
+            recordId={agencyLink.recordId}
+            name={agencyLink.agencyName}
+            side="talent"
+          />
+        ) : null}
       </div>
 
       {showAppLinks ? (

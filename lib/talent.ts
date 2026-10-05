@@ -6,7 +6,12 @@ import {
 } from "@/lib/payments";
 import type { PaymentTerms } from "@/lib/tracker";
 
-export type TalentStatus = "active" | "invited" | "record";
+export type TalentStatus =
+  | "active"
+  | "invited"
+  | "record"
+  | "disconnected"
+  | "requested";
 
 export type TalentItem = {
   id: string;
@@ -62,7 +67,7 @@ export type TalentDetail = TalentItem & {
   firstName: string;
   notes: string | null;
   deals: TalentDeal[];
-  invoicing: TalentInvoicing | null;
+  invoicing: TalentInvoicing[];
   activity: TalentActivityItem[];
 };
 
@@ -70,6 +75,8 @@ export const talentStatusTone: Record<TalentStatus, StatusTagTone> = {
   active: "active",
   invited: "invited",
   record: "record",
+  disconnected: "record",
+  requested: "invited",
 };
 
 export const dealPaymentTone: Record<

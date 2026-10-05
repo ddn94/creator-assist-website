@@ -326,6 +326,7 @@ export function Select({
           aria-disabled={disabled}
           disabled={disabled}
           autoComplete="off"
+          spellCheck={false}
           placeholder={placeholder}
           value={inputValue}
           onChange={(event) => {

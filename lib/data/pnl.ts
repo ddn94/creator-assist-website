@@ -1,4 +1,4 @@
-import { convertAmount } from "@/lib/fx";
+import { convertAmount, moneyCode } from "@/lib/fx";
 import type { PnlDateFilter } from "@/lib/pnlRange";
 import { dateInPnlRange, resolvePnlBounds } from "@/lib/pnlRange";
 import type {
@@ -9,49 +9,107 @@ import type {
   TalentPnlContentRow,
   TalentPnlSummary,
 } from "@/lib/pnl";
+import type { TalentStatus } from "@/lib/talent";
 import {
   DEAL_STATUS_LABELS,
   computeDealStatus,
+  computeDueDate,
   fmtMoney,
   type TrackerDetail,
 } from "@/lib/tracker";
 
-function dealInPnlRange(
+function paidFeeInRange(
   item: TrackerDetail,
   start: Date | null,
   end: Date | null,
+): number {
+  if (!item.deal?.datePaid) return 0;
+  if (!dateInPnlRange(item.deal.datePaid, start, end)) return 0;
+  return item.deal.feeAgreed;
+}
+
+function expensesInHome(
+  item: TrackerDetail,
+  start: Date | null,
+  end: Date | null,
+  fallback: string,
+  home: string,
+): number {
+  const dealCode = moneyCode(item.deal?.currency, fallback);
+  return item.expenses
+    .filter((expense) => dateInPnlRange(expense.date, start, end))
+    .reduce(
+      (sum, expense) =>
+        sum +
+        convertAmount(expense.amount, moneyCode(expense.currency, dealCode), home),
+      0,
+    );
+}
+
+function paidFeeInHome(
+  item: TrackerDetail,
+  start: Date | null,
+  end: Date | null,
+  fallback: string,
+  home: string,
+): number {
+  const paid = paidFeeInRange(item, start, end);
+  if (!paid) return 0;
+  return convertAmount(paid, moneyCode(item.deal?.currency, fallback), home);
+}
+
+function overdueInRange(
+  item: TrackerDetail,
+  start: Date | null,
+  end: Date | null,
+  today: Date,
 ): boolean {
-  if (!item.deal) return false;
-  return (
-    dateInPnlRange(item.updatedAt, start, end) ||
-    (!!item.deal.datePaid && dateInPnlRange(item.deal.datePaid, start, end)) ||
-    (!!item.deal.dateInvoiced &&
-      dateInPnlRange(item.deal.dateInvoiced, start, end))
-  );
+  if (!item.deal || computeDealStatus(item.deal, today) !== "overdue") return false;
+  return dateInPnlRange(computeDueDate(item.deal), start, end);
+}
+
+function currencyOfRows(rows: TalentPnlContentRow[], fallback: string): string {
+  const home = moneyCode(fallback);
+  const codes = new Set(rows.map((row) => moneyCode(row.currency, home)));
+  if (codes.size <= 1) return [...codes][0] ?? home;
+  return home;
 }
 
 export function buildTalentPnlRows(
   items: TrackerDetail[],
   filter?: PnlDateFilter,
   today = filter?.today ?? new Date(),
+  currency = "USD",
 ): TalentPnlContentRow[] {
   const { start, end } = resolvePnlBounds(
     filter ? { ...filter, today } : undefined,
   );
+  const fallback = moneyCode(currency);
 
   return items
     .filter((item) => item.deal || item.expenses.length > 0)
     .map((item) => {
+      const code = moneyCode(
+        item.deal?.currency,
+        moneyCode(
+          item.expenses.find((expense) => expense.currency)?.currency,
+          fallback,
+        ),
+      );
       const expenses = item.expenses
         .filter((e) => dateInPnlRange(e.date, start, end))
-        .reduce((sum, e) => sum + e.amount, 0);
-      const fee = item.deal?.feeAgreed ?? null;
+        .reduce(
+          (sum, e) => sum + convertAmount(e.amount, moneyCode(e.currency, code), code),
+          0,
+        );
+      const fee = item.deal ? paidFeeInRange(item, start, end) : null;
       const dealStatus = item.deal ? computeDealStatus(item.deal, today) : null;
       const active =
         (!start && !end) ||
-        dateInPnlRange(item.updatedAt, start, end) ||
         (!!item.deal?.datePaid &&
           dateInPnlRange(item.deal.datePaid, start, end)) ||
+        (!!item.deal?.dateInvoiced &&
+          dateInPnlRange(item.deal.dateInvoiced, start, end)) ||
         item.expenses.some((e) => dateInPnlRange(e.date, start, end));
       return {
         id: item.id,
@@ -65,6 +123,7 @@ export function buildTalentPnlRows(
         fee,
         expenses,
         profit: (fee ?? 0) - expenses,
+        currency: code,
         active,
       };
     })
@@ -99,45 +158,83 @@ function breakdownBy(
     .sort((a, b) => b.profit - a.profit);
 }
 
+function rowsInReportCurrency(
+  items: TrackerDetail[],
+  filter: PnlDateFilter | undefined,
+  currency: string,
+): TalentPnlContentRow[] {
+  const rows = buildTalentPnlRows(items, filter, filter?.today, currency);
+  const home = currencyOfRows(rows, currency);
+  const distinct = new Set(rows.map((row) => moneyCode(row.currency, home)));
+  if (distinct.size <= 1) return rows;
+  return rows.map((row) => ({
+    ...row,
+    fee: row.fee == null ? null : convertAmount(row.fee, row.currency, home),
+    expenses: convertAmount(row.expenses, row.currency, home),
+    profit: convertAmount(row.profit, row.currency, home),
+    currency: home,
+  }));
+}
+
 export function buildTalentPnlByBrand(
   items: TrackerDetail[],
   filter?: PnlDateFilter,
+  currency = "USD",
 ) {
-  return breakdownBy(buildTalentPnlRows(items, filter), (row) => row.brand);
+  return breakdownBy(
+    rowsInReportCurrency(items, filter, currency),
+    (row) => row.brand,
+  );
 }
 
 export function buildTalentPnlByNiche(
   items: TrackerDetail[],
   filter?: PnlDateFilter,
+  currency = "USD",
 ) {
-  return breakdownBy(buildTalentPnlRows(items, filter), (row) => row.niche);
+  return breakdownBy(
+    rowsInReportCurrency(items, filter, currency),
+    (row) => row.niche,
+  );
 }
 
 export function buildTalentPnlSummary(
   items: TrackerDetail[],
   filter?: PnlDateFilter,
   today = filter?.today ?? new Date(),
+  currency = "USD",
 ): TalentPnlSummary {
   const { start, end } = resolvePnlBounds(
     filter ? { ...filter, today } : undefined,
   );
+  const home = currencyOfRows(
+    buildTalentPnlRows(items, filter, today, currency),
+    currency,
+  );
   const revenue = items.reduce((sum, item) => {
     if (!item.deal?.datePaid) return sum;
     if (!dateInPnlRange(item.deal.datePaid, start, end)) return sum;
-    return sum + item.deal.feeAgreed;
+    return (
+      sum +
+      convertAmount(item.deal.feeAgreed, moneyCode(item.deal.currency, home), home)
+    );
   }, 0);
-  const expenses = items.reduce(
-    (sum, item) =>
+  const expenses = items.reduce((sum, item) => {
+    const fallback = moneyCode(item.deal?.currency, home);
+    return (
       sum +
       item.expenses
         .filter((e) => dateInPnlRange(e.date, start, end))
-        .reduce((s, e) => s + e.amount, 0),
-    0,
-  );
-  const overdue = items.filter(
-    (item) => item.deal && computeDealStatus(item.deal, today) === "overdue",
+        .reduce(
+          (s, e) => s + convertAmount(e.amount, moneyCode(e.currency, fallback), home),
+          0,
+        )
+    );
+  }, 0);
+  const overdue = items.filter((item) =>
+    overdueInRange(item, start, end, today),
   ).length;
-  return { revenue, expenses, net: revenue - expenses, overdue };
+  return { revenue, expenses, net: revenue - expenses, overdue, currency: home };
 }
 
 export function buildAgencyPnlTalent(
@@ -146,11 +243,12 @@ export function buildAgencyPnlTalent(
     talentName: string;
     currency: string;
     talentId: string;
+    recordStatus?: TalentStatus;
   }[],
   homeCurrency: string,
   filter?: PnlDateFilter,
 ): PnlTalentRow[] {
-  const { start, end, today } = resolvePnlBounds(filter);
+  const { start, end } = resolvePnlBounds(filter);
   const home = homeCurrency || "USD";
   const byTalent = new Map<
     string,
@@ -167,115 +265,129 @@ export function buildAgencyPnlTalent(
     byTalent.set(row.talentId, cur);
   }
 
-  const result: PnlTalentRow[] = [];
+  const result: {
+    id: string;
+    name: string;
+    currency: string;
+    revenue: number;
+    expenses: number;
+    profit: number;
+  }[] = [];
   for (const [id, group] of byTalent) {
-    const items = group.items.filter(
-      (i) =>
-        i.deal && i.type === "paid_collab" && dealInPnlRange(i, start, end),
+    const fallback = group.currency || "USD";
+    const revenue = group.items.reduce(
+      (sum, item) => sum + paidFeeInHome(item, start, end, fallback, home),
+      0,
     );
-    const toHome = (fee: number) =>
-      convertAmount(fee, group.currency || "USD", home);
-    const billed = items.reduce((s, i) => s + toHome(i.deal?.feeAgreed ?? 0), 0);
-    if (billed === 0) continue;
-    const received = items
-      .filter(
-        (i) =>
-          i.deal?.datePaid && dateInPnlRange(i.deal.datePaid, start, end),
-      )
-      .reduce((s, i) => s + toHome(i.deal?.feeAgreed ?? 0), 0);
-    const outstanding = billed - received;
-    const overdue = items
-      .filter((i) => i.deal && computeDealStatus(i.deal, today) === "overdue")
-      .reduce((s, i) => s + toHome(i.deal?.feeAgreed ?? 0), 0);
+    const expenses = group.items.reduce(
+      (sum, item) => sum + expensesInHome(item, start, end, fallback, home),
+      0,
+    );
+    if (revenue === 0 && expenses === 0) continue;
     result.push({
       id,
       name: group.name,
       currency: home,
-      billed: fmtMoney(billed, home),
-      received: fmtMoney(received, home),
-      outstanding: fmtMoney(outstanding, home),
-      overdue: overdue > 0 ? fmtMoney(overdue, home) : null,
+      revenue,
+      expenses,
+      profit: revenue - expenses,
     });
   }
-  return result;
+  return result
+    .sort((a, b) => b.profit - a.profit)
+    .map((row) => ({
+      id: row.id,
+      name: row.name,
+      currency: row.currency,
+      revenue: fmtMoney(row.revenue, home),
+      expenses: fmtMoney(row.expenses, home),
+      profit: fmtMoney(row.profit, home),
+    }));
 }
 
 export function buildAgencyPnlBrands(
-  rows: { content: TrackerDetail; currency: string }[],
+  rows: {
+    content: TrackerDetail;
+    currency: string;
+    recordStatus?: TalentStatus;
+  }[],
   homeCurrency: string,
   filter?: PnlDateFilter,
 ): PnlBrandRow[] {
   const { start, end } = resolvePnlBounds(filter);
   const home = homeCurrency || "USD";
-  const map = new Map<string, { name: string; amount: number }>();
+  const map = new Map<string, { name: string; profit: number }>();
   for (const { content, currency } of rows) {
-    if (!content.deal || !content.brandName) continue;
-    if (!dealInPnlRange(content, start, end)) continue;
+    if (!content.brandName) continue;
+    const fallback = currency || "USD";
+    const paid = paidFeeInHome(content, start, end, fallback, home);
+    const cost = expensesInHome(content, start, end, fallback, home);
+    if (paid === 0 && cost === 0) continue;
     const key = content.brandName.toLowerCase();
-    const cur = map.get(key) ?? { name: content.brandName, amount: 0 };
-    cur.amount += convertAmount(
-      content.deal.feeAgreed,
-      currency || "USD",
-      home,
-    );
+    const cur = map.get(key) ?? { name: content.brandName, profit: 0 };
+    cur.profit += paid - cost;
     map.set(key, cur);
   }
   return [...map.entries()]
-    .map(([id, value]) => ({ id, name: value.name, amount: value.amount }))
-    .sort((a, b) => b.amount - a.amount)
-    .map(({ id, name, amount }) => ({
+    .map(([id, value]) => ({ id, name: value.name, profit: value.profit }))
+    .sort((a, b) => b.profit - a.profit)
+    .map(({ id, name, profit }) => ({
       id,
       name,
-      value: fmtMoney(amount, home),
+      value: fmtMoney(profit, home),
+      negative: profit < 0,
     }));
 }
 
 export function buildAgencyPnlCurrencies(
-  rows: { content: TrackerDetail; currency: string }[],
+  rows: {
+    content: TrackerDetail;
+    currency: string;
+    talentId?: string;
+    recordStatus?: TalentStatus;
+  }[],
   homeCurrency: string,
   filter?: PnlDateFilter,
 ): PnlCurrencySummary[] {
   const { start, end, today } = resolvePnlBounds(filter);
   const home = homeCurrency || "USD";
   const talentIds = new Set<string>();
-  let billed = 0;
-  let received = 0;
+  let revenue = 0;
+  let expenses = 0;
   let overdue = 0;
 
-  for (const { content, currency } of rows) {
-    if (!content.deal || content.type !== "paid_collab") continue;
-    if (!dealInPnlRange(content, start, end)) continue;
-    talentIds.add(content.creatorId);
-    const fee = convertAmount(content.deal.feeAgreed, currency || "USD", home);
-    billed += fee;
-    if (
-      content.deal.datePaid &&
-      dateInPnlRange(content.deal.datePaid, start, end)
-    ) {
-      received += fee;
+  for (const { content, currency, talentId } of rows) {
+    const fallback = currency || "USD";
+    const paid = paidFeeInRange(content, start, end);
+    const cost = expensesInHome(content, start, end, fallback, home);
+    if (paid !== 0 || cost !== 0) {
+      talentIds.add(talentId || content.creatorId || content.id);
     }
-    if (computeDealStatus(content.deal, today) === "overdue") {
-      overdue += fee;
-    }
+    revenue += paid
+      ? convertAmount(paid, moneyCode(content.deal?.currency, fallback), home)
+      : 0;
+    expenses += cost;
+    if (overdueInRange(content, start, end, today)) overdue += 1;
   }
 
-  const outstanding = billed - received;
+  const net = revenue - expenses;
   return [
     {
       id: home.toLowerCase(),
       name: home,
       talentCount: talentIds.size,
       metrics: [
-        { label: "Billed", value: fmtMoney(billed, home), tone: "idea" },
-        { label: "Received", value: fmtMoney(received, home), tone: "collab" },
+        { label: "Total revenue", value: fmtMoney(revenue, home), tone: "collab" },
+        { label: "Total expenses", value: fmtMoney(expenses, home), tone: "payment" },
         {
-          label: "Outstanding",
-          value: fmtMoney(outstanding, home),
-          tone: "payment",
+          label: "Net profit",
+          value: fmtMoney(net, home),
+          tone: "collab",
+          valueClassName: net < 0 ? "text-danger!" : "text-primary-hover!",
         },
         {
           label: "Overdue",
-          value: overdue > 0 ? fmtMoney(overdue, home) : "—",
+          value: String(overdue),
           tone: overdue > 0 ? "organic" : "background",
           emphasize: overdue > 0,
         },

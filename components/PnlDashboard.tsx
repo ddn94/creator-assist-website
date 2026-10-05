@@ -11,6 +11,7 @@ import {
   buildAgencyPnlTalent,
 } from "@/lib/data/selectors";
 import type { PnlDateFilter } from "@/lib/pnlRange";
+import type { TalentStatus } from "@/lib/talent";
 import type { TrackerDetail } from "@/lib/tracker";
 
 type LinkedRow = {
@@ -18,6 +19,7 @@ type LinkedRow = {
   talentName: string;
   currency: string;
   talentId: string;
+  recordStatus?: TalentStatus;
 };
 
 type PnlDashboardProps = {
@@ -50,10 +52,12 @@ export function PnlDashboard({
     <div className={className}>
       <PnlDateRangeControl onChange={setFilter} />
 
-      <div className="mt-4">
+      <div className="mt-4" data-tour="tour-pnl">
         {currencies[0] ? (
           <CurrencySummaryCard summary={currencies[0]} />
-        ) : null}
+        ) : (
+          <div data-tour="tour-pnl-fallback" />
+        )}
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(16rem,1fr)] lg:gap-5">

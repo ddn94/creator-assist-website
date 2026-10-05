@@ -14,6 +14,8 @@ const FILTERS = [
   { id: "active", label: "Active" },
   { id: "invited", label: "Invited" },
   { id: "record", label: "Record only" },
+  { id: "disconnected", label: "Disconnected" },
+  { id: "requested", label: "Requested" },
 ] as const;
 
 type TalentFilter = (typeof FILTERS)[number]["id"];
@@ -31,7 +33,14 @@ export function TalentTable({ items, className = "" }: TalentTableProps) {
   const [page, setPage] = useState(0);
 
   const counts = useMemo(() => {
-    const next = { all: items.length, active: 0, invited: 0, record: 0 };
+    const next = {
+      all: items.length,
+      active: 0,
+      invited: 0,
+      record: 0,
+      disconnected: 0,
+      requested: 0,
+    };
     for (const item of items) {
       next[item.status] += 1;
     }
@@ -65,7 +74,13 @@ export function TalentTable({ items, className = "" }: TalentTableProps) {
     <div className={className}>
       <FilterPills items={pills} value={filter} onChange={onFilterChange} />
 
-      <div className="mt-4 overflow-hidden rounded-card border border-card-border bg-card shadow-card">
+      <div
+        className="mt-4 overflow-hidden rounded-card border border-card-border bg-card shadow-card"
+        data-tour="tour-roster"
+        data-tour-href={
+          visible[0] ? `/workspace/talent/${visible[0].id}` : undefined
+        }
+      >
         <div
           className={`hidden gap-3 border-b border-card-border bg-background/70 px-4 py-3 lg:grid ${COLUMNS}`}
         >
@@ -86,7 +101,9 @@ export function TalentTable({ items, className = "" }: TalentTableProps) {
         </div>
 
         {visible.length > 0 ? (
-          visible.map((talent) => <TalentRow key={talent.id} talent={talent} />)
+          visible.map((talent) => (
+            <TalentRow key={talent.id} talent={talent} />
+          ))
         ) : (
           <div className="px-4 py-8 text-center">
             <Text variant="description">

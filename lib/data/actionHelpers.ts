@@ -1,8 +1,9 @@
 import { revalidatePath } from "next/cache";
 import { getProfile } from "@/lib/auth/session";
+import { calendarDay } from "@/lib/calendarDay";
 
 export function todayIso() {
-  return new Date().toISOString().slice(0, 10);
+  return calendarDay(new Date());
 }
 
 export function revalidateContent(paths: string[] = []) {

@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AddContentPanel } from "@/components/AddContentPanel";
+import { showToast } from "@/components/Toast";
 import { FilterPills } from "@/components/FilterPills";
 import { FormAlert } from "@/components/FormAlert";
 import { Text } from "@/components/Text";
@@ -26,15 +27,19 @@ type ContentTrackerProps = {
   items: TrackerItem[];
   platformOptions: { value: string; label: string }[];
   defaultAddOpen?: boolean;
+  initialStage?: Stage;
+  tourItemId?: string;
 };
 
 export function ContentTracker({
   items,
   platformOptions,
   defaultAddOpen = false,
+  initialStage,
+  tourItemId,
 }: ContentTrackerProps) {
   const router = useRouter();
-  const [activeStage, setActiveStage] = useState<Stage>("concept");
+  const [activeStage, setActiveStage] = useState<Stage>(initialStage ?? "concept");
   const [saveError, setSaveError] = useState<string | null>(null);
   const serverKey = items.map((item) => `${item.id}:${item.stage}`).join("|");
   const [draft, setDraft] = useState<{
@@ -141,6 +146,7 @@ export function ContentTracker({
         row.id === tempId ? { ...row, id: result.id } : row,
       );
       showRows(next);
+      showToast(`Your content “${optimistic.title}” was added.`);
       if (stage === "concept") {
         router.refresh();
         return;
@@ -183,13 +189,14 @@ export function ContentTracker({
             count: counts[stage] || undefined,
           }))}
         />
-        <div className="mt-3 space-y-3">
+        <div className="mt-3 space-y-3" data-tour="tour-content-fallback">
           {activeItems.map((item) => (
             <TrackerItemCard
               key={item.id}
               item={item}
               onAdvance={advance}
               onRevisionBack={revisionBack}
+              tourAnchor={item.id === tourItemId}
             />
           ))}
           {activeItems.length === 0 ? (
@@ -200,7 +207,10 @@ export function ContentTracker({
         </div>
       </div>
 
-      <div className="hidden gap-3 overflow-x-auto pb-4 md:flex">
+      <div
+        className="hidden gap-3 overflow-x-auto pb-4 md:flex"
+        data-tour="tour-content-fallback"
+      >
         {STAGES.map((stage) => {
           const colItems = rows.filter((item) => item.stage === stage);
           return (
@@ -221,6 +231,7 @@ export function ContentTracker({
                     item={item}
                     onAdvance={advance}
                     onRevisionBack={revisionBack}
+                    tourAnchor={item.id === tourItemId}
                   />
                 ))}
                 {colItems.length === 0 ? (

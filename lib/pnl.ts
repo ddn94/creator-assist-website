@@ -13,6 +13,7 @@ export type PnlMetric = {
   value: string;
   tone: "idea" | "collab" | "payment" | "organic" | "background";
   emphasize?: boolean;
+  valueClassName?: string;
 };
 
 export type PnlCurrencySummary = {
@@ -26,16 +27,16 @@ export type PnlTalentRow = {
   id: string;
   name: string;
   currency: string;
-  billed: string;
-  received: string;
-  outstanding: string;
-  overdue: string | null;
+  revenue: string;
+  expenses: string;
+  profit: string;
 };
 
 export type PnlBrandRow = {
   id: string;
   name: string;
   value: string;
+  negative?: boolean;
 };
 
 /** Talent P&L */
@@ -52,6 +53,8 @@ export type TalentPnlContentRow = {
   fee: number | null;
   expenses: number;
   profit: number;
+  /** Currency the fee and this row's profit are shown in. */
+  currency: string;
 };
 
 export type TalentPnlBreakdownRow = {
@@ -67,6 +70,8 @@ export type TalentPnlSummary = {
   expenses: number;
   net: number;
   overdue: number;
+  /** Code the three money figures are labeled with. */
+  currency: string;
 };
 
 export function contentTypeCategory(type: ContentType): Category {

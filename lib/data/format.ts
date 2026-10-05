@@ -1,3 +1,4 @@
+import { calendarDay, calendarDaysBetween } from "@/lib/calendarDay";
 import { isCalendarStamp } from "@/lib/timestamps";
 import { formatLiveDate } from "@/lib/tracker";
 
@@ -23,9 +24,7 @@ export function displayShortDate(iso: string | null): string | null {
 }
 
 export function daysBetween(fromIso: string, to = new Date()): number {
-  const from = new Date(`${fromIso.slice(0, 10)}T12:00:00`);
-  const today = new Date(`${to.toISOString().slice(0, 10)}T12:00:00`);
-  return Math.round((today.getTime() - from.getTime()) / (1000 * 60 * 60 * 24));
+  return calendarDaysBetween(fromIso.slice(0, 10), calendarDay(to));
 }
 
 export function timeAgo(iso: string, today = new Date()): string {
