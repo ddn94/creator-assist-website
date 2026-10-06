@@ -104,5 +104,13 @@ export function tourSteps(role: UserRole): TourStep[] {
   return role === "agency" ? agencySteps : talentSteps;
 }
 
+/** First tooltip page. New accounts land here instead of the overview. */
+export function tourStartPath(role: UserRole): string {
+  return tourSteps(role)[0].href ?? (role === "agency" ? "/workspace/talent" : "/home/tracker");
+}
+
 export const TOUR_STEP_KEY = "ca-product-tour-step";
 export const TOUR_HREF_KEY = "ca-product-tour-href";
+export const TOUR_CLOSED_KEY = "ca-product-tour-closed";
+/** Route to open for real once the tour UI has already switched. */
+export const TOUR_HANDOFF_KEY = "ca-product-tour-handoff";

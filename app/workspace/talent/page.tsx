@@ -7,8 +7,10 @@ import { listTalentRecords } from "@/lib/data/talentRecords";
 import { getLinkedTalentAvatars } from "@/lib/data/linkedTalent";
 import { listAgencyLinkedContent } from "@/lib/data/contentQueries";
 import { buildTalentRoster } from "@/lib/data/selectors";
+import { tourCoversPage } from "@/lib/tourGate";
 
 export default async function WorkspaceTalentPage() {
+  if (await tourCoversPage()) return null;
   const profile = await requireProfile("agency");
   const [records, linked, avatars] = await Promise.all([
     listTalentRecords(),

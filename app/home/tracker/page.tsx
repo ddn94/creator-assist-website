@@ -5,6 +5,7 @@ import { asAnswers, readPlatforms } from "@/lib/auth/profileAnswers";
 import { requireProfile } from "@/lib/auth/session";
 import { listMyContentItems } from "@/lib/data/contentQueries";
 import { contentPlatformOptions } from "@/lib/platforms";
+import { tourCoversPage } from "@/lib/tourGate";
 
 export default async function TrackerPage({
   searchParams,
@@ -12,6 +13,7 @@ export default async function TrackerPage({
   searchParams: Promise<{ add?: string }>;
 }) {
   const { add } = await searchParams;
+  if (await tourCoversPage()) return null;
   const profile = await requireProfile("talent");
   const items = await listMyContentItems();
   const tour = profile.onboarding.productTour === "pending";

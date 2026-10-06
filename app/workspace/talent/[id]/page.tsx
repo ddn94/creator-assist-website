@@ -10,6 +10,7 @@ import { buildTalentDetailFromRecord } from "@/lib/data/selectors";
 import { contentPlatformOptions } from "@/lib/platforms";
 import { localToday } from "@/lib/localToday";
 import { createClient } from "@/lib/supabase/server";
+import { tourCoversPage } from "@/lib/tourGate";
 
 type TalentDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -22,6 +23,7 @@ export default async function TalentDetailPage({
 }: TalentDetailPageProps) {
   const { id } = await params;
   const { from } = await searchParams;
+  if (await tourCoversPage()) return null;
   const fromOverview = from === "overview";
   const profile = await requireProfile("agency");
   const record = await getTalentRecord(id);

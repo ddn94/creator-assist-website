@@ -1,14 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/Button";
 import { Text } from "@/components/Text";
+import { useTourPath } from "@/components/TourStage";
 import { completeProductTour } from "@/lib/auth/actions";
 import type { UserRole } from "@/lib/auth/types";
 import { appHomePath } from "@/lib/auth/access";
-import { TOUR_HREF_KEY, TOUR_STEP_KEY, tourSteps } from "@/lib/tour";
+import {
+  TOUR_CLOSED_KEY,
+  TOUR_HANDOFF_KEY,
+  TOUR_HREF_KEY,
+  TOUR_STEP_KEY,
+  tourSteps,
+} from "@/lib/tour";
 
 type Box = {
   top: number;
@@ -23,6 +30,23 @@ type Frame = {
   content: Box;
   tab: Box | null;
 };
+
+function sameBox(a: Box, b: Box): boolean {
+  return (
+    a.top === b.top &&
+    a.left === b.left &&
+    a.width === b.width &&
+    a.height === b.height &&
+    a.radius === b.radius
+  );
+}
+
+function sameFrame(current: Frame | null, next: Frame): boolean {
+  if (!current || current.stepId !== next.stepId) return false;
+  if (!sameBox(current.content, next.content)) return false;
+  if (!current.tab || !next.tab) return current.tab === next.tab;
+  return sameBox(current.tab, next.tab);
+}
 
 function cornerRadius(node: HTMLElement): number {
   const value = Number.parseFloat(getComputedStyle(node).borderTopLeftRadius);
@@ -76,7 +100,9 @@ function boxFrom(node: HTMLElement): Box {
 
 export function ProductTour({ role }: { role: UserRole }) {
   const router = useRouter();
-  const pathname = usePathname();
+  const livePathname = usePathname();
+  const tour = useTourPath();
+  const pathname = tour?.path ?? livePathname;
   const steps = tourSteps(role);
   const [index, setIndex] = useState(0);
   const [ready, setReady] = useState(false);
@@ -84,6 +110,10 @@ export function ProductTour({ role }: { role: UserRole }) {
   const [closed, setClosed] = useState(false);
 
   useEffect(() => {
+    if (sessionStorage.getItem(TOUR_CLOSED_KEY) === "1") {
+      setClosed(true);
+      return;
+    }
     const saved = Number(sessionStorage.getItem(TOUR_STEP_KEY));
     if (Number.isInteger(saved) && saved >= 0 && saved < steps.length) {
       setIndex(saved);
@@ -92,6 +122,13 @@ export function ProductTour({ role }: { role: UserRole }) {
   }, [steps.length]);
 
   const step = steps[index];
+
+  useEffect(() => {
+    const dest = sessionStorage.getItem(TOUR_HANDOFF_KEY);
+    if (!dest || dest !== livePathname) return;
+    sessionStorage.removeItem(TOUR_HANDOFF_KEY);
+    void completeProductTour();
+  }, [livePathname]);
 
   useEffect(() => {
     if (!ready || closed || !step) return;
@@ -103,19 +140,20 @@ export function ProductTour({ role }: { role: UserRole }) {
       sessionStorage.setItem(TOUR_STEP_KEY, "0");
       return;
     }
-    router.replace(href);
-  }, [ready, closed, step, pathname, router]);
+    if (tour) tour.setPath(href);
+    else router.replace(href);
+  }, [ready, closed, step, pathname, tour, router]);
 
   const measure = useCallback(
     (shouldScroll: boolean) => {
       if (!step || !step.matches(pathname)) {
-        setFrame(null);
+        setFrame((current) => (current === null ? current : null));
         return;
       }
       const node = findVisible(step.target) ?? findVisible(step.fallback);
       const tabNode = findTourTab(step.tab);
       if (!node) {
-        setFrame(null);
+        setFrame((current) => (current === null ? current : null));
         return;
       }
       if (shouldScroll) {
@@ -129,29 +167,40 @@ export function ProductTour({ role }: { role: UserRole }) {
           if (tabRect.top < 8) window.scrollBy(0, tabRect.top - 12);
         }
       }
-      setFrame({
+      const next = {
         stepId: step.id,
         content: boxFrom(node),
         tab: tabNode ? boxFrom(tabNode) : null,
-      });
+      };
+      setFrame((current) => (sameFrame(current, next) ? current : next));
     },
     [pathname, step],
   );
+
+  useLayoutEffect(() => {
+    if (!ready || closed) return;
+    measure(true);
+  }, [ready, closed, measure]);
 
   useEffect(() => {
     if (!ready || closed) return;
     let attempts = 0;
     measure(true);
+    function spotReady() {
+      if (!step || !step.matches(pathname)) return false;
+      const node = findVisible(step.target) ?? findVisible(step.fallback);
+      return Boolean(node && findTourTab(step.tab));
+    }
     const timer = window.setInterval(() => {
       attempts += 1;
-      const current = step && step.matches(pathname) ? step : null;
-      const node = current
-        ? (findVisible(current.target) ?? findVisible(current.fallback))
-        : null;
-      const tabNode = current ? findTourTab(current.tab) : null;
       measure(false);
-      if ((node && tabNode) || attempts >= 40) window.clearInterval(timer);
+      if (spotReady() || attempts >= 40) window.clearInterval(timer);
     }, 50);
+    const observer = new MutationObserver(() => {
+      measure(false);
+      if (spotReady()) observer.disconnect();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
     function onMove() {
       measure(false);
     }
@@ -159,24 +208,32 @@ export function ProductTour({ role }: { role: UserRole }) {
     window.addEventListener("scroll", onMove, true);
     return () => {
       window.clearInterval(timer);
+      observer.disconnect();
       window.removeEventListener("resize", onMove);
       window.removeEventListener("scroll", onMove, true);
     };
-  }, [ready, closed, measure]);
+  }, [ready, closed, measure, pathname, step]);
 
-  const finish = useCallback(async (goHome = false) => {
+  const finish = useCallback((goHome = false) => {
     setClosed(true);
+    sessionStorage.setItem(TOUR_CLOSED_KEY, "1");
     sessionStorage.removeItem(TOUR_STEP_KEY);
     sessionStorage.removeItem(TOUR_HREF_KEY);
-    await completeProductTour();
-    if (goHome) router.push(appHomePath(role));
-    else router.refresh();
-  }, [role, router]);
+    const dest = goHome ? appHomePath(role) : (tour?.path ?? livePathname);
+    if (tour?.has(dest)) tour.setPath(dest);
+    if (livePathname === dest) {
+      sessionStorage.removeItem(TOUR_HANDOFF_KEY);
+      void completeProductTour();
+      return;
+    }
+    sessionStorage.setItem(TOUR_HANDOFF_KEY, dest);
+    router.replace(dest);
+  }, [livePathname, role, router, tour]);
 
   function next() {
     if (!step) return;
     if (index >= steps.length - 1) {
-      void finish(true);
+      finish(true);
       return;
     }
     const node = findVisible(step.target);
@@ -184,10 +241,13 @@ export function ProductTour({ role }: { role: UserRole }) {
     if (linked) sessionStorage.setItem(TOUR_HREF_KEY, linked);
     const nextIndex = index + 1;
     sessionStorage.setItem(TOUR_STEP_KEY, String(nextIndex));
-    setIndex(nextIndex);
     const following = steps[nextIndex];
     const href = following?.href ?? linked;
-    if (href) router.push(href);
+    if (href) {
+      if (tour) tour.setPath(href);
+      else router.push(href);
+    }
+    setIndex(nextIndex);
   }
 
   useEffect(() => {

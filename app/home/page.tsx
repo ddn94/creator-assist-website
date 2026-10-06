@@ -11,8 +11,10 @@ import {
   buildOverviewStats,
 } from "@/lib/data/selectors";
 import { localToday } from "@/lib/localToday";
+import { tourCoversPage } from "@/lib/tourGate";
 
 export default async function TalentHomePage() {
+  if (await tourCoversPage()) return null;
   const profile = await requireProfile("talent");
   const currency = profile.currency?.trim() || "USD";
   const [content, ideas, agencyLink, connectionRequests] = await Promise.all([

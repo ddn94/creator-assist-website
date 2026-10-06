@@ -13,6 +13,7 @@ import {
 } from "@/lib/data/selectors";
 import { talentStatusTone, type TalentItem } from "@/lib/talent";
 import { localToday } from "@/lib/localToday";
+import { tourCoversPage } from "@/lib/tourGate";
 
 function rosterItems(items: TalentItem[]): RosterItem[] {
   return items.map((item) => ({
@@ -39,6 +40,7 @@ function talentFooter(items: TalentItem[]) {
 }
 
 export default async function WorkspaceOverviewPage() {
+  if (await tourCoversPage()) return null;
   const profile = await requireProfile("agency");
   const [records, avatars, linked] = await Promise.all([
     listTalentRecords(),

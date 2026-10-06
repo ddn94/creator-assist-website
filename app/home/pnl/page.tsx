@@ -2,8 +2,10 @@ import { TalentPnlDashboard } from "@/components/TalentPnlDashboard";
 import { AppFrame } from "@/components/AppFrame";
 import { requireProfile } from "@/lib/auth/session";
 import { listMyContent } from "@/lib/data/contentQueries";
+import { tourCoversPage } from "@/lib/tourGate";
 
 export default async function TalentPnlPage() {
+  if (await tourCoversPage()) return null;
   const profile = await requireProfile("talent");
   const currency = profile.currency?.trim() || "USD";
   const allContent = await listMyContent();

@@ -2,8 +2,10 @@ import { PnlDashboard } from "@/components/PnlDashboard";
 import { AppFrame } from "@/components/AppFrame";
 import { requireProfile } from "@/lib/auth/session";
 import { listAgencyLinkedContent } from "@/lib/data/contentQueries";
+import { tourCoversPage } from "@/lib/tourGate";
 
 export default async function WorkspacePnlPage() {
+  if (await tourCoversPage()) return null;
   const profile = await requireProfile("agency");
   const homeCurrency = profile.currency?.trim() || "USD";
   const linkedRows = await listAgencyLinkedContent();

@@ -3,7 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useTourPath } from "@/components/TourStage";
 import { SignOutIcon, UserIcon } from "@phosphor-icons/react";
 import { signOut } from "@/lib/auth/actions";
 import { Avatar } from "@/components/Avatar";
@@ -47,8 +48,16 @@ export function Navbar({
   profileHref = "/home/profile",
   hideMobileMenu = false,
 }: NavbarProps) {
-  const pathname = usePathname();
+  const routePath = usePathname();
+  const tour = useTourPath();
+  const pathname = tour?.path ?? routePath;
   const displayName = userName;
+
+  function openTourPage(event: ReactMouseEvent<HTMLAnchorElement>, href: string) {
+    if (!tour?.has(href)) return;
+    event.preventDefault();
+    tour.setPath(href);
+  }
   const displayBrand = brand;
   const displayEmail = userEmail;
   const [open, setOpen] = useState(false);
@@ -80,7 +89,11 @@ export function Navbar({
   return (
     <header className="relative border-b border-card-border bg-background/90 backdrop-blur-sm">
       <div className="mx-auto flex max-w-7xl items-center gap-3 px-3 py-3 sm:px-4 lg:px-5">
-        <Link href={items[0]?.href ?? "/"} className="flex min-w-0 cursor-pointer items-center gap-2.5">
+        <Link
+          href={items[0]?.href ?? "/"}
+          onClick={(event) => openTourPage(event, items[0]?.href ?? "/")}
+          className="flex min-w-0 cursor-pointer items-center gap-2.5"
+        >
           <Image
             src="/icons/icon-192.png"
             alt=""
@@ -109,6 +122,7 @@ export function Navbar({
                 key={item.href}
                 href={item.href}
                 data-tour-tab={item.href}
+                onClick={(event) => openTourPage(event, item.href)}
                 className={[
                   "cursor-pointer rounded-full px-3.5 py-2 font-display text-sm font-semibold transition-colors",
                   active
@@ -213,7 +227,10 @@ export function Navbar({
                   key={item.href}
                   href={item.href}
                   data-tour-tab={item.href}
-                  onClick={() => setOpen(false)}
+                  onClick={(event) => {
+                    openTourPage(event, item.href);
+                    setOpen(false);
+                  }}
                   className={[
                     "rounded-full px-3.5 py-2.5 font-display text-sm font-semibold",
                     active
