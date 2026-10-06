@@ -110,7 +110,7 @@ export function PaymentRow({
             onChange={setTerms}
             options={[...PAYMENT_TERM_OPTIONS]}
             size="sm"
-            className="w-[5.25rem] px-2"
+            className="w-21 px-2"
           />
           <Button
             type="button"

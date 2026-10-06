@@ -68,7 +68,7 @@ export function PnlTalentTable({ rows, className = "" }: PnlTalentTableProps) {
 
       {/* Desktop table */}
       <div className="hidden overflow-x-auto md:block">
-        <table className="w-full min-w-[36rem] border-collapse text-left">
+        <table className="w-full min-w-xl border-collapse text-left">
           <thead>
             <tr className="border-b border-card-border bg-background/70">
               {HEADERS.map((label) => (

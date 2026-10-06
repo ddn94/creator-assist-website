@@ -139,7 +139,11 @@ export function AddTalentForm({ className = "" }: AddTalentFormProps) {
         </Field>
       </div>
 
-      <FormAlert error={state.error} />
+      {state.error ? (
+        <div className="mt-4">
+          <FormAlert error={state.error} />
+        </div>
+      ) : null}
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           <SaveButton status="invited" action={action}>
