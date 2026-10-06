@@ -39,6 +39,7 @@ function paymentItemFromDeal(
   formatDate: (iso: string | null) => string | null,
   extras: {
     talentName: string | null;
+    talentId: string | null;
     contentHref: string | null;
   },
   today?: Date,
@@ -51,6 +52,7 @@ function paymentItemFromDeal(
     platform: content.platform,
     fee: fmtMoney(deal.feeAgreed, moneyCode(deal.currency, currency)),
     talentName: extras.talentName,
+    talentId: extras.talentId,
     deliverables: formatDeliverables(deal.deliverables),
     contentHref: extras.contentHref,
     ...fields,
@@ -74,6 +76,7 @@ export function buildTalentPayments(
         displayDate,
         {
           talentName: null,
+          talentId: null,
           contentHref: `/home/tracker/${content.id}?section=deal&from=payments`,
         },
         today,
@@ -85,12 +88,13 @@ export function buildAgencyPayments(
   rows: {
     content: TrackerDetail;
     talentName: string;
+    talentId: string;
     currency: string;
     recordStatus?: TalentStatus;
   }[],
   today = new Date(),
 ): PaymentItem[] {
-  return mapPaidDeals(rows, ({ content, deal, currency, talentName }) =>
+  return mapPaidDeals(rows, ({ content, deal, currency, talentName, talentId }) =>
     paymentItemFromDeal(
       "agency",
       content,
@@ -99,6 +103,7 @@ export function buildAgencyPayments(
       displayShortDate,
       {
         talentName: talentName.split(" ")[0] ?? talentName,
+        talentId,
         contentHref: null,
       },
       today,

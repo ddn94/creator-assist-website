@@ -62,6 +62,7 @@ export type PaymentItem = {
   platform: string;
   fee: string;
   talentName: string | null;
+  talentId: string | null;
   deliverables: string;
   contentHref: string | null;
   paymentTerms: PaymentTerms | null;
