@@ -94,7 +94,10 @@ function CenterTab({ tab, active }: { tab: Tab; active: boolean }) {
       aria-current={active ? "page" : undefined}
       className="relative flex w-16 shrink-0 flex-col items-center self-stretch"
     >
-      <span className="absolute left-1/2 -top-5 flex size-14 -translate-x-1/2 items-center justify-center rounded-full bg-primary text-on-primary shadow-[0_6px_16px_rgba(111,154,134,0.5)] transition-colors hover:bg-primary-hover">
+      <span
+        data-tour-tab={tab.href}
+        className="absolute left-1/2 -top-5 flex size-14 -translate-x-1/2 items-center justify-center rounded-full bg-primary text-on-primary shadow-[0_6px_16px_rgba(111,154,134,0.5)] transition-colors hover:bg-primary-hover"
+      >
         <Icon size={26} weight={active ? "fill" : "bold"} aria-hidden />
       </span>
     </Link>
@@ -115,6 +118,7 @@ function TabLink({
   return (
     <Link
       href={href}
+      data-tour-tab={href}
       className={[
         "flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 font-display text-[10px] font-semibold transition-colors",
         active ? "text-background" : "text-white/40",

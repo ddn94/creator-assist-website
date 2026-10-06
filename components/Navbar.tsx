@@ -108,6 +108,7 @@ export function Navbar({
               <Link
                 key={item.href}
                 href={item.href}
+                data-tour-tab={item.href}
                 className={[
                   "cursor-pointer rounded-full px-3.5 py-2 font-display text-sm font-semibold transition-colors",
                   active
@@ -211,6 +212,7 @@ export function Navbar({
                 <Link
                   key={item.href}
                   href={item.href}
+                  data-tour-tab={item.href}
                   onClick={() => setOpen(false)}
                   className={[
                     "rounded-full px-3.5 py-2.5 font-display text-sm font-semibold",

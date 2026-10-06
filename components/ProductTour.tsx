@@ -11,12 +11,17 @@ import { appHomePath } from "@/lib/auth/access";
 import { TOUR_HREF_KEY, TOUR_STEP_KEY, tourSteps } from "@/lib/tour";
 
 type Box = {
-  stepId: string;
   top: number;
   left: number;
   width: number;
   height: number;
   radius: number;
+};
+
+type Frame = {
+  stepId: string;
+  content: Box;
+  tab: Box | null;
 };
 
 function cornerRadius(node: HTMLElement): number {
@@ -39,12 +44,34 @@ function spotlightRadius(node: HTMLElement): number {
 }
 
 function findVisible(name: string): HTMLElement | null {
-  const nodes = document.querySelectorAll<HTMLElement>(`[data-tour="${name}"]`);
+  return findVisibleAttr("data-tour", name);
+}
+
+function findTourTab(href: string): HTMLElement | null {
+  return findVisibleAttr("data-tour-tab", href);
+}
+
+function findVisibleAttr(attr: string, value: string): HTMLElement | null {
+  const nodes = document.querySelectorAll<HTMLElement>(`[${attr}="${value}"]`);
   for (const node of nodes) {
     const rect = node.getBoundingClientRect();
     if (rect.width > 8 && rect.height > 8) return node;
   }
   return null;
+}
+
+function boxFrom(node: HTMLElement): Box {
+  const rect = node.getBoundingClientRect();
+  // CSS shrinks a large radius into a pill. SVG clamps each axis on its own
+  // and turns the same radius into an ellipse, so cap it here.
+  const radius = Math.min(spotlightRadius(node), rect.width / 2, rect.height / 2);
+  return {
+    top: rect.top,
+    left: rect.left,
+    width: rect.width,
+    height: rect.height,
+    radius,
+  };
 }
 
 export function ProductTour({ role }: { role: UserRole }) {
@@ -53,7 +80,7 @@ export function ProductTour({ role }: { role: UserRole }) {
   const steps = tourSteps(role);
   const [index, setIndex] = useState(0);
   const [ready, setReady] = useState(false);
-  const [box, setBox] = useState<Box | null>(null);
+  const [frame, setFrame] = useState<Frame | null>(null);
   const [closed, setClosed] = useState(false);
 
   useEffect(() => {
@@ -82,25 +109,30 @@ export function ProductTour({ role }: { role: UserRole }) {
   const measure = useCallback(
     (shouldScroll: boolean) => {
       if (!step || !step.matches(pathname)) {
-        setBox(null);
+        setFrame(null);
         return;
       }
       const node = findVisible(step.target) ?? findVisible(step.fallback);
+      const tabNode = findTourTab(step.tab);
       if (!node) {
-        setBox(null);
+        setFrame(null);
         return;
       }
       if (shouldScroll) {
-        node.scrollIntoView({ block: "center", inline: "nearest" });
+        const mobile = window.innerWidth < 768;
+        node.scrollIntoView({
+          block: mobile ? "center" : "nearest",
+          inline: "nearest",
+        });
+        if (!mobile && tabNode) {
+          const tabRect = tabNode.getBoundingClientRect();
+          if (tabRect.top < 8) window.scrollBy(0, tabRect.top - 12);
+        }
       }
-      const rect = node.getBoundingClientRect();
-      setBox({
+      setFrame({
         stepId: step.id,
-        top: rect.top,
-        left: rect.left,
-        width: rect.width,
-        height: rect.height,
-        radius: spotlightRadius(node),
+        content: boxFrom(node),
+        tab: tabNode ? boxFrom(tabNode) : null,
       });
     },
     [pathname, step],
@@ -112,12 +144,13 @@ export function ProductTour({ role }: { role: UserRole }) {
     measure(true);
     const timer = window.setInterval(() => {
       attempts += 1;
-      const node =
-        step && step.matches(pathname)
-          ? (findVisible(step.target) ?? findVisible(step.fallback))
-          : null;
+      const current = step && step.matches(pathname) ? step : null;
+      const node = current
+        ? (findVisible(current.target) ?? findVisible(current.fallback))
+        : null;
+      const tabNode = current ? findTourTab(current.tab) : null;
       measure(false);
-      if (node || attempts >= 40) window.clearInterval(timer);
+      if ((node && tabNode) || attempts >= 40) window.clearInterval(timer);
     }, 50);
     function onMove() {
       measure(false);
@@ -166,7 +199,7 @@ export function ProductTour({ role }: { role: UserRole }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [ready, closed, finish]);
 
-  const placed = box && box.stepId === step?.id ? box : null;
+  const placed = frame && frame.stepId === step?.id ? frame : null;
 
   if (
     !ready ||
@@ -179,13 +212,13 @@ export function ProductTour({ role }: { role: UserRole }) {
     return null;
   }
 
-  const tip = placeTip(placed, role === "talent");
+  const tip = placeTip(placed.content, placed.tab);
 
   return createPortal(
-    <div className="fixed inset-0 z-[90]" role="dialog" aria-modal="true" aria-label={step.title}>
-      <Dimmer box={placed} />
+    <div className="fixed inset-0 z-90" role="dialog" aria-modal="true" aria-label={step.title}>
+      <Dimmer content={placed.content} tab={placed.tab} />
       <div
-        className="fixed z-[92] w-[18rem] max-w-[calc(100vw-2rem)] rounded-card border border-card-border bg-card p-4 shadow-card"
+        className="fixed z-92 w-[18rem] max-w-[calc(100vw-2rem)] rounded-card border border-card-border bg-card p-4 shadow-card"
         style={{ top: tip.top, left: tip.left }}
       >
         <Text variant="caption" className="font-medium">
@@ -211,27 +244,41 @@ export function ProductTour({ role }: { role: UserRole }) {
   );
 }
 
-function placeTip(box: Box | null, talent: boolean): { top: number; left: number } {
+function overlaps(
+  box: Box,
+  tip: { top: number; left: number },
+  width: number,
+  height: number,
+): boolean {
+  return !(
+    tip.left + width < box.left ||
+    tip.left > box.left + box.width ||
+    tip.top + height < box.top ||
+    tip.top > box.top + box.height
+  );
+}
+
+function placeTip(box: Box, tab: Box | null): { top: number; left: number } {
   const margin = 16;
   const width = 288;
   const height = 168;
-  const bottomReserve = talent ? 112 : margin;
-  if (!box || typeof window === "undefined") {
-    return { top: margin, left: margin };
-  }
+  const mobile = window.innerWidth < 768;
+  const bottomReserve = mobile ? 120 : margin;
   let left = box.left + box.width / 2 - width / 2;
   left = Math.max(margin, Math.min(left, window.innerWidth - width - margin));
   const below = box.top + box.height + 12;
+  const above = Math.max(margin, box.top - 12 - height);
   const roomBelow = window.innerHeight - bottomReserve - below;
-  const top =
-    roomBelow >= height
-      ? below
-      : Math.max(margin, box.top - 12 - height);
+  let top = roomBelow >= height ? below : above;
+  if (tab && overlaps(tab, { top, left }, width, height)) {
+    const flipped = top === below ? above : below;
+    if (!overlaps(tab, { top: flipped, left }, width, height)) top = flipped;
+  }
   return { top, left };
 }
 
-function Dimmer({ box }: { box: Box | null }) {
-  if (!box) return <div className="fixed inset-0 bg-ink/50" />;
+function Dimmer({ content, tab }: { content: Box; tab: Box | null }) {
+  const holes = tab ? [content, tab] : [content];
   const shade = "rgba(32, 37, 43, 0.5)";
   return (
     <>
@@ -239,15 +286,18 @@ function Dimmer({ box }: { box: Box | null }) {
         <defs>
           <mask id="tour-spotlight">
             <rect width="100%" height="100%" fill="white" />
-            <rect
-              x={box.left}
-              y={box.top}
-              width={box.width}
-              height={box.height}
-              rx={box.radius}
-              ry={box.radius}
-              fill="black"
-            />
+            {holes.map((hole, index) => (
+              <rect
+                key={index}
+                x={hole.left}
+                y={hole.top}
+                width={hole.width}
+                height={hole.height}
+                rx={hole.radius}
+                ry={hole.radius}
+                fill="black"
+              />
+            ))}
           </mask>
         </defs>
         <rect width="100%" height="100%" fill={shade} mask="url(#tour-spotlight)" />
@@ -255,11 +305,11 @@ function Dimmer({ box }: { box: Box | null }) {
       <div
         className="pointer-events-none fixed"
         style={{
-          top: box.top,
-          left: box.left,
-          width: box.width,
-          height: box.height,
-          borderRadius: box.radius,
+          top: content.top,
+          left: content.left,
+          width: content.width,
+          height: content.height,
+          borderRadius: content.radius,
           boxShadow: "0 14px 36px rgba(32, 37, 43, 0.28)",
         }}
       />
