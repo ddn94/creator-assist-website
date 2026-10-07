@@ -4,6 +4,7 @@ import { AppFrame } from "@/components/AppFrame";
 import { requireProfile } from "@/lib/auth/session";
 import { getTalentRecord } from "@/lib/data/talentRecords";
 import { getAgencyCopyId, getContentById } from "@/lib/data/contentQueries";
+import { pnlMoneyContext } from "@/lib/data/exchangeRates";
 import { getLinkedTalentAvatars } from "@/lib/data/linkedTalent";
 import { contentPlatformOptions } from "@/lib/platforms";
 
@@ -41,6 +42,7 @@ export default async function AgencyTalentContentPage({
 
   const currency =
     linked.get(record.id)?.currency || record.currency || "USD";
+  const money = await pnlMoneyContext(currency, [item]);
   const platformOptions = contentPlatformOptions([item.platform], item.platform);
 
   return (
@@ -49,6 +51,7 @@ export default async function AgencyTalentContentPage({
         initial={item}
         platformOptions={platformOptions}
         currency={currency}
+        rates={money.rates}
         backHref={
           fromOverview
             ? `/workspace/talent/${talentId}?from=overview`

@@ -1,8 +1,13 @@
-import { addCalendarDays, calendarDay } from "@/lib/calendarDay";
+import {
+  addCalendarDays,
+  calendarDay,
+  calendarDayInZone,
+} from "@/lib/calendarDay";
 import type { TalentStatus } from "@/lib/talent";
 import type { Category } from "@/lib/ui";
 import { convertAmount, moneyCode, totalInCurrency } from "@/lib/fx";
 import type { IdeaItem } from "@/lib/ideas";
+import { toDateInput } from "@/lib/timestamps";
 import {
   STAGE_LABELS,
   attentionDetail,
@@ -43,6 +48,7 @@ export function buildOverviewStats(
   items: TrackerDetail[],
   currency: string,
   today = new Date(),
+  timeZone?: string | null,
 ): OverviewStats {
   const inProgress = items.filter((item) => item.stage !== "go_live").length;
   const deals = items.filter((item) => item.deal).map((item) => item.deal!);
@@ -54,12 +60,14 @@ export function buildOverviewStats(
     currency,
   );
 
-  const todayIso = calendarDay(today);
+  const todayIso = timeZone
+    ? calendarDayInZone(today, timeZone)
+    : calendarDay(today);
   const weekEnd = addCalendarDays(todayIso, 7);
 
   const dueDeals = deals.filter((d) => {
     if (d.datePaid) return false;
-    const due = computeDueDate(d);
+    const due = computeDueDate(d, timeZone);
     if (!due) return false;
     return due >= todayIso && due <= weekEnd;
   });
@@ -123,12 +131,16 @@ export function buildAgencyOverviewMoney(
   }[],
   homeCurrency: string,
   today = new Date(),
+  timeZone?: string | null,
 ) {
   const home = homeCurrency || "USD";
   let outstanding = 0;
   let overdue = 0;
   let received = 0;
-  const monthStart = `${calendarDay(today).slice(0, 7)}-01`;
+  const todayIso = timeZone
+    ? calendarDayInZone(today, timeZone)
+    : calendarDay(today);
+  const monthStart = `${todayIso.slice(0, 7)}-01`;
 
   for (const { content, currency } of rows) {
     if (!content.deal || content.type !== "paid_collab") continue;
@@ -137,13 +149,14 @@ export function buildAgencyOverviewMoney(
       moneyCode(content.deal.currency, currency || "USD"),
       home,
     );
-    const status = computeDealStatus(content.deal, today);
+    const status = computeDealStatus(content.deal, today, timeZone);
     if (!content.deal.datePaid) {
       outstanding += fee;
       if (status === "overdue") overdue += fee;
     } else if (
       content.deal.datePaid &&
-      content.deal.datePaid.slice(0, 10) >= monthStart
+      (toDateInput(content.deal.datePaid, timeZone) ||
+        content.deal.datePaid.slice(0, 10)) >= monthStart
     ) {
       received += fee;
     }
@@ -167,21 +180,25 @@ export function buildAgencyAttention(
     recordStatus?: TalentStatus;
   }[],
   today = new Date(),
+  timeZone?: string | null,
 ): AttentionItem[] {
   const items: AttentionItem[] = [];
 
   for (const { content, talentName, currency } of rows) {
     if (!content.deal || content.type !== "paid_collab") continue;
-    const status = computeDealStatus(content.deal, today);
+    const status = computeDealStatus(content.deal, today, timeZone);
     const fee = fmtMoney(
       content.deal.feeAgreed,
       moneyCode(content.deal.currency, currency || "USD"),
     );
-    const due = computeDueDate(content.deal);
+    const due = computeDueDate(content.deal, timeZone);
 
     const detail = attentionDetail(status, {
       dueIso: due,
-      deliveredIso: content.deal.dateDelivered,
+      deliveredIso: content.deal.dateDelivered
+        ? toDateInput(content.deal.dateDelivered, timeZone) ||
+          content.deal.dateDelivered
+        : null,
       today,
     });
     if (!detail) continue;

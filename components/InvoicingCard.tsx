@@ -17,12 +17,14 @@ type InvoicingCardProps = {
   items: TalentInvoicing[];
   className?: string;
   readOnly?: boolean;
+  timeZone?: string | null;
 };
 
 export function InvoicingCard({
   items,
   className = "",
   readOnly = false,
+  timeZone = null,
 }: InvoicingCardProps) {
   if (items.length === 0) return null;
 
@@ -37,6 +39,7 @@ export function InvoicingCard({
             key={`${invoicing.contentId}:${invoicing.dateInvoiced}:${invoicing.paymentTerms}:${invoicing.datePaid}:${invoicing.dueNote}`}
             invoicing={invoicing}
             readOnly={readOnly}
+            timeZone={timeZone}
           />
         ))}
       </div>
@@ -47,15 +50,19 @@ export function InvoicingCard({
 function InvoicingEditor({
   invoicing,
   readOnly = false,
+  timeZone = null,
 }: {
   invoicing: TalentInvoicing;
   readOnly?: boolean;
+  timeZone?: string | null;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [invoiced, setInvoiced] = useState(toDateInput(invoicing.dateInvoiced));
+  const [invoiced, setInvoiced] = useState(
+    toDateInput(invoicing.dateInvoiced, timeZone),
+  );
   const [terms, setTerms] = useState<PaymentTerms>(invoicing.paymentTerms);
-  const [paid, setPaid] = useState(toDateInput(invoicing.datePaid));
+  const [paid, setPaid] = useState(toDateInput(invoicing.datePaid, timeZone));
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 

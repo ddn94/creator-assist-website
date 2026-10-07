@@ -110,7 +110,7 @@ export function PaymentRow({
             onChange={setTerms}
             options={[...PAYMENT_TERM_OPTIONS]}
             size="sm"
-            className="w-[5.25rem] px-2"
+            className="w-21 px-2"
           />
           <Button
             type="button"
@@ -158,12 +158,25 @@ export function PaymentRow({
       >
         {agency && payment.talentName ? (
           <td className="px-4 py-3">
-            <div className="flex min-w-0 items-center gap-2">
-              <Avatar name={payment.talentName} size="sm" />
-              <Text variant="cardTitle" className="truncate">
-                {payment.talentName}
-              </Text>
-            </div>
+            {payment.talentId ? (
+              <Link
+                href={`/workspace/talent/${payment.talentId}`}
+                onClick={(event) => event.stopPropagation()}
+                className="group flex min-w-0 cursor-pointer items-center gap-2"
+              >
+                <Avatar name={payment.talentName} size="sm" />
+                <Text variant="cardTitle" className="truncate group-hover:underline">
+                  {payment.talentName}
+                </Text>
+              </Link>
+            ) : (
+              <div className="flex min-w-0 items-center gap-2">
+                <Avatar name={payment.talentName} size="sm" />
+                <Text variant="cardTitle" className="truncate">
+                  {payment.talentName}
+                </Text>
+              </div>
+            )}
           </td>
         ) : null}
         <td className="px-4 py-3">{contentCell}</td>
@@ -177,14 +190,7 @@ export function PaymentRow({
             {payment.brand}
           </Text>
         </td>
-        <td
-          className={[
-            "px-3 py-3 whitespace-nowrap",
-            agency ? "" : "text-right",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-        >
+        <td className="px-3 py-3 whitespace-nowrap">
           <Text
             variant="caption"
             className={["text-ink", agency ? "" : "text-xs font-medium"]

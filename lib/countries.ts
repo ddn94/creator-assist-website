@@ -211,6 +211,32 @@ export function currencyForCountry(code: string): string {
   return BY_CODE.get(code as CountryCode)?.[2] ?? "USD";
 }
 
+/** ISO currency codes used by the country list. Deal forms offer this set. */
+export const CURRENCY_OPTIONS = [...new Set(COUNTRY_ROWS.map((row) => row[2]))]
+  .sort()
+  .map((code) => ({ value: code, label: code }));
+
+const FLAG_COUNTRY: Record<string, string> = {
+  EUR: "EU",
+  GBP: "GB",
+  USD: "US",
+  XAF: "CM",
+  XCD: "AG",
+  XOF: "SN",
+};
+
+/** Flag for a currency code, from a representative country. */
+export function currencyFlag(code: string): string {
+  const country =
+    FLAG_COUNTRY[code] ??
+    COUNTRY_ROWS.find((row) => row[2] === code)?.[0] ??
+    "";
+  if (!/^[A-Z]{2}$/.test(country)) return "";
+  return [...country]
+    .map((char) => String.fromCodePoint(127397 + char.charCodeAt(0)))
+    .join("");
+}
+
 export function countryName(code: string): string {
   return BY_CODE.get(code as CountryCode)?.[1] ?? code;
 }

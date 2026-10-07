@@ -1,9 +1,10 @@
 import { revalidatePath } from "next/cache";
 import { getProfile } from "@/lib/auth/session";
-import { calendarDay } from "@/lib/calendarDay";
+import { localDayIso } from "@/lib/localToday";
 
-export function todayIso() {
-  return calendarDay(new Date());
+/** The person's local calendar day. Prefer this over the server clock. */
+export async function todayIso() {
+  return localDayIso();
 }
 
 export function revalidateContent(paths: string[] = []) {

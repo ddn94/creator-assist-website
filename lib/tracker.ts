@@ -1,5 +1,11 @@
 import type { StatusTagTone } from "@/components/StatusTag";
-import { addCalendarDays, calendarDay, calendarDaysBetween } from "@/lib/calendarDay";
+import {
+  addCalendarDays,
+  calendarDay,
+  calendarDayInZone,
+  calendarDaysBetween,
+} from "@/lib/calendarDay";
+import { toDateInput } from "@/lib/timestamps";
 import type { Category } from "@/lib/ui";
 
 export const STAGES = [
@@ -191,8 +197,12 @@ export function stageOptionsFor(stage: Stage) {
   }));
 }
 
-export function formatLiveDate(isoDate: string): string {
-  const day = isoDate.slice(0, 10);
+export function formatLiveDate(
+  isoDate: string,
+  timeZone?: string | null,
+): string {
+  const day = toDateInput(isoDate, timeZone);
+  if (!day) return "—";
   const date = new Date(`${day}T12:00:00`);
   return date.toLocaleDateString("en-US", {
     month: "short",
@@ -222,15 +232,17 @@ export function deliverablesTotal(
   return deliverables.reduce((sum, item) => sum + item.quantity * item.rate, 0);
 }
 
-export function computeDueDate(deal: {
-  paymentTerms: PaymentTerms;
-  dateInvoiced: string | null;
-}): string | null {
+export function computeDueDate(
+  deal: {
+    paymentTerms: PaymentTerms;
+    dateInvoiced: string | null;
+  },
+  timeZone?: string | null,
+): string | null {
   if (!deal.dateInvoiced) return null;
-  return addCalendarDays(
-    deal.dateInvoiced.slice(0, 10),
-    TERM_DAYS[deal.paymentTerms] ?? 30,
-  );
+  const invoicedDay = toDateInput(deal.dateInvoiced, timeZone);
+  if (!invoicedDay) return null;
+  return addCalendarDays(invoicedDay, TERM_DAYS[deal.paymentTerms] ?? 30);
 }
 
 export function computeDealStatus(
@@ -240,11 +252,15 @@ export function computeDealStatus(
     datePaid: string | null;
   },
   today = new Date(),
+  timeZone?: string | null,
 ): DealStatus {
   if (deal.datePaid) return "paid";
-  const due = computeDueDate(deal);
+  const due = computeDueDate(deal, timeZone);
   if (!due) return "not_invoiced";
-  return calendarDay(today) > due ? "overdue" : "awaiting_payment";
+  const todayDay = timeZone
+    ? calendarDayInZone(today, timeZone)
+    : calendarDay(today);
+  return todayDay > due ? "overdue" : "awaiting_payment";
 }
 
 function daySpan(fromIso: string, to = new Date()): number {

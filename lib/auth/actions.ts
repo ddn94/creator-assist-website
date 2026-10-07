@@ -10,6 +10,7 @@ import {
   gateCookieOptions,
 } from "@/lib/auth/gate";
 import { appHome } from "@/lib/auth/routes";
+import { tourStartPath } from "@/lib/tour";
 import { getProfile } from "@/lib/auth/session";
 import {
   asAnswers,
@@ -317,9 +318,8 @@ export async function saveProfileAnswers(
   }
 
   const onboarding = { ...profile.onboarding, ...cleaned };
-  if (complete && !profile.onboarding_completed_at) {
-    onboarding.productTour = "pending";
-  }
+  const startingTour = complete && !profile.onboarding_completed_at;
+  if (startingTour) onboarding.productTour = "pending";
   const patch: Record<string, unknown> = { onboarding };
 
   if ("name" in cleaned) patch.display_name = name || profile.display_name;
@@ -346,10 +346,12 @@ export async function saveProfileAnswers(
       jar.set(GATE_COOKIE, signed, gateCookieOptions);
     }
     redirect(
-      appHome({
-        role: profile.role,
-        onboarding_completed_at: new Date().toISOString(),
-      }),
+      startingTour
+        ? tourStartPath(profile.role)
+        : appHome({
+            role: profile.role,
+            onboarding_completed_at: new Date().toISOString(),
+          }),
     );
   }
   return { error: null };

@@ -17,34 +17,35 @@ function statusLabel(status: TalentStatus) {
 function activityLabel(
   record: TalentRecord,
   lastSeenAt?: string | null,
+  timeZone?: string | null,
 ): string {
   if (
     record.declined_at &&
     (record.status === "record" || record.status === "disconnected")
   ) {
-    return `Declined on ${formatShortDayMonth(record.declined_at)}`;
+    return `Declined on ${formatShortDayMonth(record.declined_at, timeZone)}`;
   }
 
-  if (lastSeenAt) return formatRelativeActivity(lastSeenAt);
+  if (lastSeenAt) return formatRelativeActivity(lastSeenAt, new Date(), timeZone);
 
   if (record.status === "invited") {
     const when = record.updated_at || record.created_at;
-    return `Invited on ${formatShortDayMonth(when)}`;
+    return `Invited on ${formatShortDayMonth(when, timeZone)}`;
   }
 
   if (record.status === "requested") {
-    return `Request sent on ${formatShortDayMonth(record.updated_at || record.created_at)}`;
+    return `Request sent on ${formatShortDayMonth(record.updated_at || record.created_at, timeZone)}`;
   }
 
   if (record.status === "disconnected") {
-    return `Disconnected ${formatShortDayMonth(record.disconnected_at || record.updated_at)}`;
+    return `Disconnected ${formatShortDayMonth(record.disconnected_at || record.updated_at, timeZone)}`;
   }
 
   if (record.status === "active") {
-    return `Joined ${formatShortDayMonth(record.updated_at || record.created_at)}`;
+    return `Joined ${formatShortDayMonth(record.updated_at || record.created_at, timeZone)}`;
   }
 
-  return `Added ${formatShortDayMonth(record.created_at)}`;
+  return `Added ${formatShortDayMonth(record.created_at, timeZone)}`;
 }
 
 function formatPlatformPair(platform: string, handle: string) {
@@ -87,6 +88,7 @@ function platformsFromLive(meta: LinkedTalentMeta) {
 export function toTalentItem(
   record: TalentRecord,
   meta?: LinkedTalentMeta | null,
+  timeZone?: string | null,
 ): TalentItem {
   const linked = !!meta;
   const platforms = linked
@@ -116,7 +118,7 @@ export function toTalentItem(
         : "",
     liveDeals: null,
     outstanding: null,
-    lastActivity: activityLabel(record, meta?.lastSeenAt),
+    lastActivity: activityLabel(record, meta?.lastSeenAt, timeZone),
     avatarUrl: meta
       ? avatarPublicUrl(meta.avatarPath, meta.updatedAt)
       : null,

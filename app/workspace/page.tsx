@@ -12,7 +12,8 @@ import {
   buildAgencyPayments,
 } from "@/lib/data/selectors";
 import { talentStatusTone, type TalentItem } from "@/lib/talent";
-import { localToday } from "@/lib/localToday";
+import { localToday, localTimeZone } from "@/lib/localToday";
+import { tourCoversPage } from "@/lib/tourGate";
 
 function rosterItems(items: TalentItem[]): RosterItem[] {
   return items.map((item) => ({
@@ -39,21 +40,28 @@ function talentFooter(items: TalentItem[]) {
 }
 
 export default async function WorkspaceOverviewPage() {
+  if (await tourCoversPage()) return null;
   const profile = await requireProfile("agency");
-  const [records, avatars, linked] = await Promise.all([
+  const [records, avatars, linked, timeZone] = await Promise.all([
     listTalentRecords(),
     getLinkedTalentAvatars(profile.id),
     listAgencyLinkedContent(),
+    localTimeZone(),
   ]);
   const talent = records.map((record) =>
-    toTalentItem(record, avatars.get(record.id) ?? null),
+    toTalentItem(record, avatars.get(record.id) ?? null, timeZone),
   );
   const brand = profile.agency_name?.trim() || "Workspace";
   const homeCurrency = profile.currency?.trim() || "USD";
   const today = await localToday();
-  const moneyStats = buildAgencyOverviewMoney(linked, homeCurrency, today);
-  const attention = buildAgencyAttention(linked, today);
-  const payments = buildAgencyPayments(linked, today);
+  const moneyStats = buildAgencyOverviewMoney(
+    linked,
+    homeCurrency,
+    today,
+    timeZone,
+  );
+  const attention = buildAgencyAttention(linked, today, timeZone);
+  const payments = buildAgencyPayments(linked, today, timeZone);
 
   return (
     <AppFrame

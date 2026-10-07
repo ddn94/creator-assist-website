@@ -62,6 +62,7 @@ export type PaymentItem = {
   platform: string;
   fee: string;
   talentName: string | null;
+  talentId: string | null;
   deliverables: string;
   contentHref: string | null;
   paymentTerms: PaymentTerms | null;
@@ -115,6 +116,7 @@ export function paymentRowFields(
   deal: DealDates,
   formatDate: (iso: string | null) => string | null,
   today?: Date,
+  timeZone?: string | null,
 ): Pick<
   PaymentItem,
   | "paymentTerms"
@@ -128,8 +130,8 @@ export function paymentRowFields(
   | "statusLabel"
   | "paid"
 > {
-  const status = computeDealStatus(deal, today);
-  const dueIso = computeDueDate(deal);
+  const status = computeDealStatus(deal, today, timeZone);
+  const dueIso = computeDueDate(deal, timeZone);
   return {
     paymentTerms: deal.paymentTerms,
     termsLabel: TERM_LABELS[deal.paymentTerms],

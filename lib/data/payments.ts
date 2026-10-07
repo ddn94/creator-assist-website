@@ -39,11 +39,13 @@ function paymentItemFromDeal(
   formatDate: (iso: string | null) => string | null,
   extras: {
     talentName: string | null;
+    talentId: string | null;
     contentHref: string | null;
   },
   today?: Date,
+  timeZone?: string | null,
 ): PaymentItem {
-  const fields = paymentRowFields(deal, formatDate, today);
+  const fields = paymentRowFields(deal, formatDate, today, timeZone);
   return {
     id: content.id,
     content: content.title,
@@ -51,6 +53,7 @@ function paymentItemFromDeal(
     platform: content.platform,
     fee: fmtMoney(deal.feeAgreed, moneyCode(deal.currency, currency)),
     talentName: extras.talentName,
+    talentId: extras.talentId,
     deliverables: formatDeliverables(deal.deliverables),
     contentHref: extras.contentHref,
     ...fields,
@@ -62,7 +65,9 @@ export function buildTalentPayments(
   items: TrackerDetail[],
   currency: string,
   today = new Date(),
+  timeZone?: string | null,
 ): PaymentItem[] {
+  const formatDate = (iso: string | null) => displayDate(iso, timeZone);
   return mapPaidDeals(
     items.map((content) => ({ content, currency })),
     ({ content, deal, currency: cur }) =>
@@ -71,12 +76,14 @@ export function buildTalentPayments(
         content,
         deal,
         cur,
-        displayDate,
+        formatDate,
         {
           talentName: null,
+          talentId: null,
           contentHref: `/home/tracker/${content.id}?section=deal&from=payments`,
         },
         today,
+        timeZone,
       ),
   );
 }
@@ -85,23 +92,28 @@ export function buildAgencyPayments(
   rows: {
     content: TrackerDetail;
     talentName: string;
+    talentId: string;
     currency: string;
     recordStatus?: TalentStatus;
   }[],
   today = new Date(),
+  timeZone?: string | null,
 ): PaymentItem[] {
-  return mapPaidDeals(rows, ({ content, deal, currency, talentName }) =>
+  const formatDate = (iso: string | null) => displayShortDate(iso, timeZone);
+  return mapPaidDeals(rows, ({ content, deal, currency, talentName, talentId }) =>
     paymentItemFromDeal(
       "agency",
       content,
       deal,
       currency,
-      displayShortDate,
+      formatDate,
       {
         talentName: talentName.split(" ")[0] ?? talentName,
+        talentId,
         contentHref: null,
       },
       today,
+      timeZone,
     ),
   );
 }

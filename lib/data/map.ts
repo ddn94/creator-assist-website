@@ -9,6 +9,7 @@ import type {
   TrackerItem,
 } from "@/lib/tracker";
 import type { IdeaItem, IdeaStatus } from "@/lib/ideas";
+import { toDateInput } from "@/lib/timestamps";
 
 export type ContentRow = {
   id: string;
@@ -74,9 +75,12 @@ function num(value: number | string | null | undefined): number {
   return 0;
 }
 
-function dateOnly(value: string | null | undefined): string | null {
+function dateOnly(
+  value: string | null | undefined,
+  timeZone?: string | null,
+): string | null {
   if (!value) return null;
-  return value.slice(0, 10);
+  return toDateInput(value, timeZone) || value.slice(0, 10);
 }
 
 function mapDeliverable(row: DeliverableRow): TrackerDeliverable {
@@ -88,13 +92,16 @@ function mapDeliverable(row: DeliverableRow): TrackerDeliverable {
   };
 }
 
-function mapExpense(row: ExpenseRow): TrackerExpense {
+function mapExpense(
+  row: ExpenseRow,
+  timeZone?: string | null,
+): TrackerExpense {
   return {
     id: row.id,
     category: row.category as TrackerExpense["category"],
     amount: num(row.amount),
     note: row.note,
-    date: dateOnly(row.expense_date) ?? row.expense_date,
+    date: dateOnly(row.expense_date, timeZone) ?? row.expense_date,
     currency: row.currency?.trim() || null,
   };
 }
@@ -115,7 +122,10 @@ function mapDeal(row: ContentRow): TrackerDeal | null {
   };
 }
 
-export function mapContent(row: ContentRow): TrackerDetail {
+export function mapContent(
+  row: ContentRow,
+  timeZone?: string | null,
+): TrackerDetail {
   return {
     id: row.id,
     creatorId: row.owner_id ?? "",
@@ -134,10 +144,10 @@ export function mapContent(row: ContentRow): TrackerDetail {
     expenses: (row.content_expenses ?? [])
       .slice()
       .sort((a, b) => a.sort_order - b.sort_order)
-      .map(mapExpense),
+      .map((expense) => mapExpense(expense, timeZone)),
     ideaTitle: row.idea_title,
-    createdAt: dateOnly(row.created_at) ?? row.created_at.slice(0, 10),
-    updatedAt: dateOnly(row.updated_at) ?? row.updated_at.slice(0, 10),
+    createdAt: dateOnly(row.created_at, timeZone) ?? row.created_at.slice(0, 10),
+    updatedAt: dateOnly(row.updated_at, timeZone) ?? row.updated_at.slice(0, 10),
     createdAtIso: row.created_at,
     updatedAtIso: row.updated_at,
   };

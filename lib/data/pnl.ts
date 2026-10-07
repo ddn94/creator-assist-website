@@ -1,4 +1,4 @@
-import { convertAmount, moneyCode } from "@/lib/fx";
+import { convertOnDate, moneyCode, type RateBook, EMPTY_RATE_BOOK } from "@/lib/fx";
 import type { PnlDateFilter } from "@/lib/pnlRange";
 import { dateInPnlRange, resolvePnlBounds } from "@/lib/pnlRange";
 import type {
@@ -28,12 +28,17 @@ function paidFeeInRange(
   return item.deal.feeAgreed;
 }
 
+function rateDay(value: string | null | undefined): string {
+  return (value ?? "").slice(0, 10);
+}
+
 function expensesInHome(
   item: TrackerDetail,
   start: Date | null,
   end: Date | null,
   fallback: string,
   home: string,
+  rates: RateBook,
 ): number {
   const dealCode = moneyCode(item.deal?.currency, fallback);
   return item.expenses
@@ -41,7 +46,13 @@ function expensesInHome(
     .reduce(
       (sum, expense) =>
         sum +
-        convertAmount(expense.amount, moneyCode(expense.currency, dealCode), home),
+        convertOnDate(
+          expense.amount,
+          moneyCode(expense.currency, dealCode),
+          home,
+          rateDay(expense.date),
+          rates,
+        ),
       0,
     );
 }
@@ -52,10 +63,17 @@ function paidFeeInHome(
   end: Date | null,
   fallback: string,
   home: string,
+  rates: RateBook,
 ): number {
   const paid = paidFeeInRange(item, start, end);
   if (!paid) return 0;
-  return convertAmount(paid, moneyCode(item.deal?.currency, fallback), home);
+  return convertOnDate(
+    paid,
+    moneyCode(item.deal?.currency, fallback),
+    home,
+    rateDay(item.deal?.datePaid),
+    rates,
+  );
 }
 
 function overdueInRange(
@@ -63,16 +81,15 @@ function overdueInRange(
   start: Date | null,
   end: Date | null,
   today: Date,
+  timeZone?: string | null,
 ): boolean {
-  if (!item.deal || computeDealStatus(item.deal, today) !== "overdue") return false;
-  return dateInPnlRange(computeDueDate(item.deal), start, end);
-}
-
-function currencyOfRows(rows: TalentPnlContentRow[], fallback: string): string {
-  const home = moneyCode(fallback);
-  const codes = new Set(rows.map((row) => moneyCode(row.currency, home)));
-  if (codes.size <= 1) return [...codes][0] ?? home;
-  return home;
+  if (
+    !item.deal ||
+    computeDealStatus(item.deal, today, timeZone) !== "overdue"
+  ) {
+    return false;
+  }
+  return dateInPnlRange(computeDueDate(item.deal, timeZone), start, end);
 }
 
 export function buildTalentPnlRows(
@@ -80,11 +97,13 @@ export function buildTalentPnlRows(
   filter?: PnlDateFilter,
   today = filter?.today ?? new Date(),
   currency = "USD",
+  rates: RateBook = EMPTY_RATE_BOOK,
+  timeZone?: string | null,
 ): TalentPnlContentRow[] {
   const { start, end } = resolvePnlBounds(
     filter ? { ...filter, today } : undefined,
   );
-  const fallback = moneyCode(currency);
+  const home = moneyCode(currency);
 
   return items
     .filter((item) => item.deal || item.expenses.length > 0)
@@ -93,17 +112,31 @@ export function buildTalentPnlRows(
         item.deal?.currency,
         moneyCode(
           item.expenses.find((expense) => expense.currency)?.currency,
-          fallback,
+          home,
         ),
       );
       const expenses = item.expenses
         .filter((e) => dateInPnlRange(e.date, start, end))
         .reduce(
-          (sum, e) => sum + convertAmount(e.amount, moneyCode(e.currency, code), code),
+          (sum, e) =>
+            sum +
+            convertOnDate(
+              e.amount,
+              moneyCode(e.currency, code),
+              home,
+              rateDay(e.date),
+              rates,
+            ),
           0,
         );
-      const fee = item.deal ? paidFeeInRange(item, start, end) : null;
-      const dealStatus = item.deal ? computeDealStatus(item.deal, today) : null;
+      const feeRaw = item.deal ? paidFeeInRange(item, start, end) : null;
+      const fee =
+        feeRaw == null
+          ? null
+          : convertOnDate(feeRaw, code, home, rateDay(item.deal?.datePaid), rates);
+      const dealStatus = item.deal
+        ? computeDealStatus(item.deal, today, timeZone)
+        : null;
       const active =
         (!start && !end) ||
         (!!item.deal?.datePaid &&
@@ -123,7 +156,7 @@ export function buildTalentPnlRows(
         fee,
         expenses,
         profit: (fee ?? 0) - expenses,
-        currency: code,
+        currency: home,
         active,
       };
     })
@@ -162,27 +195,28 @@ function rowsInReportCurrency(
   items: TrackerDetail[],
   filter: PnlDateFilter | undefined,
   currency: string,
+  rates: RateBook,
+  timeZone?: string | null,
 ): TalentPnlContentRow[] {
-  const rows = buildTalentPnlRows(items, filter, filter?.today, currency);
-  const home = currencyOfRows(rows, currency);
-  const distinct = new Set(rows.map((row) => moneyCode(row.currency, home)));
-  if (distinct.size <= 1) return rows;
-  return rows.map((row) => ({
-    ...row,
-    fee: row.fee == null ? null : convertAmount(row.fee, row.currency, home),
-    expenses: convertAmount(row.expenses, row.currency, home),
-    profit: convertAmount(row.profit, row.currency, home),
-    currency: home,
-  }));
+  return buildTalentPnlRows(
+    items,
+    filter,
+    filter?.today,
+    currency,
+    rates,
+    timeZone,
+  );
 }
 
 export function buildTalentPnlByBrand(
   items: TrackerDetail[],
   filter?: PnlDateFilter,
   currency = "USD",
+  rates: RateBook = EMPTY_RATE_BOOK,
+  timeZone?: string | null,
 ) {
   return breakdownBy(
-    rowsInReportCurrency(items, filter, currency),
+    rowsInReportCurrency(items, filter, currency, rates, timeZone),
     (row) => row.brand,
   );
 }
@@ -191,9 +225,11 @@ export function buildTalentPnlByNiche(
   items: TrackerDetail[],
   filter?: PnlDateFilter,
   currency = "USD",
+  rates: RateBook = EMPTY_RATE_BOOK,
+  timeZone?: string | null,
 ) {
   return breakdownBy(
-    rowsInReportCurrency(items, filter, currency),
+    rowsInReportCurrency(items, filter, currency, rates, timeZone),
     (row) => row.niche,
   );
 }
@@ -203,20 +239,25 @@ export function buildTalentPnlSummary(
   filter?: PnlDateFilter,
   today = filter?.today ?? new Date(),
   currency = "USD",
+  rates: RateBook = EMPTY_RATE_BOOK,
+  timeZone?: string | null,
 ): TalentPnlSummary {
   const { start, end } = resolvePnlBounds(
     filter ? { ...filter, today } : undefined,
   );
-  const home = currencyOfRows(
-    buildTalentPnlRows(items, filter, today, currency),
-    currency,
-  );
+  const home = moneyCode(currency);
   const revenue = items.reduce((sum, item) => {
     if (!item.deal?.datePaid) return sum;
     if (!dateInPnlRange(item.deal.datePaid, start, end)) return sum;
     return (
       sum +
-      convertAmount(item.deal.feeAgreed, moneyCode(item.deal.currency, home), home)
+      convertOnDate(
+        item.deal.feeAgreed,
+        moneyCode(item.deal.currency, home),
+        home,
+        rateDay(item.deal.datePaid),
+        rates,
+      )
     );
   }, 0);
   const expenses = items.reduce((sum, item) => {
@@ -226,13 +267,21 @@ export function buildTalentPnlSummary(
       item.expenses
         .filter((e) => dateInPnlRange(e.date, start, end))
         .reduce(
-          (s, e) => s + convertAmount(e.amount, moneyCode(e.currency, fallback), home),
+          (s, e) =>
+            s +
+            convertOnDate(
+              e.amount,
+              moneyCode(e.currency, fallback),
+              home,
+              rateDay(e.date),
+              rates,
+            ),
           0,
         )
     );
   }, 0);
   const overdue = items.filter((item) =>
-    overdueInRange(item, start, end, today),
+    overdueInRange(item, start, end, today, timeZone),
   ).length;
   return { revenue, expenses, net: revenue - expenses, overdue, currency: home };
 }
@@ -247,6 +296,7 @@ export function buildAgencyPnlTalent(
   }[],
   homeCurrency: string,
   filter?: PnlDateFilter,
+  rates: RateBook = EMPTY_RATE_BOOK,
 ): PnlTalentRow[] {
   const { start, end } = resolvePnlBounds(filter);
   const home = homeCurrency || "USD";
@@ -276,11 +326,11 @@ export function buildAgencyPnlTalent(
   for (const [id, group] of byTalent) {
     const fallback = group.currency || "USD";
     const revenue = group.items.reduce(
-      (sum, item) => sum + paidFeeInHome(item, start, end, fallback, home),
+      (sum, item) => sum + paidFeeInHome(item, start, end, fallback, home, rates),
       0,
     );
     const expenses = group.items.reduce(
-      (sum, item) => sum + expensesInHome(item, start, end, fallback, home),
+      (sum, item) => sum + expensesInHome(item, start, end, fallback, home, rates),
       0,
     );
     if (revenue === 0 && expenses === 0) continue;
@@ -313,6 +363,7 @@ export function buildAgencyPnlBrands(
   }[],
   homeCurrency: string,
   filter?: PnlDateFilter,
+  rates: RateBook = EMPTY_RATE_BOOK,
 ): PnlBrandRow[] {
   const { start, end } = resolvePnlBounds(filter);
   const home = homeCurrency || "USD";
@@ -320,8 +371,8 @@ export function buildAgencyPnlBrands(
   for (const { content, currency } of rows) {
     if (!content.brandName) continue;
     const fallback = currency || "USD";
-    const paid = paidFeeInHome(content, start, end, fallback, home);
-    const cost = expensesInHome(content, start, end, fallback, home);
+    const paid = paidFeeInHome(content, start, end, fallback, home, rates);
+    const cost = expensesInHome(content, start, end, fallback, home, rates);
     if (paid === 0 && cost === 0) continue;
     const key = content.brandName.toLowerCase();
     const cur = map.get(key) ?? { name: content.brandName, profit: 0 };
@@ -348,6 +399,8 @@ export function buildAgencyPnlCurrencies(
   }[],
   homeCurrency: string,
   filter?: PnlDateFilter,
+  rates: RateBook = EMPTY_RATE_BOOK,
+  timeZone?: string | null,
 ): PnlCurrencySummary[] {
   const { start, end, today } = resolvePnlBounds(filter);
   const home = homeCurrency || "USD";
@@ -358,16 +411,14 @@ export function buildAgencyPnlCurrencies(
 
   for (const { content, currency, talentId } of rows) {
     const fallback = currency || "USD";
-    const paid = paidFeeInRange(content, start, end);
-    const cost = expensesInHome(content, start, end, fallback, home);
+    const paid = paidFeeInHome(content, start, end, fallback, home, rates);
+    const cost = expensesInHome(content, start, end, fallback, home, rates);
     if (paid !== 0 || cost !== 0) {
       talentIds.add(talentId || content.creatorId || content.id);
     }
-    revenue += paid
-      ? convertAmount(paid, moneyCode(content.deal?.currency, fallback), home)
-      : 0;
+    revenue += paid;
     expenses += cost;
-    if (overdueInRange(content, start, end, today)) overdue += 1;
+    if (overdueInRange(content, start, end, today, timeZone)) overdue += 1;
   }
 
   const net = revenue - expenses;

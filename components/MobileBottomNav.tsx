@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { MouseEvent } from "react";
+import { useTourPath } from "@/components/TourStage";
 import {
   ChartBarIcon,
   CurrencyDollarIcon,
@@ -85,16 +87,28 @@ export function mobileNavRole(
   return null;
 }
 
-function CenterTab({ tab, active }: { tab: Tab; active: boolean }) {
+function CenterTab({
+  tab,
+  active,
+  onNavigate,
+}: {
+  tab: Tab;
+  active: boolean;
+  onNavigate?: (event: MouseEvent<HTMLAnchorElement>, href: string) => void;
+}) {
   const Icon = tab.Icon;
   return (
     <Link
       href={tab.href}
       aria-label={tab.label}
       aria-current={active ? "page" : undefined}
+      onClick={(event) => onNavigate?.(event, tab.href)}
       className="relative flex w-16 shrink-0 flex-col items-center self-stretch"
     >
-      <span className="absolute left-1/2 -top-5 flex size-14 -translate-x-1/2 items-center justify-center rounded-full bg-primary text-on-primary shadow-[0_6px_16px_rgba(111,154,134,0.5)] transition-colors hover:bg-primary-hover">
+      <span
+        data-tour-tab={tab.href}
+        className="absolute left-1/2 -top-5 flex size-14 -translate-x-1/2 items-center justify-center rounded-full bg-primary text-on-primary shadow-[0_6px_16px_rgba(111,154,134,0.5)] transition-colors hover:bg-primary-hover"
+      >
         <Icon size={26} weight={active ? "fill" : "bold"} aria-hidden />
       </span>
     </Link>
@@ -106,15 +120,19 @@ function TabLink({
   label,
   Icon,
   active,
+  onNavigate,
 }: {
   href: string;
   label: string;
   Icon: typeof RowsIcon;
   active: boolean;
+  onNavigate?: (event: MouseEvent<HTMLAnchorElement>, href: string) => void;
 }) {
   return (
     <Link
       href={href}
+      data-tour-tab={href}
+      onClick={(event) => onNavigate?.(event, href)}
       className={[
         "flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 font-display text-[10px] font-semibold transition-colors",
         active ? "text-background" : "text-white/40",
@@ -127,12 +145,20 @@ function TabLink({
 }
 
 export function MobileBottomNav({ role }: { role: MobileNavRole }) {
-  const pathname = usePathname();
+  const routePath = usePathname();
+  const tour = useTourPath();
+  const pathname = tour?.path ?? routePath;
   const config = NAV[role];
   const isActive = (tab: Tab) =>
     tab.exact
       ? pathname === tab.href
       : pathname === tab.href || pathname.startsWith(`${tab.href}/`);
+
+  function openTourPage(event: MouseEvent<HTMLAnchorElement>, href: string) {
+    if (!tour?.has(href)) return;
+    event.preventDefault();
+    tour.setPath(href);
+  }
 
   return (
     <nav
@@ -147,10 +173,15 @@ export function MobileBottomNav({ role }: { role: MobileNavRole }) {
             label={tab.label}
             Icon={tab.Icon}
             active={isActive(tab)}
+            onNavigate={openTourPage}
           />
         ))}
         {config.center.mode === "tab" ? (
-          <CenterTab tab={config.center.tab} active={isActive(config.center.tab)} />
+          <CenterTab
+            tab={config.center.tab}
+            active={isActive(config.center.tab)}
+            onNavigate={openTourPage}
+          />
         ) : (
           <>
             <div className="w-16 shrink-0" aria-hidden />
@@ -170,6 +201,7 @@ export function MobileBottomNav({ role }: { role: MobileNavRole }) {
             label={tab.label}
             Icon={tab.Icon}
             active={isActive(tab)}
+            onNavigate={openTourPage}
           />
         ))}
       </div>

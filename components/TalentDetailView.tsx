@@ -28,6 +28,7 @@ type TalentDetailViewProps = {
   canAddContent?: boolean;
   joined?: boolean;
   platformOptions?: { value: string; label: string }[];
+  timeZone?: string | null;
 };
 
 export function TalentDetailView({
@@ -41,6 +42,7 @@ export function TalentDetailView({
   canAddContent = false,
   joined = false,
   platformOptions = [],
+  timeZone = null,
 }: TalentDetailViewProps) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -149,6 +151,7 @@ export function TalentDetailView({
             <InvoicingCard
               items={talent.invoicing}
               readOnly={talent.status === "disconnected"}
+              timeZone={timeZone}
             />
           ) : null}
           {talent.deals.length === 0 && talent.invoicing.length === 0 ? (
@@ -157,7 +160,7 @@ export function TalentDetailView({
         </div>
 
         <aside className="min-w-0">
-          <ActivityFeed items={talent.activity} />
+          <ActivityFeed items={talent.activity} timeZone={timeZone} />
         </aside>
       </div>
 

@@ -6,6 +6,7 @@ import {
   type ContentRow,
 } from "@/lib/data/map";
 import type { TalentRecord } from "@/lib/data/talentRecords";
+import { localTimeZone } from "@/lib/localToday";
 import type { TalentStatus } from "@/lib/talent";
 import type { TrackerDetail, TrackerItem } from "@/lib/tracker";
 import { createClient } from "@/lib/supabase/server";
@@ -14,12 +15,13 @@ export async function listMyContent(): Promise<TrackerDetail[]> {
   const profile = await getProfile();
   if (!profile) return [];
   const supabase = await createClient();
+  const timeZone = await localTimeZone();
   const { data } = await supabase
     .from("content_items")
     .select(CONTENT_SELECT)
     .eq("owner_id", profile.id)
     .order("updated_at", { ascending: false });
-  return (data ?? []).map((row) => mapContent(row as ContentRow));
+  return (data ?? []).map((row) => mapContent(row as ContentRow, timeZone));
 }
 
 export async function listMyContentItems(): Promise<TrackerItem[]> {
@@ -28,13 +30,14 @@ export async function listMyContentItems(): Promise<TrackerItem[]> {
 
 export async function getContentById(id: string): Promise<TrackerDetail | null> {
   const supabase = await createClient();
+  const timeZone = await localTimeZone();
   const { data } = await supabase
     .from("content_items")
     .select(CONTENT_SELECT)
     .eq("id", id)
     .maybeSingle();
   if (!data) return null;
-  return mapContent(data as ContentRow);
+  return mapContent(data as ContentRow, timeZone);
 }
 
 /** Agency snapshot taken when this deal was disconnected from the record. */
@@ -147,6 +150,7 @@ export async function listAgencyLinkedContent(): Promise<
     ),
   );
 
+  const timeZone = await localTimeZone();
   const { data } = await supabase
     .from("content_items")
     .select(CONTENT_SELECT)
@@ -154,7 +158,7 @@ export async function listAgencyLinkedContent(): Promise<
     .order("updated_at", { ascending: false });
 
   return (data ?? []).flatMap((row) => {
-    const mapped = mapContent(row as ContentRow);
+    const mapped = mapContent(row as ContentRow, timeZone);
     const record =
       (mapped.talentRecordId ? byId.get(mapped.talentRecordId) : undefined) ??
       (mapped.creatorId ? byOwner.get(mapped.creatorId) : undefined);
@@ -188,10 +192,11 @@ export async function listContentForTalentRecord(
     },
   ]);
   if (!filter) return [];
+  const timeZone = await localTimeZone();
   const { data } = await supabase
     .from("content_items")
     .select(CONTENT_SELECT)
     .or(filter)
     .order("updated_at", { ascending: false });
-  return (data ?? []).map((row) => mapContent(row as ContentRow));
+  return (data ?? []).map((row) => mapContent(row as ContentRow, timeZone));
 }

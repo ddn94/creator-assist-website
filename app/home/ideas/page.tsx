@@ -1,8 +1,10 @@
 import { IdeasBoard } from "@/components/IdeasBoard";
 import { AppFrame } from "@/components/AppFrame";
 import { listMyIdeas } from "@/lib/data/ideaQueries";
+import { tourCoversPage } from "@/lib/tourGate";
 
 export default async function IdeasPage() {
+  if (await tourCoversPage()) return null;
   const ideas = await listMyIdeas();
 
   return (

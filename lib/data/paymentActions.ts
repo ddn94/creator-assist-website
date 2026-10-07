@@ -9,6 +9,7 @@ import {
   invoiceChangeSummaries,
   recordContentChanges,
 } from "@/lib/data/contentChanges";
+import { localTimeZone } from "@/lib/localToday";
 import { mergeTimestamp, nowTimestamp } from "@/lib/timestamps";
 import { createClient } from "@/lib/supabase/server";
 import type { PaymentTerms } from "@/lib/tracker";
@@ -18,6 +19,7 @@ export async function markContentPaidAction(
 ): Promise<{ error: string | null }> {
   try {
     await requireTalentId();
+    // One format: real UTC moment. Shown later in the viewer's timezone.
     const paid = nowTimestamp();
     const profile = await getProfile();
     if (!profile) return { error: "Sign in required." };
@@ -52,6 +54,7 @@ export async function markContentInvoicedAction(
 ): Promise<{ error: string | null }> {
   try {
     await requireTalentId();
+    // One format: real UTC moment. Shown later in the viewer's timezone.
     const invoiced = nowTimestamp();
     const profile = await getProfile();
     if (!profile) return { error: "Sign in required." };
@@ -113,13 +116,16 @@ export async function updateContentInvoiceAction(
       .maybeSingle();
     if (!data) return { error: "Content not found." };
 
+    const timeZone = await localTimeZone();
     const invoiced = mergeTimestamp(
       typeof data.date_invoiced === "string" ? data.date_invoiced : null,
       invoicedDay,
+      timeZone,
     );
     const paid = mergeTimestamp(
       typeof data.date_paid === "string" ? data.date_paid : null,
       paidDay,
+      timeZone,
     );
     const { error } = await supabase
       .from("content_items")
@@ -128,7 +134,7 @@ export async function updateContentInvoiceAction(
         date_invoiced: invoiced,
         date_delivered:
           data.date_delivered ??
-          mergeTimestamp(null, invoicedDay),
+          mergeTimestamp(null, invoicedDay, timeZone),
         date_paid: paid,
       })
       .eq("id", contentId);
@@ -152,6 +158,7 @@ export async function updateContentInvoiceAction(
           dateInvoiced: invoicedDay,
           datePaid: paidDay,
         },
+        timeZone,
       ),
     );
     revalidateContent([`/home/tracker/${contentId}`]);

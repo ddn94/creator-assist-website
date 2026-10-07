@@ -75,7 +75,7 @@ export function Button({
       ? `${buttonSizes.xs} ${gaps.xs}`
       : `${buttonSizes[size]} ${controlText[size]} ${gaps[size]}`;
   const classNames = [
-    "inline-flex items-center justify-center cursor-pointer transition-colors disabled:opacity-60 outline-none",
+    "inline-flex items-center justify-center cursor-pointer transition-colors disabled:cursor-not-allowed disabled:opacity-60 outline-none",
     resolvedVariant === "link" ? "gap-1" : sizeClasses,
     variants[resolvedVariant],
     size === "xs" && resolvedVariant !== "link" ? "font-sans font-medium!" : "",

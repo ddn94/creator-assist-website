@@ -5,9 +5,24 @@ export function calendarDay(date = new Date()): string {
   return `${date.getFullYear()}-${month}-${day}`;
 }
 
+/** The calendar day in a named zone (for example Asia/Karachi). */
+export function calendarDayInZone(date: Date, timeZone: string): string {
+  return date.toLocaleDateString("en-CA", { timeZone });
+}
+
 export function parseCalendarDay(value: string | undefined | null): string | null {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
   return value;
+}
+
+export function parseTimeZone(value: string | undefined | null): string | null {
+  if (!value || value.length > 64) return null;
+  try {
+    Intl.DateTimeFormat("en-US", { timeZone: value }).format(new Date());
+    return value;
+  } catch {
+    return null;
+  }
 }
 
 /** Add days to a YYYY-MM-DD date without shifting the calendar day. */
@@ -24,3 +39,4 @@ export function calendarDaysBetween(fromIso: string, toIso: string): number {
 }
 
 export const LOCAL_DAY_COOKIE = "ca-local-day";
+export const LOCAL_TZ_COOKIE = "ca-local-tz";

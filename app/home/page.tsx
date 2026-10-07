@@ -10,18 +10,23 @@ import {
   buildContinueFeed,
   buildOverviewStats,
 } from "@/lib/data/selectors";
-import { localToday } from "@/lib/localToday";
+import { localToday, localTimeZone } from "@/lib/localToday";
+import { tourCoversPage } from "@/lib/tourGate";
 
 export default async function TalentHomePage() {
+  if (await tourCoversPage()) return null;
   const profile = await requireProfile("talent");
   const currency = profile.currency?.trim() || "USD";
-  const [content, ideas, agencyLink, connectionRequests] = await Promise.all([
-    listMyContent(),
-    listMyIdeas(),
-    getMyAgencyLink(),
-    getMyConnectionRequests(),
-  ]);
-  const stats = buildOverviewStats(content, currency, await localToday());
+  const [content, ideas, agencyLink, connectionRequests, today, timeZone] =
+    await Promise.all([
+      listMyContent(),
+      listMyIdeas(),
+      getMyAgencyLink(),
+      getMyConnectionRequests(),
+      localToday(),
+      localTimeZone(),
+    ]);
+  const stats = buildOverviewStats(content, currency, today, timeZone);
   const feed = buildContinueFeed(content, ideas);
 
   return (

@@ -5,7 +5,9 @@ import { asAnswers, readPlatforms } from "@/lib/auth/profileAnswers";
 import { requireProfile } from "@/lib/auth/session";
 import { listContentChanges } from "@/lib/data/contentChanges";
 import { getContentById } from "@/lib/data/contentQueries";
+import { pnlMoneyContext } from "@/lib/data/exchangeRates";
 import { contentPlatformOptions } from "@/lib/platforms";
+import { localTimeZone } from "@/lib/localToday";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function ContentDetailPage({
@@ -23,11 +25,15 @@ export default async function ContentDetailPage({
   if (!item || item.creatorId !== profile.id) notFound();
 
   const currency = profile.currency?.trim() || "USD";
+  const money = await pnlMoneyContext(currency, [item]);
   const platformOptions = contentPlatformOptions(
     readPlatforms(asAnswers(profile.onboarding)).map((row) => row.platform),
     item.platform,
   );
-  const activity = await listContentChanges(await createClient(), [id]);
+  const [activity, timeZone] = await Promise.all([
+    listContentChanges(await createClient(), [id]),
+    localTimeZone(),
+  ]);
 
   return (
     <AppFrame role="talent">
@@ -35,8 +41,10 @@ export default async function ContentDetailPage({
         initial={item}
         platformOptions={platformOptions}
         currency={currency}
+        rates={money.rates}
         backHref={backHref}
         activity={activity}
+        timeZone={timeZone}
       />
     </AppFrame>
   );

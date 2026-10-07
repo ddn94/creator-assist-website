@@ -1,5 +1,6 @@
 "use client";
 
+import { CircleNotchIcon } from "@phosphor-icons/react";
 import { Button } from "@/components/Button";
 import { FormAlert } from "@/components/FormAlert";
 import { Modal } from "@/components/Modal";
@@ -11,6 +12,7 @@ type ConfirmModalProps = {
   question: string;
   detail?: string;
   confirmLabel: string;
+  cancelLabel?: string;
   pendingLabel?: string;
   pending?: boolean;
   error?: string | null;
@@ -24,6 +26,7 @@ export function ConfirmModal({
   question,
   detail,
   confirmLabel,
+  cancelLabel = "Cancel",
   pendingLabel,
   pending = false,
   error = null,
@@ -47,7 +50,7 @@ export function ConfirmModal({
             disabled={pending}
             onClick={onClose}
           >
-            Cancel
+            {cancelLabel}
           </Button>
           <Button
             type="button"
@@ -56,6 +59,9 @@ export function ConfirmModal({
             disabled={pending}
             onClick={onConfirm}
           >
+            {pending ? (
+              <CircleNotchIcon size={16} className="animate-spin" aria-hidden />
+            ) : null}
             {pending ? pendingLabel ?? confirmLabel : confirmLabel}
           </Button>
         </>

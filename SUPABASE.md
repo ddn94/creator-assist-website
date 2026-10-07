@@ -17,6 +17,8 @@ NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 ADMIN_EMAILS
 SUPABASE_SERVICE_ROLE_KEY
+OPEN_EXCHANGE_RATES_APP_ID
+CRON_SECRET
 ```
 
 The publishable key is public. It is safe in `NEXT_PUBLIC_*` because row-level security limits what it can do. Do not put the secret key (`SUPABASE_SERVICE_ROLE_KEY`) in the app client or in a `NEXT_PUBLIC_` variable.
@@ -41,6 +43,7 @@ For **each** new project, open **SQL Editor → New query** and run these in ord
 2. `supabase/migrations/20261005000100_roster.sql` — talent cards, invites, connection requests, one email per card
 3. `supabase/migrations/20261005000200_content.sql` — posts, deals, ideas, who can see them, the frozen copy after a split, and saving a post with its line items in one step
 4. `supabase/migrations/20261005000300_signup_examples.sql` — account creation, linking a roster card, and the sample deal and idea
+5. `supabase/migrations/20261007120000_exchange_rates.sql` — historical exchange rates. Also run this on a project that already has the first four files. It does not change existing deals.
 
 That creates:
 
@@ -48,6 +51,7 @@ That creates:
 - `profiles` — app user row (role, name, photo, flexible onboarding jsonb). Not `auth.users`
 - `talent_records` — agency roster rows. A record is not an account. An invite adds a unique code. Signup links the account and marks the row active
 - `content_items`, `content_deliverables`, `content_expenses`, `ideas`, `content_changes` — talent tracker, ideas, and change history. An agency can log content on a private record; when that person signs up, those items move onto their account. After a split, the agency keeps a frozen copy
+- `exchange_rates` — one USD cross rate per currency per day. Signed-in users can read it. The daily import writes it with the service role.
 - `avatars` storage bucket
 - the trigger that creates a profile only when the invite code matches
 
@@ -89,7 +93,9 @@ cp supabase/env.example .env.local
 Point `.env.local` at the **staging** project URL and publishable key. Also set:
 
 - `ADMIN_EMAILS` — your email(s), comma-separated
-- `SUPABASE_SERVICE_ROLE_KEY` — the project **secret** / service_role key (server-only; used only for the waitlist admin page)
+- `SUPABASE_SERVICE_ROLE_KEY` — the project **secret** / service_role key (server-only; waitlist admin page and the exchange-rate import)
+- `OPEN_EXCHANGE_RATES_APP_ID` — server-only app id for the daily rate import
+- `CRON_SECRET` — shared secret for `/api/cron/exchange-rates`
 
 Restart `npm run dev`.
 
@@ -104,7 +110,7 @@ Add both variables twice:
 - **Preview** (or a custom Staging environment, if the staging branch uses one): staging project URL and publishable key
 - **Production**: main project URL and publishable key
 
-Also set `ADMIN_EMAILS` and `SUPABASE_SERVICE_ROLE_KEY` per environment (same names; values can differ). The service role key must match the Supabase project for that deploy.
+Also set `ADMIN_EMAILS`, `SUPABASE_SERVICE_ROLE_KEY`, `OPEN_EXCHANGE_RATES_APP_ID`, and `CRON_SECRET` per environment (same names; values can differ). The service role key must match the Supabase project for that deploy. `CRON_SECRET` is what Vercel Cron sends to the rate import.
 
 Assign Production to the `main` branch. Point Preview, or the staging branch, at the staging Supabase project.
 
