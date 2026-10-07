@@ -29,6 +29,9 @@ type SelectProps = {
   full?: boolean;
   disabled?: boolean;
   className?: string;
+  ariaLabel?: string;
+  /** Borderless control for use inside another field. */
+  plain?: boolean;
   onChange?: (value: string) => void;
 };
 
@@ -52,6 +55,8 @@ export function Select({
   full = false,
   disabled = false,
   className = "",
+  ariaLabel,
+  plain = false,
   onChange,
 }: SelectProps) {
   const generatedId = useId();
@@ -286,7 +291,7 @@ export function Select({
       : null;
 
   return (
-    <div ref={rootRef} className={full ? "w-full" : ""}>
+    <div ref={rootRef} className={plain ? "h-full w-full" : full ? "w-full" : ""}>
       {name ? <input type="hidden" name={name} value={value} /> : null}
       <div
         ref={fieldRef}
@@ -302,13 +307,16 @@ export function Select({
           openMenu();
         }}
         className={[
-          "inline-flex min-w-0 items-stretch gap-2 rounded-input border border-border bg-card text-ink",
+          "inline-flex min-w-0 items-stretch text-ink",
+          plain
+            ? "h-full gap-1.5 bg-transparent pl-3 pr-1"
+            : "gap-2 rounded-input border border-border bg-card",
           disabled
             ? "cursor-not-allowed opacity-60"
             : "cursor-pointer",
-          controlSizes[size],
+          plain ? "" : controlSizes[size],
           fieldText[size],
-          full ? "w-full" : "",
+          !plain && full ? "w-full" : "",
           className,
         ]
           .filter(Boolean)
@@ -323,6 +331,7 @@ export function Select({
           aria-expanded={open}
           aria-controls={listId}
           aria-autocomplete="list"
+          aria-label={ariaLabel}
           aria-disabled={disabled}
           disabled={disabled}
           autoComplete="off"
@@ -336,7 +345,10 @@ export function Select({
             if (!open) setOpen(true);
           }}
           onKeyDown={onInputKeyDown}
-          className="h-full min-w-0 flex-1 cursor-pointer self-stretch bg-transparent text-ink outline-none placeholder:text-placeholder disabled:cursor-not-allowed"
+          className={[
+            "h-full min-w-0 cursor-pointer self-stretch bg-transparent text-ink outline-none placeholder:text-placeholder disabled:cursor-not-allowed",
+            plain ? "w-11 shrink-0" : "flex-1",
+          ].join(" ")}
         />
         <button
           type="button"
@@ -353,10 +365,13 @@ export function Select({
               openMenu();
             }
           }}
-          className="flex h-full shrink-0 cursor-pointer items-center self-stretch px-1 text-muted disabled:cursor-not-allowed"
+          className={[
+            "flex h-full shrink-0 cursor-pointer items-center self-stretch text-muted disabled:cursor-not-allowed",
+            plain ? "pr-1" : "px-1",
+          ].join(" ")}
         >
           <CaretDownIcon
-            size={16}
+            size={plain ? 12 : 16}
             weight="bold"
             aria-hidden
             className={`transition-transform ${open ? "rotate-180" : ""}`}
