@@ -12,6 +12,7 @@ import { avatarPublicUrl } from "@/lib/auth/avatar";
 import { asAnswers, displayName, readPlatforms } from "@/lib/auth/profileAnswers";
 import type { Profile } from "@/lib/auth/types";
 import { listMyContent, listMyContentItems } from "@/lib/data/contentQueries";
+import { pnlMoneyContext } from "@/lib/data/exchangeRates";
 import { listMyIdeas } from "@/lib/data/ideaQueries";
 import { buildContinueFeed, buildOverviewStats, buildTalentPayments } from "@/lib/data/selectors";
 import { getMyAgencyLink, getMyConnectionRequests } from "@/lib/data/talentRecords";
@@ -76,9 +77,15 @@ async function PaymentsPanel({ profile }: { profile: Profile }) {
 async function PnlPanel({ profile }: { profile: Profile }) {
   const currency = profile.currency?.trim() || "USD";
   const allContent = await listMyContent();
+  const money = await pnlMoneyContext(currency, allContent);
   return (
     <AppFrame role="talent" profile={profile}>
-      <TalentPnlDashboard allContent={allContent} currency={currency} />
+      <TalentPnlDashboard
+        allContent={allContent}
+        currency={currency}
+        currencies={money.currencies}
+        rates={money.rates}
+      />
     </AppFrame>
   );
 }

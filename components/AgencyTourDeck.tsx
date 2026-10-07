@@ -13,6 +13,7 @@ import { TourChrome, TourDealGate, TourPanels } from "@/components/TourStage";
 import type { Profile } from "@/lib/auth/types";
 import { listContentChanges } from "@/lib/data/contentChanges";
 import { listAgencyLinkedContent, listContentForTalentRecord } from "@/lib/data/contentQueries";
+import { pnlMoneyContext } from "@/lib/data/exchangeRates";
 import { getLinkedTalentAvatars } from "@/lib/data/linkedTalent";
 import {
   buildAgencyAttention,
@@ -149,6 +150,10 @@ async function PaymentsPanel({ profile }: { profile: Profile }) {
 async function PnlPanel({ profile }: { profile: Profile }) {
   const homeCurrency = profile.currency?.trim() || "USD";
   const linkedRows = await listAgencyLinkedContent();
+  const money = await pnlMoneyContext(
+    homeCurrency,
+    linkedRows.map((row) => row.content),
+  );
   return (
     <AppFrame
       role="agency"
@@ -156,7 +161,12 @@ async function PnlPanel({ profile }: { profile: Profile }) {
       title="P&L"
       description="Revenue, expenses, and profit across the roster"
     >
-      <PnlDashboard linkedRows={linkedRows} homeCurrency={homeCurrency} />
+      <PnlDashboard
+        linkedRows={linkedRows}
+        homeCurrency={homeCurrency}
+        currencies={money.currencies}
+        rates={money.rates}
+      />
     </AppFrame>
   );
 }

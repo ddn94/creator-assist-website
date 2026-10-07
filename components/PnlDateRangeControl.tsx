@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Button } from "@/components/Button";
 import { DateField } from "@/components/DateField";
 import { FilterPills } from "@/components/FilterPills";
@@ -17,6 +17,8 @@ type PnlDateRangeControlProps = {
   /** Agency uses filter pills; talent uses a compact toggle next to a heading. */
   variant?: "pills" | "toggle";
   heading?: string;
+  /** Sits in the header row, next to the title or the period control. */
+  accessory?: ReactNode;
   className?: string;
 };
 
@@ -36,6 +38,7 @@ export function PnlDateRangeControl({
   onChange,
   variant = "pills",
   heading,
+  accessory,
   className = "",
 }: PnlDateRangeControlProps) {
   const [range, setRange] = useState<PnlRangeKind>("all");
@@ -78,13 +81,19 @@ export function PnlDateRangeControl({
   const header =
     heading != null ? (
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Text as="h1" variant="heading" className="text-2xl sm:text-3xl">
-          {heading}
-        </Text>
+        <div className="flex flex-wrap items-center gap-3">
+          <Text as="h1" variant="heading" className="text-2xl sm:text-3xl">
+            {heading}
+          </Text>
+          {accessory}
+        </div>
         {periods}
       </div>
     ) : (
-      periods
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        {accessory}
+        {periods}
+      </div>
     );
 
   return (
