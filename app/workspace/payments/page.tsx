@@ -3,14 +3,18 @@ import { AppFrame } from "@/components/AppFrame";
 import { requireProfile } from "@/lib/auth/session";
 import { listAgencyLinkedContent } from "@/lib/data/contentQueries";
 import { buildAgencyPayments } from "@/lib/data/selectors";
-import { localToday } from "@/lib/localToday";
+import { localToday, localTimeZone } from "@/lib/localToday";
 import { tourCoversPage } from "@/lib/tourGate";
 
 export default async function WorkspacePaymentsPage() {
   if (await tourCoversPage()) return null;
   await requireProfile("agency");
-  const linked = await listAgencyLinkedContent();
-  const items = buildAgencyPayments(linked, await localToday());
+  const [linked, today, timeZone] = await Promise.all([
+    listAgencyLinkedContent(),
+    localToday(),
+    localTimeZone(),
+  ]);
+  const items = buildAgencyPayments(linked, today, timeZone);
 
   return (
     <AppFrame

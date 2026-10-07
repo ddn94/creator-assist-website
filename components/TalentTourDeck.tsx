@@ -16,7 +16,7 @@ import { pnlMoneyContext } from "@/lib/data/exchangeRates";
 import { listMyIdeas } from "@/lib/data/ideaQueries";
 import { buildContinueFeed, buildOverviewStats, buildTalentPayments } from "@/lib/data/selectors";
 import { getMyAgencyLink, getMyConnectionRequests } from "@/lib/data/talentRecords";
-import { localToday } from "@/lib/localToday";
+import { localToday, localTimeZone } from "@/lib/localToday";
 import { contentPlatformOptions } from "@/lib/platforms";
 import { tourStartPath } from "@/lib/tour";
 
@@ -59,8 +59,12 @@ async function IdeasPanel({ profile }: { profile: Profile }) {
 
 async function PaymentsPanel({ profile }: { profile: Profile }) {
   const currency = profile.currency?.trim() || "USD";
-  const content = await listMyContent();
-  const items = buildTalentPayments(content, currency, await localToday());
+  const [content, today, timeZone] = await Promise.all([
+    listMyContent(),
+    localToday(),
+    localTimeZone(),
+  ]);
+  const items = buildTalentPayments(content, currency, today, timeZone);
   const overdueCount = items.filter((item) => item.status === "overdue").length;
   return (
     <AppFrame
@@ -92,18 +96,21 @@ async function PnlPanel({ profile }: { profile: Profile }) {
 
 async function OverviewPanel({ profile }: { profile: Profile }) {
   const currency = profile.currency?.trim() || "USD";
-  const [content, ideas, agencyLink, connectionRequests] = await Promise.all([
-    listMyContent(),
-    listMyIdeas(),
-    getMyAgencyLink(),
-    getMyConnectionRequests(),
-  ]);
+  const [content, ideas, agencyLink, connectionRequests, today, timeZone] =
+    await Promise.all([
+      listMyContent(),
+      listMyIdeas(),
+      getMyAgencyLink(),
+      getMyConnectionRequests(),
+      localToday(),
+      localTimeZone(),
+    ]);
   return (
     <AppFrame role="talent" profile={profile}>
       <TalentOverview
         userName={displayName(profile)}
         avatarUrl={avatarPublicUrl(profile.avatar_path, profile.updated_at)}
-        stats={buildOverviewStats(content, currency, await localToday())}
+        stats={buildOverviewStats(content, currency, today, timeZone)}
         feed={buildContinueFeed(content, ideas)}
         agencyName={agencyLink?.status === "active" ? agencyLink.agencyName : null}
         connectionRequests={connectionRequests}

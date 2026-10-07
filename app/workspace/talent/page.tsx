@@ -7,17 +7,19 @@ import { listTalentRecords } from "@/lib/data/talentRecords";
 import { getLinkedTalentAvatars } from "@/lib/data/linkedTalent";
 import { listAgencyLinkedContent } from "@/lib/data/contentQueries";
 import { buildTalentRoster } from "@/lib/data/selectors";
+import { localTimeZone } from "@/lib/localToday";
 import { tourCoversPage } from "@/lib/tourGate";
 
 export default async function WorkspaceTalentPage() {
   if (await tourCoversPage()) return null;
   const profile = await requireProfile("agency");
-  const [records, linked, avatars] = await Promise.all([
+  const [records, linked, avatars, timeZone] = await Promise.all([
     listTalentRecords(),
     listAgencyLinkedContent(),
     getLinkedTalentAvatars(profile.id),
+    localTimeZone(),
   ]);
-  const items = buildTalentRoster(records, linked, avatars);
+  const items = buildTalentRoster(records, linked, avatars, timeZone);
 
   return (
     <AppFrame

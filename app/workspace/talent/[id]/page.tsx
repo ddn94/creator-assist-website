@@ -8,7 +8,7 @@ import { listContentChanges } from "@/lib/data/contentChanges";
 import { listContentForTalentRecord } from "@/lib/data/contentQueries";
 import { buildTalentDetailFromRecord } from "@/lib/data/selectors";
 import { contentPlatformOptions } from "@/lib/platforms";
-import { localToday } from "@/lib/localToday";
+import { localToday, localTimeZone } from "@/lib/localToday";
 import { createClient } from "@/lib/supabase/server";
 import { tourCoversPage } from "@/lib/tourGate";
 
@@ -30,9 +30,11 @@ export default async function TalentDetailPage({
   if (!record) notFound();
 
   const supabase = await createClient();
-  const [content, avatars] = await Promise.all([
+  const [content, avatars, today, timeZone] = await Promise.all([
     listContentForTalentRecord(record),
     getLinkedTalentAvatars(profile.id),
+    localToday(),
+    localTimeZone(),
   ]);
   const activity = await listContentChanges(
     supabase,
@@ -41,9 +43,10 @@ export default async function TalentDetailPage({
   const talent = buildTalentDetailFromRecord(
     record,
     content,
-    await localToday(),
+    today,
     avatars.get(record.id) ?? null,
     activity,
+    timeZone,
   );
 
   return (
@@ -61,6 +64,7 @@ export default async function TalentDetailPage({
         platformOptions={contentPlatformOptions(
           record.platform ? [record.platform] : [],
         )}
+        timeZone={timeZone}
       />
     </AppFrame>
   );

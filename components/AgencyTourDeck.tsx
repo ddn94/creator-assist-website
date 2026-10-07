@@ -24,7 +24,7 @@ import {
 } from "@/lib/data/selectors";
 import { listTalentRecords } from "@/lib/data/talentRecords";
 import { toTalentItem } from "@/lib/data/talentItem";
-import { localToday } from "@/lib/localToday";
+import { localToday, localTimeZone } from "@/lib/localToday";
 import { contentPlatformOptions } from "@/lib/platforms";
 import { createClient } from "@/lib/supabase/server";
 import { talentStatusTone, type TalentItem } from "@/lib/talent";
@@ -64,10 +64,11 @@ function panel(href: string, content: ReactNode) {
 }
 
 async function RosterPanel({ profile }: { profile: Profile }) {
-  const [records, linked, avatars] = await Promise.all([
+  const [records, linked, avatars, timeZone] = await Promise.all([
     listTalentRecords(),
     listAgencyLinkedContent(),
     getLinkedTalentAvatars(profile.id),
+    localTimeZone(),
   ]);
   return (
     <AppFrame
@@ -87,7 +88,7 @@ async function RosterPanel({ profile }: { profile: Profile }) {
         </Button>
       }
     >
-      <TalentTable items={buildTalentRoster(records, linked, avatars)} />
+      <TalentTable items={buildTalentRoster(records, linked, avatars, timeZone)} />
     </AppFrame>
   );
 }
@@ -98,15 +99,16 @@ async function DealPanel({ profile }: { profile: Profile }) {
   if (!first) return null;
   const href = `/workspace/talent/${first.id}`;
   const supabase = await createClient();
-  const [content, avatars] = await Promise.all([
+  const [content, avatars, today, timeZone] = await Promise.all([
     listContentForTalentRecord(first),
     getLinkedTalentAvatars(profile.id),
+    localToday(),
+    localTimeZone(),
   ]);
   const activity = await listContentChanges(
     supabase,
     content.map((item) => item.id),
   );
-  const today = await localToday();
   return (
     <TourDealGate href={href}>
       <AppFrame role="agency" profile={profile}>
@@ -117,6 +119,7 @@ async function DealPanel({ profile }: { profile: Profile }) {
             today,
             avatars.get(first.id) ?? null,
             activity,
+            timeZone,
           )}
           inviteCode={first.invite_code}
           declinedAt={first.declined_at}
@@ -126,6 +129,7 @@ async function DealPanel({ profile }: { profile: Profile }) {
           canAddContent={first.status === "record"}
           joined={first.linked_user_id != null}
           platformOptions={contentPlatformOptions(first.platform ? [first.platform] : [])}
+          timeZone={timeZone}
         />
       </AppFrame>
     </TourDealGate>
@@ -134,7 +138,8 @@ async function DealPanel({ profile }: { profile: Profile }) {
 
 async function PaymentsPanel({ profile }: { profile: Profile }) {
   const linked = await listAgencyLinkedContent();
-  const items = buildAgencyPayments(linked, await localToday());
+  const [today, timeZone] = await Promise.all([localToday(), localTimeZone()]);
+  const items = buildAgencyPayments(linked, today, timeZone);
   return (
     <AppFrame
       role="agency"
@@ -174,13 +179,14 @@ async function PnlPanel({ profile }: { profile: Profile }) {
 async function OverviewPanel({ profile }: { profile: Profile }) {
   const homeCurrency = profile.currency?.trim() || "USD";
   const today = await localToday();
-  const [records, avatars, linked] = await Promise.all([
+  const [records, avatars, linked, timeZone] = await Promise.all([
     listTalentRecords(),
     getLinkedTalentAvatars(profile.id),
     listAgencyLinkedContent(),
+    localTimeZone(),
   ]);
   const talent = records.map((record) =>
-    toTalentItem(record, avatars.get(record.id) ?? null),
+    toTalentItem(record, avatars.get(record.id) ?? null, timeZone),
   );
   const brand = profile.agency_name?.trim() || "Workspace";
   return (
@@ -194,9 +200,14 @@ async function OverviewPanel({ profile }: { profile: Profile }) {
         talentCount={talent.length}
         talentFooter={talentFooter(talent)}
         roster={rosterItems(talent)}
-        moneyStats={buildAgencyOverviewMoney(linked, homeCurrency, today)}
-        attention={buildAgencyAttention(linked, today)}
-        payments={buildAgencyPayments(linked, today)}
+        moneyStats={buildAgencyOverviewMoney(
+          linked,
+          homeCurrency,
+          today,
+          timeZone,
+        )}
+        attention={buildAgencyAttention(linked, today, timeZone)}
+        payments={buildAgencyPayments(linked, today, timeZone)}
       />
     </AppFrame>
   );

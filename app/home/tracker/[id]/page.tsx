@@ -7,6 +7,7 @@ import { listContentChanges } from "@/lib/data/contentChanges";
 import { getContentById } from "@/lib/data/contentQueries";
 import { pnlMoneyContext } from "@/lib/data/exchangeRates";
 import { contentPlatformOptions } from "@/lib/platforms";
+import { localTimeZone } from "@/lib/localToday";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function ContentDetailPage({
@@ -29,7 +30,10 @@ export default async function ContentDetailPage({
     readPlatforms(asAnswers(profile.onboarding)).map((row) => row.platform),
     item.platform,
   );
-  const activity = await listContentChanges(await createClient(), [id]);
+  const [activity, timeZone] = await Promise.all([
+    listContentChanges(await createClient(), [id]),
+    localTimeZone(),
+  ]);
 
   return (
     <AppFrame role="talent">
@@ -40,6 +44,7 @@ export default async function ContentDetailPage({
         rates={money.rates}
         backHref={backHref}
         activity={activity}
+        timeZone={timeZone}
       />
     </AppFrame>
   );
