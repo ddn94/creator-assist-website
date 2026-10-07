@@ -190,14 +190,7 @@ export function PaymentRow({
             {payment.brand}
           </Text>
         </td>
-        <td
-          className={[
-            "px-3 py-3 whitespace-nowrap",
-            agency ? "" : "text-right",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-        >
+        <td className="px-3 py-3 whitespace-nowrap">
           <Text
             variant="caption"
             className={["text-ink", agency ? "" : "text-xs font-medium"]
