@@ -220,6 +220,13 @@ function ContentDetailEditor({
     null;
   const editingExpense =
     item.expenses.find((row) => row.id === editingExpenseId) ?? null;
+  const typeUnsaved = draftType !== item.type;
+
+  function blockUntilTypeSaved() {
+    if (!typeUnsaved) return false;
+    showToast("Save the type first.", "danger");
+    return true;
+  }
 
   async function commit(
     next: TrackerDetail,
@@ -228,6 +235,7 @@ function ContentDetailEditor({
     section: "details" | "deal" | "deliverables" | "expenses",
   ) {
     if (isAgency || savingRef.current) return;
+    if (section !== "details" && blockUntilTypeSaved()) return;
     const previous = item;
     const previousSaved = previous.deal?.currency?.trim() || currency;
     savingRef.current = true;
@@ -273,6 +281,7 @@ function ContentDetailEditor({
   }
 
   function beginEditDeliverable(id: string) {
+    if (blockUntilTypeSaved()) return;
     setSaveError(null);
     setDeliverableCurrencyDraft(item.deal?.currency?.trim() || currency);
     setEditingDeliverableId(id);
@@ -284,6 +293,7 @@ function ContentDetailEditor({
   }
 
   function beginEditExpense(id: string) {
+    if (blockUntilTypeSaved()) return;
     const expense = item.expenses.find((row) => row.id === id);
     if (!expense) return;
     setSaveError(null);
@@ -297,7 +307,7 @@ function ContentDetailEditor({
   }
 
   function removeDeliverable(deliverableId: string) {
-    if (!item.deal || isAgency) return;
+    if (!item.deal || isAgency || blockUntilTypeSaved()) return;
     if (editingDeliverableId === deliverableId) cancelEditDeliverable();
     return commit(
       {
@@ -316,7 +326,7 @@ function ContentDetailEditor({
   }
 
   function removeExpense(expenseId: string) {
-    if (isAgency) return;
+    if (isAgency || blockUntilTypeSaved()) return;
     if (editingExpenseId === expenseId) cancelEditExpense();
     return commit(
       {
@@ -331,6 +341,10 @@ function ContentDetailEditor({
 
   async function confirmRemove() {
     if (!removeTarget || removePending || savingRef.current) return;
+    if (blockUntilTypeSaved()) {
+      setRemoveTarget(null);
+      return;
+    }
     if (removeTarget === "post") {
       if (!canDelete) return;
       setRemovePending(true);
@@ -361,7 +375,7 @@ function ContentDetailEditor({
 
   async function handleDealSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (dealLocked || savingRef.current) return;
+    if (dealLocked || savingRef.current || blockUntilTypeSaved()) return;
     const deal = item.deal ?? (draftType === "paid_collab" ? EMPTY_DEAL : null);
     if (!deal) return;
     const data = new FormData(event.currentTarget);
@@ -447,7 +461,7 @@ function ContentDetailEditor({
           aria-label="Delete content item"
           title="Delete"
           onClick={() => {
-            if (!canDelete || savingRef.current) return;
+            if (!canDelete || savingRef.current || blockUntilTypeSaved()) return;
             setSaveError(null);
             setRemoveTarget("post");
           }}
@@ -758,7 +772,7 @@ function ContentDetailEditor({
                 locked
                   ? undefined
                   : (id) => {
-                      if (savingRef.current) return;
+                      if (savingRef.current || blockUntilTypeSaved()) return;
                       setSaveError(null);
                       setRemoveTarget({ kind: "deliverable", id });
                     }
@@ -782,7 +796,9 @@ function ContentDetailEditor({
               className="grid grid-cols-1 items-end gap-2 sm:grid-cols-2 md:grid-cols-[minmax(0,1fr)_5.5rem_minmax(13rem,1.4fr)_auto] md:gap-3"
               onSubmit={(event) => {
                 event.preventDefault();
-                if (locked || !visibleDeal || savingRef.current) return;
+                if (locked || !visibleDeal || savingRef.current || blockUntilTypeSaved()) {
+                  return;
+                }
                 const data = new FormData(event.currentTarget);
                 const type = String(
                   data.get("type") ?? "video",
@@ -920,7 +936,7 @@ function ContentDetailEditor({
             locked
               ? undefined
               : (id) => {
-                  if (savingRef.current) return;
+                  if (savingRef.current || blockUntilTypeSaved()) return;
                   setSaveError(null);
                   setRemoveTarget({ kind: "expense", id });
                 }
@@ -933,7 +949,7 @@ function ContentDetailEditor({
           className="flex flex-col gap-2"
           onSubmit={(event) => {
             event.preventDefault();
-            if (locked || savingRef.current) return;
+            if (locked || savingRef.current || blockUntilTypeSaved()) return;
             const data = new FormData(event.currentTarget);
             const amount = Number(data.get("amount") || 0);
             if (!amount) return;
