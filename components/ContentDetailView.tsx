@@ -36,7 +36,7 @@ import {
   DELIVERABLE_TYPE_OPTIONS,
   EXPENSE_CATEGORY_OPTIONS,
   PAYMENT_TERM_OPTIONS,
-  stageOptionsFor,
+  STAGE_OPTIONS,
   computeDealStatus,
   computeDueDate,
   contentCategory,
@@ -104,7 +104,9 @@ export function ContentDetailView({
 }: ContentDetailViewProps) {
   return (
     <ContentDetailEditor
-      key={`${initial.id}-${initial.updatedAt}`}
+      // id only: a save refreshes activity, and updatedAt would remount this
+      // editor and throw away typing in the sections that were not saved.
+      key={initial.id}
       initial={initial}
       platformOptions={platformOptions}
       currency={currency}
@@ -139,7 +141,18 @@ function ContentDetailEditor({
   const router = useRouter();
   const [item, setItem] = useState(initial);
   const [draftType, setDraftType] = useState<ContentType>(initial.type);
-  const [formGeneration, setFormGeneration] = useState(0);
+  const [formGeneration, setFormGeneration] = useState({
+    details: 0,
+    deal: 0,
+    deliverable: 0,
+    expense: 0,
+  });
+  const [dealCurrencyDraft, setDealCurrencyDraft] = useState(
+    () => initial.deal?.currency?.trim() || currency,
+  );
+  const [deliverableCurrencyDraft, setDeliverableCurrencyDraft] = useState(
+    () => initial.deal?.currency?.trim() || currency,
+  );
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState<
     "details" | "deal" | "deliverable" | "expense" | "remove" | null
@@ -210,28 +223,45 @@ function ContentDetailEditor({
 
   async function commit(
     next: TrackerDetail,
-    notice?: { message: string; tone?: "success" | "danger" },
-    action:
-      | "details"
-      | "deal"
-      | "deliverable"
-      | "expense"
-      | "remove" = "details",
+    notice: { message: string; tone?: "success" | "danger" } | undefined,
+    action: "details" | "deal" | "deliverable" | "expense" | "remove",
+    section: "details" | "deal" | "deliverables" | "expenses",
   ) {
     if (isAgency || savingRef.current) return;
     const previous = item;
+    const previousSaved = previous.deal?.currency?.trim() || currency;
     savingRef.current = true;
     setSaving(action);
     setSaveError(null);
     setItem(next);
     try {
-      const result = await upsertContentAction(next);
+      const result = await upsertContentAction(next, section);
       if (result.error) {
         setItem(previous);
         setDraftType(previous.type);
-        setFormGeneration((generation) => generation + 1);
+        if (action === "deal") setDealCurrencyDraft(previousSaved);
+        if (action === "deliverable") setDeliverableCurrencyDraft(previousSaved);
+        if (action !== "remove") {
+          setFormGeneration((current) => ({
+            ...current,
+            [action]: current[action] + 1,
+          }));
+        }
         setSaveError(result.error);
         return;
+      }
+      const nextSaved = next.deal?.currency?.trim() || currency;
+      if (action === "deal") {
+        setDealCurrencyDraft(nextSaved);
+        setDeliverableCurrencyDraft((current) =>
+          current === previousSaved ? nextSaved : current,
+        );
+      }
+      if (action === "deliverable") {
+        setDeliverableCurrencyDraft(nextSaved);
+        setDealCurrencyDraft((current) =>
+          current === previousSaved ? nextSaved : current,
+        );
       }
       setDraftType(next.type);
       if (notice) showToast(notice.message, notice.tone ?? "success");
@@ -244,7 +274,13 @@ function ContentDetailEditor({
 
   function beginEditDeliverable(id: string) {
     setSaveError(null);
+    setDeliverableCurrencyDraft(item.deal?.currency?.trim() || currency);
     setEditingDeliverableId(id);
+  }
+
+  function cancelEditDeliverable() {
+    setDeliverableCurrencyDraft(item.deal?.currency?.trim() || currency);
+    setEditingDeliverableId(null);
   }
 
   function beginEditExpense(id: string) {
@@ -262,7 +298,7 @@ function ContentDetailEditor({
 
   function removeDeliverable(deliverableId: string) {
     if (!item.deal || isAgency) return;
-    if (editingDeliverableId === deliverableId) setEditingDeliverableId(null);
+    if (editingDeliverableId === deliverableId) cancelEditDeliverable();
     return commit(
       {
         ...item,
@@ -275,6 +311,7 @@ function ContentDetailEditor({
       },
       { message: "Deliverable removed.", tone: "danger" },
       "remove",
+      "deliverables",
     );
   }
 
@@ -288,6 +325,7 @@ function ContentDetailEditor({
       },
       { message: "Expense removed.", tone: "danger" },
       "remove",
+      "expenses",
     );
   }
 
@@ -388,7 +426,7 @@ function ContentDetailEditor({
         dateInvoiced,
         datePaid,
       },
-    }, { message: "Deal saved." }, "deal");
+    }, { message: "Deal saved." }, "deal", "deal");
   }
 
   const money = (amount: number) => fmtMoney(amount, dealCurrency);
@@ -440,7 +478,7 @@ function ContentDetailEditor({
           Details
         </Text>
         <form
-          key={`details-${formGeneration}`}
+          key={`details-${formGeneration.details}`}
           className="grid grid-cols-1 gap-3 md:grid-cols-2"
           onSubmit={(event) => {
             event.preventDefault();
@@ -474,7 +512,7 @@ function ContentDetailEditor({
                       currency,
                     }
                   : null,
-            }, { message: "Details have been saved." }, "details");
+            }, { message: "Details have been saved." }, "details", "details");
           }}
         >
           <Field id="title" label="Title" className="md:col-span-2">
@@ -538,7 +576,7 @@ function ContentDetailEditor({
               id="stage"
               name="stage"
               defaultValue={item.stage}
-              options={stageOptionsFor(item.stage)}
+              options={[...STAGE_OPTIONS]}
               disabled={locked}
               size="sm"
               full
@@ -615,7 +653,7 @@ function ContentDetailEditor({
           </div>
 
           <form
-            key={`deal-${formGeneration}`}
+            key={`deal-${formGeneration.deal}`}
             className="grid grid-cols-1 gap-3 md:grid-cols-3"
             onSubmit={handleDealSubmit}
           >
@@ -628,20 +666,10 @@ function ContentDetailEditor({
                 min="0"
                 defaultValue={visibleDeal.feeAgreed || ""}
                 disabled={locked}
-                currency={dealCurrency}
-                currencyOptions={currencyChoices(dealCurrency)}
+                currency={dealCurrencyDraft}
+                currencyOptions={currencyChoices(dealCurrencyDraft)}
                 currencyDisabled={dealLocked}
-                onCurrencyChange={(code) => {
-                  const deal = item.deal ?? {
-                    ...EMPTY_DEAL,
-                    currency: code,
-                  };
-                  setItem({
-                    ...item,
-                    type: "paid_collab",
-                    deal: { ...deal, currency: code },
-                  });
-                }}
+                onCurrencyChange={setDealCurrencyDraft}
               />
             </Field>
             <Field id="paymentTerms" label="Payment terms">
@@ -750,7 +778,7 @@ function ContentDetailEditor({
               </Text>
             ) : null}
             <form
-              key={`deliverable-${formGeneration}-${editingDeliverable?.id ?? "new"}`}
+              key={`deliverable-${formGeneration.deliverable}-${editingDeliverable?.id ?? "new"}`}
               className="grid grid-cols-1 items-end gap-2 sm:grid-cols-2 md:grid-cols-[minmax(0,1fr)_5.5rem_minmax(13rem,1.4fr)_auto] md:gap-3"
               onSubmit={(event) => {
                 event.preventDefault();
@@ -763,16 +791,23 @@ function ContentDetailEditor({
                 const rate = Number(data.get("rate") || 0);
                 if (!rate) return;
                 const nextDeliverable = {
-                  id: editingDeliverable?.id ?? `d-${Date.now()}`,
+                  id: editingDeliverable?.id ?? crypto.randomUUID(),
                   type,
                   quantity,
                   rate,
                 };
+                const pickedCurrency = moneyCode(
+                  String(data.get("currency") ?? ""),
+                  dealCurrency,
+                );
                 commit({
                   ...item,
                   type: "paid_collab",
                   deal: {
                     ...visibleDeal,
+                    ...(pickedCurrency !== dealCurrency
+                      ? { currency: pickedCurrency }
+                      : {}),
                     deliverables: editingDeliverable
                       ? visibleDeal.deliverables.map((row) =>
                           row.id === editingDeliverable.id
@@ -785,7 +820,7 @@ function ContentDetailEditor({
                   message: editingDeliverable
                     ? "Deliverable updated."
                     : "Deliverable added.",
-                }, "deliverable");
+                }, "deliverable", "deliverables");
                 setEditingDeliverableId(null);
                 event.currentTarget.reset();
               }}
@@ -825,20 +860,10 @@ function ContentDetailEditor({
                   defaultValue={
                     editingDeliverable ? String(editingDeliverable.rate) : undefined
                   }
-                  currency={dealCurrency}
-                  currencyOptions={currencyChoices(dealCurrency)}
+                  currency={deliverableCurrencyDraft}
+                  currencyOptions={currencyChoices(deliverableCurrencyDraft)}
                   currencyDisabled={dealLocked}
-                  onCurrencyChange={(code) => {
-                    const deal = item.deal ?? {
-                      ...EMPTY_DEAL,
-                      currency: code,
-                    };
-                    setItem({
-                      ...item,
-                      type: "paid_collab",
-                      deal: { ...deal, currency: code },
-                    });
-                  }}
+                  onCurrencyChange={setDeliverableCurrencyDraft}
                 />
               </Field>
               <div className="col-span-3 flex gap-2 md:col-span-1">
@@ -849,7 +874,7 @@ function ContentDetailEditor({
                     size="sm"
                     className="h-10"
                     disabled={busy}
-                    onClick={() => setEditingDeliverableId(null)}
+                    onClick={cancelEditDeliverable}
                   >
                     Cancel
                   </Button>
@@ -904,7 +929,7 @@ function ContentDetailEditor({
           currency={dealCurrency}
         />
         <form
-          key={`expense-${formGeneration}-${editingExpense?.id ?? "new"}`}
+          key={`expense-${formGeneration.expense}-${editingExpense?.id ?? "new"}`}
           className="flex flex-col gap-2"
           onSubmit={(event) => {
             event.preventDefault();
@@ -916,7 +941,7 @@ function ContentDetailEditor({
               data.get("category") ?? "other",
             ) as TrackerExpense["category"];
             const nextExpense = {
-              id: editingExpense?.id ?? `e-${Date.now()}`,
+              id: editingExpense?.id ?? crypto.randomUUID(),
               category,
               amount,
               note: String(data.get("note") ?? "").trim() || null,
@@ -937,6 +962,7 @@ function ContentDetailEditor({
                 message: editingExpense ? "Expense updated." : "Expense added.",
               },
               "expense",
+              "expenses",
             );
             if (editingExpense) cancelEditExpense();
             else event.currentTarget.reset();
