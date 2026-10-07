@@ -1,8 +1,8 @@
 "use client";
 
-import { TrashIcon } from "@phosphor-icons/react";
+import { CircleNotchIcon, TrashIcon } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { calendarDay } from "@/lib/calendarDay";
 import { CURRENCY_OPTIONS, currencyFlag } from "@/lib/countries";
 import { ActivityFeed } from "@/components/ActivityFeed";
@@ -141,7 +141,10 @@ function ContentDetailEditor({
   const [draftType, setDraftType] = useState<ContentType>(initial.type);
   const [formGeneration, setFormGeneration] = useState(0);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [invoiceSaving, setInvoiceSaving] = useState(false);
+  const [saving, setSaving] = useState<
+    "details" | "deal" | "deliverable" | "expense" | "remove" | null
+  >(null);
+  const savingRef = useRef(false);
   const [invoiceError, setInvoiceError] = useState<string | null>(null);
   const isAgency = mode === "agency";
   const locked = isAgency;
@@ -208,22 +211,35 @@ function ContentDetailEditor({
   async function commit(
     next: TrackerDetail,
     notice?: { message: string; tone?: "success" | "danger" },
+    action:
+      | "details"
+      | "deal"
+      | "deliverable"
+      | "expense"
+      | "remove" = "details",
   ) {
-    if (isAgency) return;
+    if (isAgency || savingRef.current) return;
     const previous = item;
+    savingRef.current = true;
+    setSaving(action);
     setSaveError(null);
     setItem(next);
-    const result = await upsertContentAction(next);
-    if (result.error) {
-      setItem(previous);
-      setDraftType(previous.type);
-      setFormGeneration((generation) => generation + 1);
-      setSaveError(result.error);
-      return;
+    try {
+      const result = await upsertContentAction(next);
+      if (result.error) {
+        setItem(previous);
+        setDraftType(previous.type);
+        setFormGeneration((generation) => generation + 1);
+        setSaveError(result.error);
+        return;
+      }
+      setDraftType(next.type);
+      if (notice) showToast(notice.message, notice.tone ?? "success");
+      router.refresh();
+    } finally {
+      savingRef.current = false;
+      setSaving(null);
     }
-    setDraftType(next.type);
-    if (notice) showToast(notice.message, notice.tone ?? "success");
-    router.refresh();
   }
 
   function beginEditDeliverable(id: string) {
@@ -247,8 +263,7 @@ function ContentDetailEditor({
   function removeDeliverable(deliverableId: string) {
     if (!item.deal || isAgency) return;
     if (editingDeliverableId === deliverableId) setEditingDeliverableId(null);
-    setRemoveTarget(null);
-    void commit(
+    return commit(
       {
         ...item,
         deal: {
@@ -259,24 +274,25 @@ function ContentDetailEditor({
         },
       },
       { message: "Deliverable removed.", tone: "danger" },
+      "remove",
     );
   }
 
   function removeExpense(expenseId: string) {
     if (isAgency) return;
     if (editingExpenseId === expenseId) cancelEditExpense();
-    setRemoveTarget(null);
-    void commit(
+    return commit(
       {
         ...item,
         expenses: item.expenses.filter((e) => e.id !== expenseId),
       },
       { message: "Expense removed.", tone: "danger" },
+      "remove",
     );
   }
 
   async function confirmRemove() {
-    if (!removeTarget || removePending) return;
+    if (!removeTarget || removePending || savingRef.current) return;
     if (removeTarget === "post") {
       if (!canDelete) return;
       setRemovePending(true);
@@ -292,13 +308,22 @@ function ContentDetailEditor({
       router.push(mode === "record" ? backHref : "/home/tracker");
       return;
     }
-    if (removeTarget.kind === "deliverable") removeDeliverable(removeTarget.id);
-    else removeExpense(removeTarget.id);
+    setRemovePending(true);
+    try {
+      if (removeTarget.kind === "deliverable") {
+        await removeDeliverable(removeTarget.id);
+      } else {
+        await removeExpense(removeTarget.id);
+      }
+      setRemoveTarget(null);
+    } finally {
+      setRemovePending(false);
+    }
   }
 
   async function handleDealSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (dealLocked) return;
+    if (dealLocked || savingRef.current) return;
     const deal = item.deal ?? (draftType === "paid_collab" ? EMPTY_DEAL : null);
     if (!deal) return;
     const data = new FormData(event.currentTarget);
@@ -325,20 +350,25 @@ function ContentDetailEditor({
           dateDelivered: item.deal.dateDelivered ?? dateInvoiced,
         },
       });
-      setInvoiceSaving(true);
-      const result = await updateContentInvoiceAction(item.id, {
-        dateInvoiced,
-        paymentTerms,
-        datePaid,
-      });
-      setInvoiceSaving(false);
-      if (result.error) {
-        setItem(previous);
-        setInvoiceError(result.error);
-        return;
+      savingRef.current = true;
+      setSaving("deal");
+      try {
+        const result = await updateContentInvoiceAction(item.id, {
+          dateInvoiced,
+          paymentTerms,
+          datePaid,
+        });
+        if (result.error) {
+          setItem(previous);
+          setInvoiceError(result.error);
+          return;
+        }
+        showToast("Deal saved.");
+        router.refresh();
+      } finally {
+        savingRef.current = false;
+        setSaving(null);
       }
-      showToast("Deal saved.");
-      router.refresh();
       return;
     }
 
@@ -358,10 +388,11 @@ function ContentDetailEditor({
         dateInvoiced,
         datePaid,
       },
-    }, { message: "Deal saved." });
+    }, { message: "Deal saved." }, "deal");
   }
 
   const money = (amount: number) => fmtMoney(amount, dealCurrency);
+  const busy = saving !== null || removePending;
 
   return (
     <div
@@ -378,11 +409,11 @@ function ContentDetailEditor({
           aria-label="Delete content item"
           title="Delete"
           onClick={() => {
-            if (!canDelete) return;
+            if (!canDelete || savingRef.current) return;
             setSaveError(null);
             setRemoveTarget("post");
           }}
-          disabled={!canDelete}
+          disabled={!canDelete || busy}
           className="inline-flex size-10 cursor-pointer items-center justify-center rounded-full bg-card text-danger shadow-card transition-colors hover:bg-organic disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-card"
         >
           <TrashIcon size={18} weight="regular" aria-hidden />
@@ -413,7 +444,7 @@ function ContentDetailEditor({
           className="grid grid-cols-1 gap-3 md:grid-cols-2"
           onSubmit={(event) => {
             event.preventDefault();
-            if (locked) return;
+            if (locked || savingRef.current) return;
             const data = new FormData(event.currentTarget);
             const type =
               data.get("type") === "paid_collab" ? "paid_collab" : "organic";
@@ -443,7 +474,7 @@ function ContentDetailEditor({
                       currency,
                     }
                   : null,
-            }, { message: "Details have been saved." });
+            }, { message: "Details have been saved." }, "details");
           }}
         >
           <Field id="title" label="Title" className="md:col-span-2">
@@ -547,8 +578,19 @@ function ContentDetailEditor({
             />
           </Field>
           <div>
-            <Button type="submit" size="sm" className="h-10" disabled={locked}>
-              Save
+            <Button
+              type="submit"
+              size="sm"
+              className="h-10"
+              disabled={locked || busy}
+              aria-busy={saving === "details"}
+              iconLeft={
+                saving === "details" ? (
+                  <CircleNotchIcon size={16} className="animate-spin" />
+                ) : undefined
+              }
+            >
+              {saving === "details" ? "Saving…" : "Save"}
             </Button>
           </div>
         </form>
@@ -650,9 +692,15 @@ function ContentDetailEditor({
                   type="submit"
                   size="sm"
                   className="h-10"
-                  disabled={invoiceSaving}
+                  disabled={busy}
+                  aria-busy={saving === "deal"}
+                  iconLeft={
+                    saving === "deal" ? (
+                      <CircleNotchIcon size={16} className="animate-spin" />
+                    ) : undefined
+                  }
                 >
-                  {invoiceSaving ? "Saving…" : "Save deal"}
+                  {saving === "deal" ? "Saving…" : "Save deal"}
                 </Button>
               )}
               <Text variant="caption" className="text-sm">
@@ -676,11 +724,13 @@ function ContentDetailEditor({
             <DeliverableTable
               deliverables={visibleDeal.deliverables}
               editingId={editingDeliverable?.id}
+              actionsDisabled={busy}
               onEdit={locked ? undefined : beginEditDeliverable}
               onRemove={
                 locked
                   ? undefined
                   : (id) => {
+                      if (savingRef.current) return;
                       setSaveError(null);
                       setRemoveTarget({ kind: "deliverable", id });
                     }
@@ -704,7 +754,7 @@ function ContentDetailEditor({
               className="grid grid-cols-1 items-end gap-2 sm:grid-cols-2 md:grid-cols-[minmax(0,1fr)_5.5rem_minmax(13rem,1.4fr)_auto] md:gap-3"
               onSubmit={(event) => {
                 event.preventDefault();
-                if (locked || !visibleDeal) return;
+                if (locked || !visibleDeal || savingRef.current) return;
                 const data = new FormData(event.currentTarget);
                 const type = String(
                   data.get("type") ?? "video",
@@ -735,7 +785,7 @@ function ContentDetailEditor({
                   message: editingDeliverable
                     ? "Deliverable updated."
                     : "Deliverable added.",
-                });
+                }, "deliverable");
                 setEditingDeliverableId(null);
                 event.currentTarget.reset();
               }}
@@ -798,6 +848,7 @@ function ContentDetailEditor({
                     variant="secondary"
                     size="sm"
                     className="h-10"
+                    disabled={busy}
                     onClick={() => setEditingDeliverableId(null)}
                   >
                     Cancel
@@ -807,10 +858,20 @@ function ContentDetailEditor({
                   type="submit"
                   variant="secondary"
                   size="sm"
-                  disabled={locked}
+                  disabled={locked || busy}
+                  aria-busy={saving === "deliverable"}
+                  iconLeft={
+                    saving === "deliverable" ? (
+                      <CircleNotchIcon size={16} className="animate-spin" />
+                    ) : undefined
+                  }
                   className="h-10 w-full md:w-auto"
                 >
-                  {editingDeliverable ? "Update" : "Add deliverable"}
+                  {saving === "deliverable"
+                    ? "Saving…"
+                    : editingDeliverable
+                      ? "Update"
+                      : "Add deliverable"}
                 </Button>
               </div>
             </form>
@@ -828,11 +889,13 @@ function ContentDetailEditor({
         <ExpenseTable
           expenses={item.expenses}
           editingId={editingExpense?.id}
+          actionsDisabled={busy}
           onEdit={locked ? undefined : beginEditExpense}
           onRemove={
             locked
               ? undefined
               : (id) => {
+                  if (savingRef.current) return;
                   setSaveError(null);
                   setRemoveTarget({ kind: "expense", id });
                 }
@@ -845,7 +908,7 @@ function ContentDetailEditor({
           className="flex flex-col gap-2"
           onSubmit={(event) => {
             event.preventDefault();
-            if (locked) return;
+            if (locked || savingRef.current) return;
             const data = new FormData(event.currentTarget);
             const amount = Number(data.get("amount") || 0);
             if (!amount) return;
@@ -873,6 +936,7 @@ function ContentDetailEditor({
               {
                 message: editingExpense ? "Expense updated." : "Expense added.",
               },
+              "expense",
             );
             if (editingExpense) cancelEditExpense();
             else event.currentTarget.reset();
@@ -941,6 +1005,7 @@ function ContentDetailEditor({
               variant="secondary"
               size="sm"
               className="h-10 shrink-0"
+              disabled={busy}
               onClick={cancelEditExpense}
             >
               Cancel
@@ -950,10 +1015,20 @@ function ContentDetailEditor({
             type="submit"
             variant="secondary"
             size="sm"
-            disabled={locked}
+            disabled={locked || busy}
+            aria-busy={saving === "expense"}
+            iconLeft={
+              saving === "expense" ? (
+                <CircleNotchIcon size={16} className="animate-spin" />
+              ) : undefined
+            }
             className="h-10 shrink-0"
           >
-            {editingExpense ? "Update" : "Add expense"}
+            {saving === "expense"
+              ? "Saving…"
+              : editingExpense
+                ? "Update"
+                : "Add expense"}
           </Button>
           </div>
         </form>

@@ -21,6 +21,7 @@ type DeliverableTableProps = {
   onEdit?: (id: string) => void;
   onRemove?: (id: string) => void;
   editingId?: string | null;
+  actionsDisabled?: boolean;
   variant?: DataTableVariant;
   className?: string;
   currency?: string;
@@ -34,6 +35,7 @@ export function DeliverableTable({
   onEdit,
   onRemove,
   editingId,
+  actionsDisabled = false,
   variant = "card",
   className = "",
   currency = "USD",
@@ -93,6 +95,7 @@ export function DeliverableTable({
                 onRemove={onRemove ? () => onRemove(item.id) : undefined}
                 editLabel="Edit deliverable"
                 deleteLabel="Delete deliverable"
+                disabled={actionsDisabled}
               />
             </div>
           </div>
@@ -117,6 +120,7 @@ export function DeliverableTable({
                 onRemove={onRemove ? () => onRemove(item.id) : undefined}
                 editLabel="Edit deliverable"
                 deleteLabel="Delete deliverable"
+                disabled={actionsDisabled}
               />
             ) : null}
           </div>
@@ -148,12 +152,14 @@ function LineActions({
   editing,
   editLabel,
   deleteLabel,
+  disabled = false,
 }: {
   onEdit?: () => void;
   onRemove?: () => void;
   editing?: boolean;
   editLabel: string;
   deleteLabel: string;
+  disabled?: boolean;
 }) {
   if (!onEdit && !onRemove) return null;
   return (
@@ -163,9 +169,10 @@ function LineActions({
           type="button"
           aria-label={editLabel}
           aria-pressed={editing}
+          disabled={disabled}
           onClick={onEdit}
           className={[
-            "inline-flex size-8 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-organic",
+            "inline-flex size-8 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-organic disabled:cursor-not-allowed disabled:opacity-40",
             editing ? "text-ink" : "text-muted hover:text-ink",
           ].join(" ")}
         >
@@ -176,8 +183,9 @@ function LineActions({
         <button
           type="button"
           aria-label={deleteLabel}
+          disabled={disabled}
           onClick={onRemove}
-          className="inline-flex size-8 cursor-pointer items-center justify-center rounded-full text-danger transition-colors hover:bg-organic"
+          className="inline-flex size-8 cursor-pointer items-center justify-center rounded-full text-danger transition-colors hover:bg-organic disabled:cursor-not-allowed disabled:opacity-40"
         >
           <TrashIcon size={16} weight="regular" aria-hidden />
         </button>
