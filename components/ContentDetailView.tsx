@@ -233,9 +233,9 @@ function ContentDetailEditor({
     notice: { message: string; tone?: "success" | "danger" } | undefined,
     action: "details" | "deal" | "deliverable" | "expense" | "remove",
     section: "details" | "deal" | "deliverables" | "expenses",
-  ) {
-    if (isAgency || savingRef.current) return;
-    if (section !== "details" && blockUntilTypeSaved()) return;
+  ): Promise<boolean> {
+    if (isAgency || savingRef.current) return false;
+    if (section !== "details" && blockUntilTypeSaved()) return false;
     const previous = item;
     const previousSaved = previous.deal?.currency?.trim() || currency;
     savingRef.current = true;
@@ -249,14 +249,14 @@ function ContentDetailEditor({
         setDraftType(previous.type);
         if (action === "deal") setDealCurrencyDraft(previousSaved);
         if (action === "deliverable") setDeliverableCurrencyDraft(previousSaved);
-        if (action !== "remove") {
+        if (action === "details" || action === "deal") {
           setFormGeneration((current) => ({
             ...current,
             [action]: current[action] + 1,
           }));
         }
         setSaveError(result.error);
-        return;
+        return false;
       }
       const nextSaved = next.deal?.currency?.trim() || currency;
       if (action === "deal") {
@@ -274,6 +274,7 @@ function ContentDetailEditor({
       setDraftType(next.type);
       if (notice) showToast(notice.message, notice.tone ?? "success");
       router.refresh();
+      return true;
     } finally {
       savingRef.current = false;
       setSaving(null);
@@ -794,7 +795,7 @@ function ContentDetailEditor({
             <form
               key={`deliverable-${formGeneration.deliverable}-${editingDeliverable?.id ?? "new"}`}
               className="grid grid-cols-1 items-end gap-2 sm:grid-cols-2 md:grid-cols-[minmax(0,1fr)_5.5rem_minmax(13rem,1.4fr)_auto] md:gap-3"
-              onSubmit={(event) => {
+              onSubmit={async (event) => {
                 event.preventDefault();
                 if (locked || !visibleDeal || savingRef.current || blockUntilTypeSaved()) {
                   return;
@@ -804,8 +805,12 @@ function ContentDetailEditor({
                   data.get("type") ?? "video",
                 ) as TrackerDeliverable["type"];
                 const quantity = Number(data.get("quantity") || 1);
-                const rate = Number(data.get("rate") || 0);
-                if (!rate) return;
+                const rate = Number(data.get("rate"));
+                if (!Number.isFinite(rate) || rate <= 0) {
+                  showToast("Enter a rate above zero.", "danger");
+                  return;
+                }
+                const form = event.currentTarget;
                 const nextDeliverable = {
                   id: editingDeliverable?.id ?? crypto.randomUUID(),
                   type,
@@ -816,7 +821,7 @@ function ContentDetailEditor({
                   String(data.get("currency") ?? ""),
                   dealCurrency,
                 );
-                commit({
+                const saved = await commit({
                   ...item,
                   type: "paid_collab",
                   deal: {
@@ -837,8 +842,9 @@ function ContentDetailEditor({
                     ? "Deliverable updated."
                     : "Deliverable added.",
                 }, "deliverable", "deliverables");
+                if (!saved) return;
                 setEditingDeliverableId(null);
-                event.currentTarget.reset();
+                form.reset();
               }}
             >
               <Field id="deliverableType" label="Type" className="min-w-0">
@@ -947,12 +953,16 @@ function ContentDetailEditor({
         <form
           key={`expense-${formGeneration.expense}-${editingExpense?.id ?? "new"}`}
           className="flex flex-col gap-2"
-          onSubmit={(event) => {
+          onSubmit={async (event) => {
             event.preventDefault();
             if (locked || savingRef.current || blockUntilTypeSaved()) return;
             const data = new FormData(event.currentTarget);
-            const amount = Number(data.get("amount") || 0);
-            if (!amount) return;
+            const amount = Number(data.get("amount"));
+            if (!Number.isFinite(amount) || amount <= 0) {
+              showToast("Enter an amount above zero.", "danger");
+              return;
+            }
+            const form = event.currentTarget;
             const category = String(
               data.get("category") ?? "other",
             ) as TrackerExpense["category"];
@@ -965,7 +975,7 @@ function ContentDetailEditor({
                 String(data.get("date") ?? "") || calendarDay(new Date()),
               currency: expenseCurrency,
             };
-            commit(
+            const saved = await commit(
               {
                 ...item,
                 expenses: editingExpense
@@ -980,8 +990,9 @@ function ContentDetailEditor({
               "expense",
               "expenses",
             );
+            if (!saved) return;
             if (editingExpense) cancelEditExpense();
-            else event.currentTarget.reset();
+            else form.reset();
           }}
         >
           <div className="flex items-end gap-2">
