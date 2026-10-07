@@ -14,7 +14,8 @@ import {
 } from "@/lib/data/actionHelpers";
 import { moneyCode } from "@/lib/fx";
 import { DEFAULT_PLATFORM } from "@/lib/platforms";
-import { toTimestamp } from "@/lib/timestamps";
+import { localTimeZone } from "@/lib/localToday";
+import { mergeTimestamp, toTimestamp } from "@/lib/timestamps";
 import { createClient } from "@/lib/supabase/server";
 import type {
   ContentType,
@@ -140,6 +141,7 @@ export async function addContentForRecordAction(
     }
 
     const isPaid = payload.type === "paid_collab";
+    const timeZone = await localTimeZone();
     const { data, error } = await supabase
       .from("content_items")
       .insert({
@@ -152,7 +154,7 @@ export async function addContentForRecordAction(
         type: payload.type,
         brand_name: isPaid ? payload.brandName : null,
         stage: "concept",
-        go_live_date: toTimestamp(payload.goLiveDate),
+        go_live_date: toTimestamp(payload.goLiveDate, timeZone),
         notes: payload.notes ?? "",
         fee_agreed: isPaid ? 0 : null,
         currency: isPaid ? moneyCode(record.currency) : null,
@@ -189,6 +191,7 @@ export async function addContentAction(payload: {
     const supabase = await createClient();
     const profile = await getProfile();
     const isPaid = payload.type === "paid_collab";
+    const timeZone = await localTimeZone();
     const { data, error } = await supabase
       .from("content_items")
       .insert({
@@ -199,7 +202,7 @@ export async function addContentAction(payload: {
         type: payload.type,
         brand_name: isPaid ? payload.brandName : null,
         stage: "concept",
-        go_live_date: toTimestamp(payload.goLiveDate),
+        go_live_date: toTimestamp(payload.goLiveDate, timeZone),
         notes: payload.notes ?? "",
         idea_title: payload.ideaTitle ?? null,
         fee_agreed: isPaid ? 0 : null,
@@ -354,13 +357,14 @@ function expenseRows(
   previousExpenses: Map<string, string>,
   dealCurrency: string | null,
   freshCurrency: string,
+  timeZone?: string | null,
 ) {
   return rows.map((row) => ({
     id: lineId(row.id),
     category: row.category,
     amount: row.amount,
     note: row.note,
-    expense_date: row.date,
+    expense_date: toTimestamp(row.date, timeZone) ?? row.date,
     currency:
       keptCurrency(row.currency) ??
       previousExpenses.get(row.id) ??
@@ -430,6 +434,7 @@ export async function upsertContentAction(
       : "USD";
     const keptDealCurrency =
       previousDealCurrency ?? (wasPaid ? freshCurrency : null);
+    const timeZone = await localTimeZone();
 
     const payload = {
       p_id: item.id,
@@ -463,7 +468,11 @@ export async function upsertContentAction(
       payload.p_type = item.type;
       payload.p_brand_name = paid ? item.brandName : null;
       payload.p_stage = item.stage;
-      payload.p_go_live_date = toTimestamp(item.goLiveDate);
+      payload.p_go_live_date = mergeTimestamp(
+        stored.go_live_date,
+        item.goLiveDate,
+        timeZone,
+      );
       payload.p_shot_list = item.shotList;
       payload.p_notes = item.notes;
       if (!paid) {
@@ -490,9 +499,21 @@ export async function upsertContentAction(
       payload.p_currency =
         requestedDealCurrency ?? previousDealCurrency ?? freshCurrency;
       payload.p_payment_terms = item.deal?.paymentTerms ?? "net_30";
-      payload.p_date_delivered = toTimestamp(item.deal?.dateDelivered);
-      payload.p_date_invoiced = toTimestamp(item.deal?.dateInvoiced);
-      payload.p_date_paid = toTimestamp(item.deal?.datePaid);
+      payload.p_date_delivered = mergeTimestamp(
+        stored.date_delivered,
+        item.deal?.dateDelivered,
+        timeZone,
+      );
+      payload.p_date_invoiced = mergeTimestamp(
+        stored.date_invoiced,
+        item.deal?.dateInvoiced,
+        timeZone,
+      );
+      payload.p_date_paid = mergeTimestamp(
+        stored.date_paid,
+        item.deal?.datePaid,
+        timeZone,
+      );
     } else if (section === "deliverables") {
       payload.p_deliverables = deliverableRows(item.deal?.deliverables ?? []);
       if (
@@ -507,13 +528,14 @@ export async function upsertContentAction(
         previousExpenses,
         keptDealCurrency,
         freshCurrency,
+        timeZone,
       );
     }
 
     const { error } = await supabase.rpc("save_content", payload);
     if (error) return { error: saveFailure(error.message) };
 
-    const summaries = contentChangeSummaries(stored, item, section);
+    const summaries = contentChangeSummaries(stored, item, section, timeZone);
     const contentId = item.id;
     // The activity line has to be stored before the page refreshes it.
     // Marking the other pages stale can wait until this reply has gone out.

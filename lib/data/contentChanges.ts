@@ -9,8 +9,8 @@ import type {
 } from "@/lib/tracker";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-function day(value: string | null | undefined) {
-  return toDateInput(value);
+function day(value: string | null | undefined, timeZone?: string | null) {
+  return toDateInput(value, timeZone);
 }
 
 function money(value: number | string | null | undefined) {
@@ -69,7 +69,11 @@ function deliverableChanged(previous: SavedDeliverable[], next: TrackerDeliverab
   return { added, removed, updated };
 }
 
-function expenseChanged(previous: SavedExpense[], next: TrackerExpense[]) {
+function expenseChanged(
+  previous: SavedExpense[],
+  next: TrackerExpense[],
+  timeZone?: string | null,
+) {
   const previousById = new Map(previous.map((row) => [row.id, row]));
   const nextIds = new Set(next.filter((row) => isUuid(row.id)).map((row) => row.id));
   const added = next.some((row) => !isUuid(row.id) || !previousById.has(row.id));
@@ -81,7 +85,7 @@ function expenseChanged(previous: SavedExpense[], next: TrackerExpense[]) {
       before.category !== row.category ||
       money(before.amount) !== money(row.amount) ||
       (before.note ?? "") !== (row.note ?? "") ||
-      day(before.expense_date) !== day(row.date) ||
+      day(before.expense_date, timeZone) !== day(row.date, timeZone) ||
       (before.currency ?? "").trim().toUpperCase() !==
         (row.currency ?? "").trim().toUpperCase()
     );
@@ -100,6 +104,7 @@ export function contentChangeSummaries(
   previous: SavedContentSnapshot,
   next: TrackerDetail,
   section: ContentSaveSection,
+  timeZone?: string | null,
 ): string[] {
   const title = next.title.trim() || previous.title;
   const lines: string[] = [];
@@ -133,13 +138,22 @@ export function contentChangeSummaries(
       const beforeTerms = beforePaid ? (previous.payment_terms ?? "net_30") : "";
       if (terms !== beforeTerms) lines.push(`Updated payment terms on "${title}"`);
 
-      if (day(previous.date_delivered) !== day(paid ? next.deal?.dateDelivered : null)) {
+      if (
+        day(previous.date_delivered, timeZone) !==
+        day(paid ? next.deal?.dateDelivered : null, timeZone)
+      ) {
         lines.push(`Updated the delivery date on "${title}"`);
       }
-      if (day(previous.date_invoiced) !== day(paid ? next.deal?.dateInvoiced : null)) {
+      if (
+        day(previous.date_invoiced, timeZone) !==
+        day(paid ? next.deal?.dateInvoiced : null, timeZone)
+      ) {
         lines.push(`Updated the invoice date on "${title}"`);
       }
-      if (day(previous.date_paid) !== day(paid ? next.deal?.datePaid : null)) {
+      if (
+        day(previous.date_paid, timeZone) !==
+        day(paid ? next.deal?.datePaid : null, timeZone)
+      ) {
         lines.push(`Updated the paid date on "${title}"`);
       }
     }
@@ -167,6 +181,7 @@ export function contentChangeSummaries(
     const expenses = expenseChanged(
       previous.content_expenses ?? [],
       next.expenses,
+      timeZone,
     );
     if (expenses.added) lines.push(`Added an expense on "${title}"`);
     if (expenses.removed) lines.push(`Removed an expense on "${title}"`);
@@ -188,16 +203,17 @@ export function invoiceChangeSummaries(
     dateInvoiced: string | null;
     datePaid: string | null;
   },
+  timeZone?: string | null,
 ) {
   const name = title.trim() || "this content";
   const lines: string[] = [];
   if ((previous.payment_terms ?? "") !== next.paymentTerms) {
     lines.push(`Updated payment terms on "${name}"`);
   }
-  if (day(previous.date_invoiced) !== day(next.dateInvoiced)) {
+  if (day(previous.date_invoiced, timeZone) !== day(next.dateInvoiced, timeZone)) {
     lines.push(`Updated the invoice date on "${name}"`);
   }
-  if (day(previous.date_paid) !== day(next.datePaid)) {
+  if (day(previous.date_paid, timeZone) !== day(next.datePaid, timeZone)) {
     lines.push(`Updated the paid date on "${name}"`);
   }
   return lines;
