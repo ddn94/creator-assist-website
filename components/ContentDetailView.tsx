@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleNotchIcon, TrashIcon } from "@phosphor-icons/react";
+import { TrashIcon } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { calendarDay } from "@/lib/calendarDay";
@@ -190,10 +190,9 @@ function ContentDetailEditor({
     () => initial.deal?.currency?.trim() || currency,
   );
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [saving, setSaving] = useState<
-    "details" | "deal" | "deliverable" | "expense" | "remove" | null
-  >(null);
   const savingRef = useRef(false);
+  const saveQueueRef = useRef(Promise.resolve());
+  const saveEpochRef = useRef(0);
   const [invoiceError, setInvoiceError] = useState<string | null>(null);
   const isAgency = mode === "agency";
   const locked = isAgency;
@@ -215,6 +214,12 @@ function ContentDetailEditor({
   const [leaveHref, setLeaveHref] = useState<string | null>(null);
   const [leaveSections, setLeaveSections] = useState<string[]>([]);
   const [leaveOpen, setLeaveOpen] = useState(false);
+
+  // A second click in the same moment would build its line from the old list.
+  // The lock drops after this update paints, so the next line includes it.
+  useEffect(() => {
+    savingRef.current = false;
+  });
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("section") !== "deal") {
@@ -410,57 +415,82 @@ function ContentDetailEditor({
     };
   }, []);
 
-  async function commit(
+  function enqueueSave(
+    epoch: number,
+    work: () => Promise<{ error: string | null }>,
+    onError: (message: string) => void,
+  ) {
+    const run = saveQueueRef.current.then(async () => {
+      let message: string | null = null;
+      try {
+        const result = await work();
+        message = result.error;
+      } catch (error) {
+        message =
+          error instanceof Error ? error.message : "Could not save content.";
+      }
+      if (message) {
+        if (saveEpochRef.current === epoch) onError(message);
+        showToast(message, "danger");
+        return;
+      }
+      router.refresh();
+    });
+    saveQueueRef.current = run.then(
+      () => undefined,
+      () => undefined,
+    );
+  }
+
+  function commit(
     next: TrackerDetail,
     notice: { message: string; tone?: "success" | "danger" } | undefined,
     action: "details" | "deal" | "deliverable" | "expense" | "remove",
     section: "details" | "deal" | "deliverables" | "expenses",
-  ): Promise<boolean> {
+  ): boolean {
     if (isAgency || savingRef.current) return false;
     if (section !== "details" && blockUntilTypeSaved()) return false;
     const previous = item;
-    const previousSaved = previous.deal?.currency?.trim() || currency;
+    const previousType = draftType;
+    const previousDealCurrency = dealCurrencyDraft;
+    const previousDeliverableCurrency = deliverableCurrencyDraft;
+    const epoch = ++saveEpochRef.current;
     savingRef.current = true;
-    setSaving(action);
     setSaveError(null);
     setItem(next);
-    try {
-      const result = await upsertContentAction(next, section);
-      if (result.error) {
+    setDraftType(next.type);
+    const nextSaved = next.deal?.currency?.trim() || currency;
+    if (action === "deal") {
+      setDealCurrencyDraft(nextSaved);
+      setDeliverableCurrencyDraft((current) =>
+        current === previousDealCurrency ? nextSaved : current,
+      );
+    }
+    if (action === "deliverable") {
+      setDeliverableCurrencyDraft(nextSaved);
+      setDealCurrencyDraft((current) =>
+        current === previousDealCurrency ? nextSaved : current,
+      );
+    }
+    if (notice) showToast(notice.message, notice.tone ?? "success");
+    enqueueSave(
+      epoch,
+      () => upsertContentAction(next, section),
+      (message) => {
         setItem(previous);
-        setDraftType(previous.type);
-        if (action === "deal") setDealCurrencyDraft(previousSaved);
-        if (action === "deliverable") setDeliverableCurrencyDraft(previousSaved);
+        setDraftType(previousType);
+        setDealCurrencyDraft(previousDealCurrency);
+        setDeliverableCurrencyDraft(previousDeliverableCurrency);
         if (action === "details" || action === "deal") {
           setFormGeneration((current) => ({
             ...current,
             [action]: current[action] + 1,
           }));
         }
-        setSaveError(result.error);
-        return false;
-      }
-      const nextSaved = next.deal?.currency?.trim() || currency;
-      if (action === "deal") {
-        setDealCurrencyDraft(nextSaved);
-        setDeliverableCurrencyDraft((current) =>
-          current === previousSaved ? nextSaved : current,
-        );
-      }
-      if (action === "deliverable") {
-        setDeliverableCurrencyDraft(nextSaved);
-        setDealCurrencyDraft((current) =>
-          current === previousSaved ? nextSaved : current,
-        );
-      }
-      setDraftType(next.type);
-      if (notice) showToast(notice.message, notice.tone ?? "success");
-      router.refresh();
-      return true;
-    } finally {
-      savingRef.current = false;
-      setSaving(null);
-    }
+        setSaveError(message);
+      },
+    );
+    return true;
   }
 
   function beginEditDeliverable(id: string) {
@@ -523,7 +553,7 @@ function ContentDetailEditor({
   }
 
   async function confirmRemove() {
-    if (!removeTarget || removePending || savingRef.current) return;
+    if (!removeTarget || removePending) return;
     if (blockUntilTypeSaved()) {
       setRemoveTarget(null);
       return;
@@ -543,16 +573,11 @@ function ContentDetailEditor({
       router.push(mode === "record" ? backHref : "/home/tracker");
       return;
     }
-    setRemovePending(true);
-    try {
-      const removed =
-        removeTarget.kind === "deliverable"
-          ? await removeDeliverable(removeTarget.id)
-          : await removeExpense(removeTarget.id);
-      if (removed) setRemoveTarget(null);
-    } finally {
-      setRemovePending(false);
-    }
+    const removed =
+      removeTarget.kind === "deliverable"
+        ? removeDeliverable(removeTarget.id)
+        : removeExpense(removeTarget.id);
+    if (removed) setRemoveTarget(null);
   }
 
   async function handleDealSubmit(event: FormEvent<HTMLFormElement>) {
@@ -573,6 +598,8 @@ function ContentDetailEditor({
         return;
       }
       const previous = item;
+      const epoch = ++saveEpochRef.current;
+      savingRef.current = true;
       setInvoiceError(null);
       setItem({
         ...item,
@@ -584,25 +611,20 @@ function ContentDetailEditor({
           dateDelivered: item.deal.dateDelivered ?? dateInvoiced,
         },
       });
-      savingRef.current = true;
-      setSaving("deal");
-      try {
-        const result = await updateContentInvoiceAction(item.id, {
-          dateInvoiced,
-          paymentTerms,
-          datePaid,
-        });
-        if (result.error) {
+      showToast("Deal saved.");
+      enqueueSave(
+        epoch,
+        () =>
+          updateContentInvoiceAction(item.id, {
+            dateInvoiced,
+            paymentTerms,
+            datePaid,
+          }),
+        (message) => {
           setItem(previous);
-          setInvoiceError(result.error);
-          return;
-        }
-        showToast("Deal saved.");
-        router.refresh();
-      } finally {
-        savingRef.current = false;
-        setSaving(null);
-      }
+          setInvoiceError(message);
+        },
+      );
       return;
     }
 
@@ -626,7 +648,7 @@ function ContentDetailEditor({
   }
 
   const money = (amount: number) => fmtMoney(amount, dealCurrency);
-  const busy = saving !== null || removePending;
+  const busy = removePending;
 
   return (
     <div
@@ -818,14 +840,8 @@ function ContentDetailEditor({
                 size="sm"
                 className="h-10"
                 disabled={locked || busy}
-                aria-busy={saving === "details"}
-                iconLeft={
-                  saving === "details" ? (
-                    <CircleNotchIcon size={16} className="animate-spin" />
-                  ) : undefined
-                }
               >
-                {saving === "details" ? "Saving…" : "Save"}
+                Save
               </Button>
             </div>
           </form>
@@ -919,14 +935,8 @@ function ContentDetailEditor({
                     size="sm"
                     className="h-10"
                     disabled={busy}
-                    aria-busy={saving === "deal"}
-                    iconLeft={
-                      saving === "deal" ? (
-                        <CircleNotchIcon size={16} className="animate-spin" />
-                      ) : undefined
-                    }
                   >
-                    {saving === "deal" ? "Saving…" : "Save deal"}
+                    Save deal
                   </Button>
                 )}
                 <Text variant="caption" className="text-sm">
@@ -1004,7 +1014,7 @@ function ContentDetailEditor({
                     String(data.get("currency") ?? ""),
                     dealCurrency,
                   );
-                  const saved = await commit({
+                  const saved = commit({
                     ...item,
                     type: "paid_collab",
                     deal: {
@@ -1094,19 +1104,9 @@ function ContentDetailEditor({
                     variant="secondary"
                     size="sm"
                     disabled={locked || busy}
-                    aria-busy={saving === "deliverable"}
-                    iconLeft={
-                      saving === "deliverable" ? (
-                        <CircleNotchIcon size={16} className="animate-spin" />
-                      ) : undefined
-                    }
                     className="h-10 w-full md:w-auto"
                   >
-                    {saving === "deliverable"
-                      ? "Saving…"
-                      : editingDeliverable
-                        ? "Update"
-                        : "Add deliverable"}
+                    {editingDeliverable ? "Update" : "Add deliverable"}
                   </Button>
                 </div>
               </form>
@@ -1163,7 +1163,7 @@ function ContentDetailEditor({
                   String(data.get("date") ?? "") || calendarDay(new Date()),
                 currency: expenseCurrency,
               };
-              const saved = await commit(
+              const saved = commit(
                 {
                   ...item,
                   expenses: editingExpense
@@ -1262,19 +1262,9 @@ function ContentDetailEditor({
                 variant="secondary"
                 size="sm"
                 disabled={locked || busy}
-                aria-busy={saving === "expense"}
-                iconLeft={
-                  saving === "expense" ? (
-                    <CircleNotchIcon size={16} className="animate-spin" />
-                  ) : undefined
-                }
                 className="h-10 shrink-0"
               >
-                {saving === "expense"
-                  ? "Saving…"
-                  : editingExpense
-                    ? "Update"
-                    : "Add expense"}
+                {editingExpense ? "Update" : "Add expense"}
               </Button>
             </div>
           </form>

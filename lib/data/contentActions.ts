@@ -1,5 +1,6 @@
 "use server";
 
+import { after } from "next/server";
 import { getProfile } from "@/lib/auth/session";
 import {
   contentChangeSummaries,
@@ -512,14 +513,14 @@ export async function upsertContentAction(
     const { error } = await supabase.rpc("save_content", payload);
     if (error) return { error: saveFailure(error.message) };
 
-    await recordContentChanges(
-      supabase,
-      profile,
-      item.id,
-      contentChangeSummaries(stored, item, section),
-    );
-
-    revalidateContent([`/home/tracker/${item.id}`]);
+    const summaries = contentChangeSummaries(stored, item, section);
+    const contentId = item.id;
+    // The activity line has to be stored before the page refreshes it.
+    // Marking the other pages stale can wait until this reply has gone out.
+    await recordContentChanges(supabase, profile, contentId, summaries);
+    after(() => {
+      revalidateContent([`/home/tracker/${contentId}`]);
+    });
     return { error: null };
   } catch (error) {
     return {
