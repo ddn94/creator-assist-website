@@ -4,6 +4,7 @@ import { TrashIcon } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { calendarDay } from "@/lib/calendarDay";
+import { CURRENCY_OPTIONS, currencyFlag } from "@/lib/countries";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { BackLink } from "@/components/BackLink";
 import { showToast } from "@/components/Toast";
@@ -16,6 +17,7 @@ import { DateField } from "@/components/DateField";
 import { DeliverableTable } from "@/components/DeliverableTable";
 import { ExpenseTable } from "@/components/ExpenseTable";
 import { Field } from "@/components/Field";
+import { MoneyField } from "@/components/MoneyField";
 import { FormAlert } from "@/components/FormAlert";
 import { Select } from "@/components/Select";
 import { StatusTag } from "@/components/StatusTag";
@@ -23,7 +25,7 @@ import { Text } from "@/components/Text";
 import { TextArea } from "@/components/TextArea";
 import { TextField } from "@/components/TextField";
 import { toDateInput } from "@/lib/timestamps";
-import { convertAmount } from "@/lib/fx";
+import { convertOnDate, moneyCode, EMPTY_RATE_BOOK, type RateBook } from "@/lib/fx";
 import {
   deleteContentAction,
   updateContentInvoiceAction,
@@ -53,6 +55,16 @@ import {
 } from "@/lib/tracker";
 import type { TalentActivityItem } from "@/lib/talent";
 
+function currencyChoices(code: string) {
+  const options = CURRENCY_OPTIONS.some((option) => option.value === code)
+    ? CURRENCY_OPTIONS
+    : [{ value: code, label: code }, ...CURRENCY_OPTIONS];
+  return options.map((option) => ({
+    value: option.value,
+    label: `${currencyFlag(option.value)} ${option.value}`.trim(),
+  }));
+}
+
 const EMPTY_DEAL: TrackerDeal = {
   feeAgreed: 0,
   paymentTerms: "net_30",
@@ -66,6 +78,7 @@ type ContentDetailViewProps = {
   initial: TrackerDetail;
   platformOptions: { value: string; label: string }[];
   currency: string;
+  rates?: RateBook;
   backHref?: string;
   /**
    * talent: the owner edits everything.
@@ -83,6 +96,7 @@ export function ContentDetailView({
   initial,
   platformOptions,
   currency,
+  rates = EMPTY_RATE_BOOK,
   backHref = "/home/tracker",
   mode = "talent",
   dealLocked = false,
@@ -94,6 +108,7 @@ export function ContentDetailView({
       initial={initial}
       platformOptions={platformOptions}
       currency={currency}
+      rates={rates}
       backHref={backHref}
       mode={mode}
       dealLocked={dealLocked}
@@ -106,6 +121,7 @@ function ContentDetailEditor({
   initial,
   platformOptions,
   currency,
+  rates,
   backHref,
   mode,
   dealLocked,
@@ -114,6 +130,7 @@ function ContentDetailEditor({
   initial: TrackerDetail;
   platformOptions: { value: string; label: string }[];
   currency: string;
+  rates: RateBook;
   backHref: string;
   mode: "talent" | "agency" | "record";
   dealLocked: boolean;
@@ -133,6 +150,11 @@ function ContentDetailEditor({
     "post" | { kind: "deliverable" | "expense"; id: string } | null
   >(null);
   const [removePending, setRemovePending] = useState(false);
+  const [expenseOverride, setExpenseOverride] = useState<string | null>(null);
+  const [editingDeliverableId, setEditingDeliverableId] = useState<string | null>(
+    null,
+  );
+  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("section") !== "deal") {
@@ -158,13 +180,16 @@ function ContentDetailEditor({
   const isPaid = draftType === "paid_collab";
   const visibleDeal = isPaid ? (item.deal ?? EMPTY_DEAL) : null;
   const dealCurrency = visibleDeal?.currency?.trim() || currency;
+  const expenseCurrency = expenseOverride ?? dealCurrency;
   const totalExpenses = item.expenses.reduce(
     (sum, expense) =>
       sum +
-      convertAmount(
+      convertOnDate(
         expense.amount,
         expense.currency?.trim() || dealCurrency,
         dealCurrency,
+        expense.date,
+        rates,
       ),
     0,
   );
@@ -174,6 +199,11 @@ function ContentDetailEditor({
   const deliverableSum = visibleDeal
     ? deliverablesTotal(visibleDeal.deliverables)
     : 0;
+  const editingDeliverable =
+    visibleDeal?.deliverables.find((row) => row.id === editingDeliverableId) ??
+    null;
+  const editingExpense =
+    item.expenses.find((row) => row.id === editingExpenseId) ?? null;
 
   async function commit(
     next: TrackerDetail,
@@ -196,8 +226,27 @@ function ContentDetailEditor({
     router.refresh();
   }
 
+  function beginEditDeliverable(id: string) {
+    setSaveError(null);
+    setEditingDeliverableId(id);
+  }
+
+  function beginEditExpense(id: string) {
+    const expense = item.expenses.find((row) => row.id === id);
+    if (!expense) return;
+    setSaveError(null);
+    setEditingExpenseId(id);
+    setExpenseOverride(expense.currency?.trim() || dealCurrency);
+  }
+
+  function cancelEditExpense() {
+    setEditingExpenseId(null);
+    setExpenseOverride(null);
+  }
+
   function removeDeliverable(deliverableId: string) {
     if (!item.deal || isAgency) return;
+    if (editingDeliverableId === deliverableId) setEditingDeliverableId(null);
     setRemoveTarget(null);
     void commit(
       {
@@ -215,6 +264,7 @@ function ContentDetailEditor({
 
   function removeExpense(expenseId: string) {
     if (isAgency) return;
+    if (editingExpenseId === expenseId) cancelEditExpense();
     setRemoveTarget(null);
     void commit(
       {
@@ -292,12 +342,17 @@ function ContentDetailEditor({
       return;
     }
 
+    const nextCurrency = moneyCode(
+      String(data.get("currency") ?? ""),
+      deal.currency?.trim() || currency,
+    );
     void commit({
       ...item,
       type: "paid_collab",
       deal: {
         ...deal,
         feeAgreed: Number(data.get("feeAgreed") || 0),
+        currency: nextCurrency,
         paymentTerms,
         dateDelivered: String(data.get("dateDelivered") ?? "") || null,
         dateInvoiced,
@@ -522,8 +577,8 @@ function ContentDetailEditor({
             className="grid grid-cols-1 gap-3 md:grid-cols-3"
             onSubmit={handleDealSubmit}
           >
-            <Field id="feeAgreed" label={`Fee agreed (${dealCurrency})`}>
-              <TextField
+            <Field id="feeAgreed" label="Fee agreed">
+              <MoneyField
                 id="feeAgreed"
                 name="feeAgreed"
                 type="number"
@@ -531,8 +586,20 @@ function ContentDetailEditor({
                 min="0"
                 defaultValue={visibleDeal.feeAgreed || ""}
                 disabled={locked}
-                size="sm"
-                full
+                currency={dealCurrency}
+                currencyOptions={currencyChoices(dealCurrency)}
+                currencyDisabled={dealLocked}
+                onCurrencyChange={(code) => {
+                  const deal = item.deal ?? {
+                    ...EMPTY_DEAL,
+                    currency: code,
+                  };
+                  setItem({
+                    ...item,
+                    type: "paid_collab",
+                    deal: { ...deal, currency: code },
+                  });
+                }}
               />
             </Field>
             <Field id="paymentTerms" label="Payment terms">
@@ -608,6 +675,8 @@ function ContentDetailEditor({
             </Text>
             <DeliverableTable
               deliverables={visibleDeal.deliverables}
+              editingId={editingDeliverable?.id}
+              onEdit={locked ? undefined : beginEditDeliverable}
               onRemove={
                 locked
                   ? undefined
@@ -631,8 +700,8 @@ function ContentDetailEditor({
               </Text>
             ) : null}
             <form
-              key={`deliverable-${formGeneration}`}
-              className="grid grid-cols-3 items-end gap-2 md:grid-cols-[minmax(0,1.4fr)_minmax(0,0.7fr)_minmax(0,1fr)_auto] md:gap-3"
+              key={`deliverable-${formGeneration}-${editingDeliverable?.id ?? "new"}`}
+              className="grid grid-cols-1 items-end gap-2 sm:grid-cols-2 md:grid-cols-[minmax(0,1fr)_5.5rem_minmax(13rem,1.4fr)_auto] md:gap-3"
               onSubmit={(event) => {
                 event.preventDefault();
                 if (locked || !visibleDeal) return;
@@ -643,22 +712,31 @@ function ContentDetailEditor({
                 const quantity = Number(data.get("quantity") || 1);
                 const rate = Number(data.get("rate") || 0);
                 if (!rate) return;
+                const nextDeliverable = {
+                  id: editingDeliverable?.id ?? `d-${Date.now()}`,
+                  type,
+                  quantity,
+                  rate,
+                };
                 commit({
                   ...item,
                   type: "paid_collab",
                   deal: {
                     ...visibleDeal,
-                    deliverables: [
-                      ...visibleDeal.deliverables,
-                      {
-                        id: `d-${Date.now()}`,
-                        type,
-                        quantity,
-                        rate,
-                      },
-                    ],
+                    deliverables: editingDeliverable
+                      ? visibleDeal.deliverables.map((row) =>
+                          row.id === editingDeliverable.id
+                            ? nextDeliverable
+                            : row,
+                        )
+                      : [...visibleDeal.deliverables, nextDeliverable],
                   },
-                }, { message: "Deliverable added." });
+                }, {
+                  message: editingDeliverable
+                    ? "Deliverable updated."
+                    : "Deliverable added.",
+                });
+                setEditingDeliverableId(null);
                 event.currentTarget.reset();
               }}
             >
@@ -666,7 +744,7 @@ function ContentDetailEditor({
                 <Select
                   id="deliverableType"
                   name="type"
-                  defaultValue="video"
+                  defaultValue={editingDeliverable?.type ?? "video"}
                   options={[...DELIVERABLE_TYPE_OPTIONS]}
                   disabled={locked}
                   size="sm"
@@ -679,18 +757,14 @@ function ContentDetailEditor({
                   name="quantity"
                   type="number"
                   min="1"
-                  defaultValue={1}
+                  defaultValue={editingDeliverable?.quantity ?? 1}
                   disabled={locked}
                   size="sm"
                   full
                 />
               </Field>
-              <Field
-                id="rate"
-                label={`Rate (${dealCurrency} per unit)`}
-                className="min-w-0"
-              >
-                <TextField
+              <Field id="rate" label="Rate" className="min-w-0">
+                <MoneyField
                   id="rate"
                   name="rate"
                   type="number"
@@ -698,19 +772,47 @@ function ContentDetailEditor({
                   min="0"
                   required={!locked}
                   disabled={locked}
-                  size="sm"
-                  full
+                  defaultValue={
+                    editingDeliverable ? String(editingDeliverable.rate) : undefined
+                  }
+                  currency={dealCurrency}
+                  currencyOptions={currencyChoices(dealCurrency)}
+                  currencyDisabled={dealLocked}
+                  onCurrencyChange={(code) => {
+                    const deal = item.deal ?? {
+                      ...EMPTY_DEAL,
+                      currency: code,
+                    };
+                    setItem({
+                      ...item,
+                      type: "paid_collab",
+                      deal: { ...deal, currency: code },
+                    });
+                  }}
                 />
               </Field>
-              <Button
-                type="submit"
-                variant="secondary"
-                size="sm"
-                disabled={locked}
-                className="col-span-3 h-10 w-full md:col-span-1 md:w-auto"
-              >
-                Add deliverable
-              </Button>
+              <div className="col-span-3 flex gap-2 md:col-span-1">
+                {editingDeliverable ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="h-10"
+                    onClick={() => setEditingDeliverableId(null)}
+                  >
+                    Cancel
+                  </Button>
+                ) : null}
+                <Button
+                  type="submit"
+                  variant="secondary"
+                  size="sm"
+                  disabled={locked}
+                  className="h-10 w-full md:w-auto"
+                >
+                  {editingDeliverable ? "Update" : "Add deliverable"}
+                </Button>
+              </div>
             </form>
           </div>
         </CategoryCard>
@@ -725,6 +827,8 @@ function ContentDetailEditor({
         </Text>
         <ExpenseTable
           expenses={item.expenses}
+          editingId={editingExpense?.id}
+          onEdit={locked ? undefined : beginEditExpense}
           onRemove={
             locked
               ? undefined
@@ -737,8 +841,8 @@ function ContentDetailEditor({
           currency={dealCurrency}
         />
         <form
-          key={`expense-${formGeneration}`}
-          className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end md:gap-3"
+          key={`expense-${formGeneration}-${editingExpense?.id ?? "new"}`}
+          className="flex flex-col gap-2"
           onSubmit={(event) => {
             event.preventDefault();
             if (locked) return;
@@ -748,42 +852,46 @@ function ContentDetailEditor({
             const category = String(
               data.get("category") ?? "other",
             ) as TrackerExpense["category"];
-            commit({
-              ...item,
-              expenses: [
-                {
-                  id: `e-${Date.now()}`,
-                  category,
-                  amount,
-                  note: String(data.get("note") ?? "").trim() || null,
-                  date:
-                    String(data.get("date") ?? "") ||
-                    calendarDay(new Date()),
-                  currency,
-                },
-                ...item.expenses,
-              ],
-            }, { message: "Expense added." });
-            event.currentTarget.reset();
+            const nextExpense = {
+              id: editingExpense?.id ?? `e-${Date.now()}`,
+              category,
+              amount,
+              note: String(data.get("note") ?? "").trim() || null,
+              date:
+                String(data.get("date") ?? "") || calendarDay(new Date()),
+              currency: expenseCurrency,
+            };
+            commit(
+              {
+                ...item,
+                expenses: editingExpense
+                  ? item.expenses.map((row) =>
+                      row.id === editingExpense.id ? nextExpense : row,
+                    )
+                  : [nextExpense, ...item.expenses],
+              },
+              {
+                message: editingExpense ? "Expense updated." : "Expense added.",
+              },
+            );
+            if (editingExpense) cancelEditExpense();
+            else event.currentTarget.reset();
           }}
         >
-          <Field id="expenseCategory" label="Category" className="min-w-0">
+          <div className="flex items-end gap-2">
+          <Field id="expenseCategory" label="Category" className="min-w-0 flex-1">
             <Select
               id="expenseCategory"
               name="category"
-              defaultValue="editor"
+              defaultValue={editingExpense?.category ?? "editor"}
               options={[...EXPENSE_CATEGORY_OPTIONS]}
               disabled={locked}
               size="sm"
               full
             />
           </Field>
-          <Field
-            id="expenseAmount"
-            label={`Amount (${currency})`}
-            className="min-w-0"
-          >
-            <TextField
+          <Field id="expenseAmount" label="Amount" className="min-w-0 flex-[1.15]">
+            <MoneyField
               id="expenseAmount"
               name="amount"
               type="number"
@@ -791,41 +899,63 @@ function ContentDetailEditor({
               min="0"
               required={!locked}
               disabled={locked}
-              size="sm"
-              full
+              defaultValue={
+                editingExpense ? String(editingExpense.amount) : undefined
+              }
+              currency={expenseCurrency}
+              currencyOptions={currencyChoices(expenseCurrency)}
+              onCurrencyChange={setExpenseOverride}
             />
           </Field>
-          <Field id="expenseDate" label="Date" className="min-w-0">
+          <Field id="expenseDate" label="Date" className="min-w-0 flex-1">
             <DateField
               id="expenseDate"
               name="date"
+              defaultValue={
+                editingExpense ? toDateInput(editingExpense.date) : ""
+              }
               disabled={locked}
               size="sm"
               full
             />
           </Field>
+          </div>
+          <div className="flex items-end gap-2">
           <Field
             id="expenseNote"
             label="Note"
-            className="min-w-0 md:min-w-40 md:flex-1"
+            className="min-w-0 flex-1"
           >
             <TextField
               id="expenseNote"
               name="note"
+              defaultValue={editingExpense?.note ?? ""}
               disabled={locked}
               size="sm"
               full
             />
           </Field>
+          {editingExpense ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="h-10 shrink-0"
+              onClick={cancelEditExpense}
+            >
+              Cancel
+            </Button>
+          ) : null}
           <Button
             type="submit"
             variant="secondary"
             size="sm"
             disabled={locked}
-            className="col-span-2 h-10 w-full md:w-auto"
+            className="h-10 shrink-0"
           >
-            Add expense
+            {editingExpense ? "Update" : "Add expense"}
           </Button>
+          </div>
         </form>
       </Card>
 

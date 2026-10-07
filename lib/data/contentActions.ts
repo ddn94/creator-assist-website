@@ -40,7 +40,8 @@ function saveFailure(message: string) {
 function keptCurrency(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const code = value.trim().toUpperCase();
-  return code || null;
+  if (!/^[A-Z]{3}$/.test(code)) return null;
+  return code;
 }
 
 function expenseCurrencyMap(rows: unknown): Map<string, string> {
@@ -312,14 +313,17 @@ export async function upsertContentAction(
     const isPaid = item.type === "paid_collab";
     const previousDealCurrency = keptCurrency(previous?.currency);
     const previousExpenses = expenseCurrencyMap(previous?.content_expenses);
+    const requestedDealCurrency = isPaid ? keptCurrency(item.deal?.currency) : null;
     const needsFreshCurrency =
-      (isPaid && !previousDealCurrency) ||
-      item.expenses.some((row) => !previousExpenses.get(row.id));
+      (isPaid && !requestedDealCurrency && !previousDealCurrency) ||
+      item.expenses.some(
+        (row) => !keptCurrency(row.currency) && !previousExpenses.get(row.id),
+      );
     const freshCurrency = needsFreshCurrency
       ? await currencyForNewMoney(supabase, profile, item.talentRecordId)
       : "USD";
     const dealCurrency = isPaid
-      ? (previousDealCurrency ?? freshCurrency)
+      ? (requestedDealCurrency ?? previousDealCurrency ?? freshCurrency)
       : null;
     const deliverables =
       isPaid && item.deal?.deliverables.length
@@ -336,7 +340,11 @@ export async function upsertContentAction(
       amount: row.amount,
       note: row.note,
       expense_date: row.date,
-      currency: previousExpenses.get(row.id) ?? freshCurrency,
+      currency:
+        keptCurrency(row.currency) ??
+        previousExpenses.get(row.id) ??
+        dealCurrency ??
+        freshCurrency,
     }));
     const { error } = await supabase.rpc("save_content", {
       p_id: item.id,

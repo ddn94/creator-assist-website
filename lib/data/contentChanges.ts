@@ -31,6 +31,7 @@ type SavedExpense = {
   amount: number | string;
   note: string | null;
   expense_date: string;
+  currency?: string | null;
 };
 
 export type SavedContentSnapshot = {
@@ -38,6 +39,7 @@ export type SavedContentSnapshot = {
   notes: string;
   type: string;
   fee_agreed: number | string | null;
+  currency?: string | null;
   payment_terms: string | null;
   date_delivered: string | null;
   date_invoiced: string | null;
@@ -79,7 +81,9 @@ function expenseChanged(previous: SavedExpense[], next: TrackerExpense[]) {
       before.category !== row.category ||
       money(before.amount) !== money(row.amount) ||
       (before.note ?? "") !== (row.note ?? "") ||
-      day(before.expense_date) !== day(row.date)
+      day(before.expense_date) !== day(row.date) ||
+      (before.currency ?? "").trim().toUpperCase() !==
+        (row.currency ?? "").trim().toUpperCase()
     );
   });
   return { added, removed, updated };
@@ -102,6 +106,12 @@ export function contentChangeSummaries(
     const fee = paid ? money(next.deal?.feeAgreed) : 0;
     const beforeFee = beforePaid ? money(previous.fee_agreed) : 0;
     if (fee !== beforeFee) lines.push(`Updated the fee on "${title}"`);
+
+    const beforeCurrency = (previous.currency ?? "").trim().toUpperCase();
+    const nextCurrency = (paid ? next.deal?.currency ?? "" : "").trim().toUpperCase();
+    if (beforePaid && paid && beforeCurrency !== nextCurrency) {
+      lines.push(`Updated the currency on "${title}"`);
+    }
 
     const terms = paid ? next.deal?.paymentTerms ?? "net_30" : "";
     const beforeTerms = beforePaid ? previous.payment_terms ?? "net_30" : "";

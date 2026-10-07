@@ -1,3 +1,4 @@
+import { PencilSimpleIcon, TrashIcon } from "@phosphor-icons/react";
 import {
   DataTable,
   DataTableEmpty,
@@ -17,23 +18,30 @@ import {
 
 type DeliverableTableProps = {
   deliverables: TrackerDeliverable[];
+  onEdit?: (id: string) => void;
   onRemove?: (id: string) => void;
+  editingId?: string | null;
   variant?: DataTableVariant;
   className?: string;
   currency?: string;
 };
 
-const COLUMNS = "grid-cols-[minmax(6rem,1.2fr)_4.5rem_5rem_5.5rem_4rem]";
+const COLUMNS = "grid-cols-[minmax(6rem,1.2fr)_4.5rem_5rem_5.5rem_5.5rem]";
+const READ_COLUMNS = "grid-cols-[minmax(6rem,1.2fr)_4.5rem_5rem_5.5rem]";
 
 export function DeliverableTable({
   deliverables,
+  onEdit,
   onRemove,
+  editingId,
   variant = "card",
   className = "",
   currency = "USD",
 }: DeliverableTableProps) {
   const pad = dataTableRowPad(variant);
   const money = (amount: number) => fmtMoney(amount, currency);
+  const actions = Boolean(onEdit || onRemove);
+  const columns = actions ? COLUMNS : READ_COLUMNS;
 
   if (deliverables.length === 0) {
     return (
@@ -49,9 +57,17 @@ export function DeliverableTable({
     <DataTable variant={variant} className={["mb-3", className].join(" ")}>
       <DataTableHeader
         variant={variant}
-        columns={COLUMNS}
-        labels={["Type", "Volume", "Rate", "Line total", ""]}
-        align={["left", "right", "right", "right", "left"]}
+        columns={columns}
+        labels={
+          actions
+            ? ["Type", "Volume", "Rate", "Line total", ""]
+            : ["Type", "Volume", "Rate", "Line total"]
+        }
+        align={
+          actions
+            ? ["left", "right", "right", "right", "left"]
+            : ["left", "right", "right", "right"]
+        }
       />
 
       {deliverables.map((item) => (
@@ -71,19 +87,17 @@ export function DeliverableTable({
               <Text variant="caption" className="font-medium text-ink">
                 {money(item.quantity * item.rate)}
               </Text>
-              {onRemove ? (
-                <button
-                  type="button"
-                  onClick={() => onRemove(item.id)}
-                  className="cursor-pointer text-xs text-danger hover:underline"
-                >
-                  Remove
-                </button>
-              ) : null}
+              <LineActions
+                editing={editingId === item.id}
+                onEdit={onEdit ? () => onEdit(item.id) : undefined}
+                onRemove={onRemove ? () => onRemove(item.id) : undefined}
+                editLabel="Edit deliverable"
+                deleteLabel="Delete deliverable"
+              />
             </div>
           </div>
 
-          <div className={`hidden items-center gap-3 md:grid ${COLUMNS} ${pad}`}>
+          <div className={`hidden items-center gap-3 md:grid ${columns} ${pad}`}>
             <Text variant="cardTitle" className="truncate">
               {DELIVERABLE_TYPE_LABELS[item.type]}
             </Text>
@@ -96,24 +110,22 @@ export function DeliverableTable({
             <Text variant="caption" className="text-right font-medium text-ink">
               {money(item.quantity * item.rate)}
             </Text>
-            <div className="justify-self-end">
-              {onRemove ? (
-                <button
-                  type="button"
-                  onClick={() => onRemove(item.id)}
-                  className="cursor-pointer text-xs text-danger hover:underline"
-                >
-                  Remove
-                </button>
-              ) : null}
-            </div>
+            {actions ? (
+              <LineActions
+                editing={editingId === item.id}
+                onEdit={onEdit ? () => onEdit(item.id) : undefined}
+                onRemove={onRemove ? () => onRemove(item.id) : undefined}
+                editLabel="Edit deliverable"
+                deleteLabel="Delete deliverable"
+              />
+            ) : null}
           </div>
         </DataTableRow>
       ))}
 
       <DataTableFooter
         variant={variant}
-        className="flex items-center justify-between gap-3 md:grid md:grid-cols-[minmax(6rem,1.2fr)_4.5rem_5rem_5.5rem_4rem] md:gap-3"
+        className={`flex items-center justify-between gap-3 md:grid ${columns} md:gap-3`}
       >
         <Text variant="caption" className="md:col-span-3 md:text-right">
           Deliverables total
@@ -124,8 +136,52 @@ export function DeliverableTable({
         >
           {money(total)}
         </Text>
-        <span className="hidden md:block" />
+        {actions ? <span className="hidden md:block" /> : null}
       </DataTableFooter>
     </DataTable>
+  );
+}
+
+function LineActions({
+  onEdit,
+  onRemove,
+  editing,
+  editLabel,
+  deleteLabel,
+}: {
+  onEdit?: () => void;
+  onRemove?: () => void;
+  editing?: boolean;
+  editLabel: string;
+  deleteLabel: string;
+}) {
+  if (!onEdit && !onRemove) return null;
+  return (
+    <div className="flex shrink-0 items-center justify-end justify-self-end">
+      {onEdit ? (
+        <button
+          type="button"
+          aria-label={editLabel}
+          aria-pressed={editing}
+          onClick={onEdit}
+          className={[
+            "inline-flex size-8 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-organic",
+            editing ? "text-ink" : "text-muted hover:text-ink",
+          ].join(" ")}
+        >
+          <PencilSimpleIcon size={16} weight="regular" aria-hidden />
+        </button>
+      ) : null}
+      {onRemove ? (
+        <button
+          type="button"
+          aria-label={deleteLabel}
+          onClick={onRemove}
+          className="inline-flex size-8 cursor-pointer items-center justify-center rounded-full text-danger transition-colors hover:bg-organic"
+        >
+          <TrashIcon size={16} weight="regular" aria-hidden />
+        </button>
+      ) : null}
+    </div>
   );
 }
