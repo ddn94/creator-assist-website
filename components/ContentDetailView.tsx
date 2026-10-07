@@ -363,12 +363,11 @@ function ContentDetailEditor({
     }
     setRemovePending(true);
     try {
-      if (removeTarget.kind === "deliverable") {
-        await removeDeliverable(removeTarget.id);
-      } else {
-        await removeExpense(removeTarget.id);
-      }
-      setRemoveTarget(null);
+      const removed =
+        removeTarget.kind === "deliverable"
+          ? await removeDeliverable(removeTarget.id)
+          : await removeExpense(removeTarget.id);
+      if (removed) setRemoveTarget(null);
     } finally {
       setRemovePending(false);
     }
@@ -488,36 +487,36 @@ function ContentDetailEditor({
       </div>
 
       <div className="min-w-0 lg:col-start-1">
-      <Card className="mb-5">
-        <Text variant="title" className="mb-3 text-base">
-          Details
-        </Text>
-        <form
-          key={`details-${formGeneration.details}`}
-          className="grid grid-cols-1 gap-3 md:grid-cols-2"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (locked || savingRef.current) return;
-            const data = new FormData(event.currentTarget);
-            const type =
-              data.get("type") === "paid_collab" ? "paid_collab" : "organic";
-            commit({
-              ...item,
-              title: String(data.get("title") ?? item.title),
-              platform: String(data.get("platform") ?? item.platform),
-              niche: String(data.get("niche") ?? "").trim() || null,
-              type,
-              brandName:
-                type === "paid_collab"
-                  ? String(data.get("brandName") ?? "").trim() || null
-                  : null,
-              stage: (String(data.get("stage") ?? item.stage) as typeof item.stage),
-              goLiveDate: String(data.get("goLiveDate") ?? "") || null,
-              shotList: String(data.get("shotList") ?? ""),
-              notes: String(data.get("notes") ?? ""),
-              deal:
-                type === "paid_collab"
-                  ? item.deal ?? {
+        <Card className="mb-5">
+          <Text variant="title" className="mb-3 text-base">
+            Details
+          </Text>
+          <form
+            key={`details-${formGeneration.details}`}
+            className="grid grid-cols-1 gap-3 md:grid-cols-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (locked || savingRef.current) return;
+              const data = new FormData(event.currentTarget);
+              const type =
+                data.get("type") === "paid_collab" ? "paid_collab" : "organic";
+              commit({
+                ...item,
+                title: String(data.get("title") ?? item.title),
+                platform: String(data.get("platform") ?? item.platform),
+                niche: String(data.get("niche") ?? "").trim() || null,
+                type,
+                brandName:
+                  type === "paid_collab"
+                    ? String(data.get("brandName") ?? "").trim() || null
+                    : null,
+                stage: (String(data.get("stage") ?? item.stage) as typeof item.stage),
+                goLiveDate: String(data.get("goLiveDate") ?? "") || null,
+                shotList: String(data.get("shotList") ?? ""),
+                notes: String(data.get("notes") ?? ""),
+                deal:
+                  type === "paid_collab"
+                    ? item.deal ?? {
                       feeAgreed: 0,
                       paymentTerms: "net_30",
                       dateDelivered: null,
@@ -526,627 +525,627 @@ function ContentDetailEditor({
                       deliverables: [],
                       currency,
                     }
-                  : null,
-            }, { message: "Details have been saved." }, "details", "details");
-          }}
-        >
-          <Field id="title" label="Title" className="md:col-span-2">
-            <TextField
-              id="title"
-              name="title"
-              defaultValue={item.title}
-              required
-              disabled={locked}
-              size="sm"
-              full
-            />
-          </Field>
-          <Field id="platform" label="Platform">
-            <Select
-              id="platform"
-              name="platform"
-              defaultValue={item.platform}
-              options={platformOptions}
-              disabled={locked}
-              size="sm"
-              full
-            />
-          </Field>
-          <Field id="niche" label="Niche / tag">
-            <TextField
-              id="niche"
-              name="niche"
-              defaultValue={item.niche ?? ""}
-              disabled={locked}
-              size="sm"
-              full
-            />
-          </Field>
-          <Field id="type" label="Type">
-            <Select
-              id="type"
-              name="type"
-              defaultValue={item.type}
-              options={[...CONTENT_TYPE_OPTIONS]}
-              disabled={locked}
-              size="sm"
-              full
-              onChange={(value) =>
-                setDraftType(value === "paid_collab" ? "paid_collab" : "organic")
-              }
-            />
-          </Field>
-          <Field id="brandName" label="Brand">
-            <TextField
-              id="brandName"
-              name="brandName"
-              defaultValue={item.brandName ?? ""}
-              disabled={locked}
-              size="sm"
-              full
-            />
-          </Field>
-          <Field id="stage" label="Stage">
-            <Select
-              id="stage"
-              name="stage"
-              defaultValue={item.stage}
-              options={[...STAGE_OPTIONS]}
-              disabled={locked}
-              size="sm"
-              full
-            />
-          </Field>
-          <Field id="goLiveDate" label="Go-live date">
-            <DateField
-              id="goLiveDate"
-              name="goLiveDate"
-              defaultValue={toDateInput(item.goLiveDate)}
-              disabled={locked}
-              size="sm"
-              full
-            />
-          </Field>
-          <Field id="shotList" label="Shot list" className="md:col-span-2">
-            <TextArea
-              id="shotList"
-              name="shotList"
-              defaultValue={item.shotList}
-              rows={3}
-              placeholder="Shots, angles, references — plan it while it's in Concept"
-              disabled={locked}
-              size="sm"
-              full
-            />
-          </Field>
-          <Field id="notes" label="Notes" className="md:col-span-2">
-            <TextArea
-              id="notes"
-              name="notes"
-              defaultValue={item.notes}
-              rows={4}
-              disabled={locked}
-              size="sm"
-              full
-            />
-          </Field>
-          <div>
-            <Button
-              type="submit"
-              size="sm"
-              className="h-10"
-              disabled={locked || busy}
-              aria-busy={saving === "details"}
-              iconLeft={
-                saving === "details" ? (
-                  <CircleNotchIcon size={16} className="animate-spin" />
-                ) : undefined
-              }
-            >
-              {saving === "details" ? "Saving…" : "Save"}
-            </Button>
-          </div>
-        </form>
-      </Card>
-
-      {visibleDeal ? (
-        <CategoryCard
-          id="deal"
-          category="payment"
-          className="mb-5 scroll-mt-6 p-6 sm:p-8"
-        >
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <Text variant="title" className="text-base">
-              Deal
-            </Text>
-            {dealStatus ? (
-              <StatusTag
-                label={DEAL_STATUS_LABELS[dealStatus]}
-                tone={dealStatusTone[dealStatus]}
-              />
-            ) : null}
-          </div>
-
-          <form
-            key={`deal-${formGeneration.deal}`}
-            className="grid grid-cols-1 gap-3 md:grid-cols-3"
-            onSubmit={handleDealSubmit}
+                    : null,
+              }, { message: "Details have been saved." }, "details", "details");
+            }}
           >
-            <Field id="feeAgreed" label="Fee agreed">
-              <MoneyField
-                id="feeAgreed"
-                name="feeAgreed"
-                type="number"
-                step="0.01"
-                min="0"
-                defaultValue={visibleDeal.feeAgreed || ""}
+            <Field id="title" label="Title" className="md:col-span-2">
+              <TextField
+                id="title"
+                name="title"
+                defaultValue={item.title}
+                required
                 disabled={locked}
-                currency={dealCurrencyDraft}
-                currencyOptions={currencyChoices(dealCurrencyDraft)}
-                currencyDisabled={dealLocked}
-                onCurrencyChange={setDealCurrencyDraft}
+                size="sm"
+                full
               />
             </Field>
-            <Field id="paymentTerms" label="Payment terms">
+            <Field id="platform" label="Platform">
               <Select
-                id="paymentTerms"
-                name="paymentTerms"
-                defaultValue={visibleDeal.paymentTerms}
-                options={[...PAYMENT_TERM_OPTIONS]}
-                disabled={locked || dealLocked}
-                size="sm"
-                full
-              />
-            </Field>
-            <Field id="dateDelivered" label="Date delivered">
-              <DateField
-                id="dateDelivered"
-                name="dateDelivered"
-                defaultValue={toDateInput(visibleDeal.dateDelivered)}
+                id="platform"
+                name="platform"
+                defaultValue={item.platform}
+                options={platformOptions}
                 disabled={locked}
                 size="sm"
                 full
               />
             </Field>
-            <Field id="dateInvoiced" label="Date invoiced">
-              <DateField
-                id="dateInvoiced"
-                name="dateInvoiced"
-                defaultValue={toDateInput(visibleDeal.dateInvoiced)}
-                required={isAgency && !dealLocked}
-                disabled={dealLocked}
+            <Field id="niche" label="Niche / tag">
+              <TextField
+                id="niche"
+                name="niche"
+                defaultValue={item.niche ?? ""}
+                disabled={locked}
                 size="sm"
                 full
               />
             </Field>
-            <Field id="datePaid" label="Date paid">
-              <DateField
-                id="datePaid"
-                name="datePaid"
-                defaultValue={toDateInput(visibleDeal.datePaid)}
-                disabled={dealLocked}
+            <Field id="type" label="Type">
+              <Select
+                id="type"
+                name="type"
+                defaultValue={item.type}
+                options={[...CONTENT_TYPE_OPTIONS]}
+                disabled={locked}
+                size="sm"
+                full
+                onChange={(value) =>
+                  setDraftType(value === "paid_collab" ? "paid_collab" : "organic")
+                }
+              />
+            </Field>
+            <Field id="brandName" label="Brand">
+              <TextField
+                id="brandName"
+                name="brandName"
+                defaultValue={item.brandName ?? ""}
+                disabled={locked}
                 size="sm"
                 full
               />
             </Field>
-            <div className="flex flex-wrap items-center gap-3 md:col-span-3">
-              {dealLocked ? null : (
-                <Button
-                  type="submit"
-                  size="sm"
-                  className="h-10"
-                  disabled={busy}
-                  aria-busy={saving === "deal"}
-                  iconLeft={
-                    saving === "deal" ? (
-                      <CircleNotchIcon size={16} className="animate-spin" />
-                    ) : undefined
-                  }
-                >
-                  {saving === "deal" ? "Saving…" : "Save deal"}
-                </Button>
-              )}
-              <Text variant="caption" className="text-sm">
-                Due date:{" "}
-                <span className="font-semibold text-ink">
-                  {dueDate ? formatLiveDate(dueDate) : "—"}
-                </span>
-              </Text>
-              {invoiceError ? (
-                <Text variant="caption" className="text-danger">
-                  {invoiceError}
-                </Text>
-              ) : null}
+            <Field id="stage" label="Stage">
+              <Select
+                id="stage"
+                name="stage"
+                defaultValue={item.stage}
+                options={[...STAGE_OPTIONS]}
+                disabled={locked}
+                size="sm"
+                full
+              />
+            </Field>
+            <Field id="goLiveDate" label="Go-live date">
+              <DateField
+                id="goLiveDate"
+                name="goLiveDate"
+                defaultValue={toDateInput(item.goLiveDate)}
+                disabled={locked}
+                size="sm"
+                full
+              />
+            </Field>
+            <Field id="shotList" label="Shot list" className="md:col-span-2">
+              <TextArea
+                id="shotList"
+                name="shotList"
+                defaultValue={item.shotList}
+                rows={3}
+                placeholder="Shots, angles, references — plan it while it's in Concept"
+                disabled={locked}
+                size="sm"
+                full
+              />
+            </Field>
+            <Field id="notes" label="Notes" className="md:col-span-2">
+              <TextArea
+                id="notes"
+                name="notes"
+                defaultValue={item.notes}
+                rows={4}
+                disabled={locked}
+                size="sm"
+                full
+              />
+            </Field>
+            <div>
+              <Button
+                type="submit"
+                size="sm"
+                className="h-10"
+                disabled={locked || busy}
+                aria-busy={saving === "details"}
+                iconLeft={
+                  saving === "details" ? (
+                    <CircleNotchIcon size={16} className="animate-spin" />
+                  ) : undefined
+                }
+              >
+                {saving === "details" ? "Saving…" : "Save"}
+              </Button>
             </div>
           </form>
+        </Card>
 
-          <div className="mt-5 border-t border-border pt-4">
-            <Text variant="cardTitle" className="mb-2 text-sm">
-              Deliverables
-            </Text>
-            <DeliverableTable
-              deliverables={visibleDeal.deliverables}
-              editingId={editingDeliverable?.id}
-              actionsDisabled={busy}
-              onEdit={locked ? undefined : beginEditDeliverable}
-              onRemove={
-                locked
-                  ? undefined
-                  : (id) => {
+        {visibleDeal ? (
+          <CategoryCard
+            id="deal"
+            category="payment"
+            className="mb-5 scroll-mt-6 p-6 sm:p-8"
+          >
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <Text variant="title" className="text-base">
+                Deal
+              </Text>
+              {dealStatus ? (
+                <StatusTag
+                  label={DEAL_STATUS_LABELS[dealStatus]}
+                  tone={dealStatusTone[dealStatus]}
+                />
+              ) : null}
+            </div>
+
+            <form
+              key={`deal-${formGeneration.deal}`}
+              className="grid grid-cols-1 gap-3 md:grid-cols-3"
+              onSubmit={handleDealSubmit}
+            >
+              <Field id="feeAgreed" label="Fee agreed">
+                <MoneyField
+                  id="feeAgreed"
+                  name="feeAgreed"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  defaultValue={visibleDeal.feeAgreed || ""}
+                  disabled={locked}
+                  currency={dealCurrencyDraft}
+                  currencyOptions={currencyChoices(dealCurrencyDraft)}
+                  currencyDisabled={dealLocked}
+                  onCurrencyChange={setDealCurrencyDraft}
+                />
+              </Field>
+              <Field id="paymentTerms" label="Payment terms">
+                <Select
+                  id="paymentTerms"
+                  name="paymentTerms"
+                  defaultValue={visibleDeal.paymentTerms}
+                  options={[...PAYMENT_TERM_OPTIONS]}
+                  disabled={locked || dealLocked}
+                  size="sm"
+                  full
+                />
+              </Field>
+              <Field id="dateDelivered" label="Date delivered">
+                <DateField
+                  id="dateDelivered"
+                  name="dateDelivered"
+                  defaultValue={toDateInput(visibleDeal.dateDelivered)}
+                  disabled={locked}
+                  size="sm"
+                  full
+                />
+              </Field>
+              <Field id="dateInvoiced" label="Date invoiced">
+                <DateField
+                  id="dateInvoiced"
+                  name="dateInvoiced"
+                  defaultValue={toDateInput(visibleDeal.dateInvoiced)}
+                  required={isAgency && !dealLocked}
+                  disabled={dealLocked}
+                  size="sm"
+                  full
+                />
+              </Field>
+              <Field id="datePaid" label="Date paid">
+                <DateField
+                  id="datePaid"
+                  name="datePaid"
+                  defaultValue={toDateInput(visibleDeal.datePaid)}
+                  disabled={dealLocked}
+                  size="sm"
+                  full
+                />
+              </Field>
+              <div className="flex flex-wrap items-center gap-3 md:col-span-3">
+                {dealLocked ? null : (
+                  <Button
+                    type="submit"
+                    size="sm"
+                    className="h-10"
+                    disabled={busy}
+                    aria-busy={saving === "deal"}
+                    iconLeft={
+                      saving === "deal" ? (
+                        <CircleNotchIcon size={16} className="animate-spin" />
+                      ) : undefined
+                    }
+                  >
+                    {saving === "deal" ? "Saving…" : "Save deal"}
+                  </Button>
+                )}
+                <Text variant="caption" className="text-sm">
+                  Due date:{" "}
+                  <span className="font-semibold text-ink">
+                    {dueDate ? formatLiveDate(dueDate) : "—"}
+                  </span>
+                </Text>
+                {invoiceError ? (
+                  <Text variant="caption" className="text-danger">
+                    {invoiceError}
+                  </Text>
+                ) : null}
+              </div>
+            </form>
+
+            <div className="mt-5 border-t border-border pt-4">
+              <Text variant="cardTitle" className="mb-2 text-sm">
+                Deliverables
+              </Text>
+              <DeliverableTable
+                deliverables={visibleDeal.deliverables}
+                editingId={editingDeliverable?.id}
+                actionsDisabled={busy}
+                onEdit={locked ? undefined : beginEditDeliverable}
+                onRemove={
+                  locked
+                    ? undefined
+                    : (id) => {
                       if (savingRef.current || blockUntilTypeSaved()) return;
                       setSaveError(null);
                       setRemoveTarget({ kind: "deliverable", id });
                     }
-              }
-              variant="plain"
-              currency={dealCurrency}
-            />
-            {visibleDeal.deliverables.length > 0 &&
-            deliverableSum !== visibleDeal.feeAgreed ? (
-              <Text
-                variant="caption"
-                className="mb-3 rounded-lg border border-idea-pill/40 bg-idea px-2.5 py-1.5 text-xxs text-ink"
-              >
-                Deliverables total ({money(deliverableSum)}) differs from the
-                agreed fee ({money(visibleDeal.feeAgreed)}). P&L uses the agreed
-                fee.
-              </Text>
-            ) : null}
-            <form
-              key={`deliverable-${formGeneration.deliverable}-${editingDeliverable?.id ?? "new"}`}
-              className="grid grid-cols-1 items-end gap-2 sm:grid-cols-2 md:grid-cols-[minmax(0,1fr)_5.5rem_minmax(13rem,1.4fr)_auto] md:gap-3"
-              onSubmit={async (event) => {
-                event.preventDefault();
-                if (locked || !visibleDeal || savingRef.current || blockUntilTypeSaved()) {
-                  return;
                 }
-                const data = new FormData(event.currentTarget);
-                const type = String(
-                  data.get("type") ?? "video",
-                ) as TrackerDeliverable["type"];
-                const quantity = Number(data.get("quantity") || 1);
-                const rate = Number(data.get("rate"));
-                if (!Number.isFinite(rate) || rate <= 0) {
-                  showToast("Enter a rate above zero.", "danger");
-                  return;
-                }
-                const form = event.currentTarget;
-                const nextDeliverable = {
-                  id: editingDeliverable?.id ?? crypto.randomUUID(),
-                  type,
-                  quantity,
-                  rate,
-                };
-                const pickedCurrency = moneyCode(
-                  String(data.get("currency") ?? ""),
-                  dealCurrency,
-                );
-                const saved = await commit({
-                  ...item,
-                  type: "paid_collab",
-                  deal: {
-                    ...visibleDeal,
-                    ...(pickedCurrency !== dealCurrency
-                      ? { currency: pickedCurrency }
-                      : {}),
-                    deliverables: editingDeliverable
-                      ? visibleDeal.deliverables.map((row) =>
+                variant="plain"
+                currency={dealCurrency}
+              />
+              {visibleDeal.deliverables.length > 0 &&
+                deliverableSum !== visibleDeal.feeAgreed ? (
+                <Text
+                  variant="caption"
+                  className="mb-3 rounded-lg border border-idea-pill/40 bg-idea px-2.5 py-1.5 text-xxs text-ink"
+                >
+                  Deliverables total ({money(deliverableSum)}) differs from the
+                  agreed fee ({money(visibleDeal.feeAgreed)}). P&L uses the agreed
+                  fee.
+                </Text>
+              ) : null}
+              <form
+                key={`deliverable-${formGeneration.deliverable}-${editingDeliverable?.id ?? "new"}`}
+                className="grid grid-cols-1 items-end gap-2 sm:grid-cols-2 md:grid-cols-[minmax(0,1fr)_5.5rem_minmax(13rem,1.4fr)_auto] md:gap-3"
+                onSubmit={async (event) => {
+                  event.preventDefault();
+                  if (locked || !visibleDeal || savingRef.current || blockUntilTypeSaved()) {
+                    return;
+                  }
+                  const data = new FormData(event.currentTarget);
+                  const type = String(
+                    data.get("type") ?? "video",
+                  ) as TrackerDeliverable["type"];
+                  const quantity = Number(data.get("quantity") || 1);
+                  const rate = Number(data.get("rate"));
+                  if (!Number.isFinite(rate) || rate <= 0) {
+                    showToast("Enter a rate above zero.", "danger");
+                    return;
+                  }
+                  const form = event.currentTarget;
+                  const nextDeliverable = {
+                    id: editingDeliverable?.id ?? crypto.randomUUID(),
+                    type,
+                    quantity,
+                    rate,
+                  };
+                  const pickedCurrency = moneyCode(
+                    String(data.get("currency") ?? ""),
+                    dealCurrency,
+                  );
+                  const saved = await commit({
+                    ...item,
+                    type: "paid_collab",
+                    deal: {
+                      ...visibleDeal,
+                      ...(pickedCurrency !== dealCurrency
+                        ? { currency: pickedCurrency }
+                        : {}),
+                      deliverables: editingDeliverable
+                        ? visibleDeal.deliverables.map((row) =>
                           row.id === editingDeliverable.id
                             ? nextDeliverable
                             : row,
                         )
-                      : [...visibleDeal.deliverables, nextDeliverable],
-                  },
-                }, {
-                  message: editingDeliverable
-                    ? "Deliverable updated."
-                    : "Deliverable added.",
-                }, "deliverable", "deliverables");
-                if (!saved) return;
-                setEditingDeliverableId(null);
-                form.reset();
-              }}
-            >
-              <Field id="deliverableType" label="Type" className="min-w-0">
+                        : [...visibleDeal.deliverables, nextDeliverable],
+                    },
+                  }, {
+                    message: editingDeliverable
+                      ? "Deliverable updated."
+                      : "Deliverable added.",
+                  }, "deliverable", "deliverables");
+                  if (!saved) return;
+                  setEditingDeliverableId(null);
+                  form.reset();
+                }}
+              >
+                <Field id="deliverableType" label="Type" className="min-w-0">
+                  <Select
+                    id="deliverableType"
+                    name="type"
+                    defaultValue={editingDeliverable?.type ?? "video"}
+                    options={[...DELIVERABLE_TYPE_OPTIONS]}
+                    disabled={locked}
+                    size="sm"
+                    full
+                  />
+                </Field>
+                <Field id="quantity" label="Volume" className="min-w-0">
+                  <TextField
+                    id="quantity"
+                    name="quantity"
+                    type="number"
+                    min="1"
+                    defaultValue={editingDeliverable?.quantity ?? 1}
+                    disabled={locked}
+                    size="sm"
+                    full
+                  />
+                </Field>
+                <Field id="rate" label="Rate" className="min-w-0">
+                  <MoneyField
+                    id="rate"
+                    name="rate"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    required={!locked}
+                    disabled={locked}
+                    defaultValue={
+                      editingDeliverable ? String(editingDeliverable.rate) : undefined
+                    }
+                    currency={deliverableCurrencyDraft}
+                    currencyOptions={currencyChoices(deliverableCurrencyDraft)}
+                    currencyDisabled={dealLocked}
+                    onCurrencyChange={setDeliverableCurrencyDraft}
+                  />
+                </Field>
+                <div className="col-span-full flex gap-2 md:col-span-1">
+                  {editingDeliverable ? (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      className="h-10"
+                      disabled={busy}
+                      onClick={cancelEditDeliverable}
+                    >
+                      Cancel
+                    </Button>
+                  ) : null}
+                  <Button
+                    type="submit"
+                    variant="secondary"
+                    size="sm"
+                    disabled={locked || busy}
+                    aria-busy={saving === "deliverable"}
+                    iconLeft={
+                      saving === "deliverable" ? (
+                        <CircleNotchIcon size={16} className="animate-spin" />
+                      ) : undefined
+                    }
+                    className="h-10 w-full md:w-auto"
+                  >
+                    {saving === "deliverable"
+                      ? "Saving…"
+                      : editingDeliverable
+                        ? "Update"
+                        : "Add deliverable"}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </CategoryCard>
+        ) : null}
+
+        <Card className="mb-5">
+          <Text variant="title" className="mb-3 text-base">
+            Expenses{" "}
+            <span className="font-sans text-sm font-normal text-muted">
+              (total {money(totalExpenses)})
+            </span>
+          </Text>
+          <ExpenseTable
+            expenses={item.expenses}
+            editingId={editingExpense?.id}
+            actionsDisabled={busy}
+            onEdit={locked ? undefined : beginEditExpense}
+            onRemove={
+              locked
+                ? undefined
+                : (id) => {
+                  if (savingRef.current || blockUntilTypeSaved()) return;
+                  setSaveError(null);
+                  setRemoveTarget({ kind: "expense", id });
+                }
+            }
+            variant="plain"
+            currency={dealCurrency}
+          />
+          <form
+            key={`expense-${formGeneration.expense}-${editingExpense?.id ?? "new"}`}
+            className="flex flex-col gap-2"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              if (locked || savingRef.current || blockUntilTypeSaved()) return;
+              const data = new FormData(event.currentTarget);
+              const amount = Number(data.get("amount"));
+              if (!Number.isFinite(amount) || amount <= 0) {
+                showToast("Enter an amount above zero.", "danger");
+                return;
+              }
+              const form = event.currentTarget;
+              const category = String(
+                data.get("category") ?? "other",
+              ) as TrackerExpense["category"];
+              const nextExpense = {
+                id: editingExpense?.id ?? crypto.randomUUID(),
+                category,
+                amount,
+                note: String(data.get("note") ?? "").trim() || null,
+                date:
+                  String(data.get("date") ?? "") || calendarDay(new Date()),
+                currency: expenseCurrency,
+              };
+              const saved = await commit(
+                {
+                  ...item,
+                  expenses: editingExpense
+                    ? item.expenses.map((row) =>
+                      row.id === editingExpense.id ? nextExpense : row,
+                    )
+                    : [nextExpense, ...item.expenses],
+                },
+                {
+                  message: editingExpense ? "Expense updated." : "Expense added.",
+                },
+                "expense",
+                "expenses",
+              );
+              if (!saved) return;
+              if (editingExpense) cancelEditExpense();
+              else form.reset();
+            }}
+          >
+            <div className="flex flex-col gap-2 md:flex-row md:items-end">
+              <Field id="expenseCategory" label="Category" className="min-w-0 md:flex-1">
                 <Select
-                  id="deliverableType"
-                  name="type"
-                  defaultValue={editingDeliverable?.type ?? "video"}
-                  options={[...DELIVERABLE_TYPE_OPTIONS]}
+                  id="expenseCategory"
+                  name="category"
+                  defaultValue={editingExpense?.category ?? "editor"}
+                  options={[...EXPENSE_CATEGORY_OPTIONS]}
                   disabled={locked}
                   size="sm"
                   full
                 />
               </Field>
-              <Field id="quantity" label="Volume" className="min-w-0">
-                <TextField
-                  id="quantity"
-                  name="quantity"
-                  type="number"
-                  min="1"
-                  defaultValue={editingDeliverable?.quantity ?? 1}
-                  disabled={locked}
-                  size="sm"
-                  full
-                />
-              </Field>
-              <Field id="rate" label="Rate" className="min-w-0">
+              <Field id="expenseAmount" label="Amount" className="min-w-0 md:flex-[1.15]">
                 <MoneyField
-                  id="rate"
-                  name="rate"
+                  id="expenseAmount"
+                  name="amount"
                   type="number"
                   step="0.01"
                   min="0"
                   required={!locked}
                   disabled={locked}
                   defaultValue={
-                    editingDeliverable ? String(editingDeliverable.rate) : undefined
+                    editingExpense ? String(editingExpense.amount) : undefined
                   }
-                  currency={deliverableCurrencyDraft}
-                  currencyOptions={currencyChoices(deliverableCurrencyDraft)}
-                  currencyDisabled={dealLocked}
-                  onCurrencyChange={setDeliverableCurrencyDraft}
+                  currency={expenseCurrency}
+                  currencyOptions={currencyChoices(expenseCurrency)}
+                  onCurrencyChange={setExpenseOverride}
                 />
               </Field>
-              <div className="col-span-3 flex gap-2 md:col-span-1">
-                {editingDeliverable ? (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    className="h-10"
-                    disabled={busy}
-                    onClick={cancelEditDeliverable}
-                  >
-                    Cancel
-                  </Button>
-                ) : null}
+              <Field id="expenseDate" label="Date" className="min-w-0 md:flex-1">
+                <DateField
+                  id="expenseDate"
+                  name="date"
+                  defaultValue={
+                    editingExpense ? toDateInput(editingExpense.date) : ""
+                  }
+                  disabled={locked}
+                  size="sm"
+                  full
+                />
+              </Field>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+              <Field
+                id="expenseNote"
+                label="Note"
+                className="min-w-0 sm:flex-1"
+              >
+                <TextField
+                  id="expenseNote"
+                  name="note"
+                  defaultValue={editingExpense?.note ?? ""}
+                  disabled={locked}
+                  size="sm"
+                  full
+                />
+              </Field>
+              {editingExpense ? (
                 <Button
-                  type="submit"
+                  type="button"
                   variant="secondary"
                   size="sm"
-                  disabled={locked || busy}
-                  aria-busy={saving === "deliverable"}
-                  iconLeft={
-                    saving === "deliverable" ? (
-                      <CircleNotchIcon size={16} className="animate-spin" />
-                    ) : undefined
-                  }
-                  className="h-10 w-full md:w-auto"
+                  className="h-10 shrink-0"
+                  disabled={busy}
+                  onClick={cancelEditExpense}
                 >
-                  {saving === "deliverable"
-                    ? "Saving…"
-                    : editingDeliverable
-                      ? "Update"
-                      : "Add deliverable"}
+                  Cancel
                 </Button>
-              </div>
-            </form>
-          </div>
-        </CategoryCard>
-      ) : null}
-
-      <Card className="mb-5">
-        <Text variant="title" className="mb-3 text-base">
-          Expenses{" "}
-          <span className="font-sans text-sm font-normal text-muted">
-            (total {money(totalExpenses)})
-          </span>
-        </Text>
-        <ExpenseTable
-          expenses={item.expenses}
-          editingId={editingExpense?.id}
-          actionsDisabled={busy}
-          onEdit={locked ? undefined : beginEditExpense}
-          onRemove={
-            locked
-              ? undefined
-              : (id) => {
-                  if (savingRef.current || blockUntilTypeSaved()) return;
-                  setSaveError(null);
-                  setRemoveTarget({ kind: "expense", id });
+              ) : null}
+              <Button
+                type="submit"
+                variant="secondary"
+                size="sm"
+                disabled={locked || busy}
+                aria-busy={saving === "expense"}
+                iconLeft={
+                  saving === "expense" ? (
+                    <CircleNotchIcon size={16} className="animate-spin" />
+                  ) : undefined
                 }
-          }
-          variant="plain"
-          currency={dealCurrency}
-        />
-        <form
-          key={`expense-${formGeneration.expense}-${editingExpense?.id ?? "new"}`}
-          className="flex flex-col gap-2"
-          onSubmit={async (event) => {
-            event.preventDefault();
-            if (locked || savingRef.current || blockUntilTypeSaved()) return;
-            const data = new FormData(event.currentTarget);
-            const amount = Number(data.get("amount"));
-            if (!Number.isFinite(amount) || amount <= 0) {
-              showToast("Enter an amount above zero.", "danger");
-              return;
-            }
-            const form = event.currentTarget;
-            const category = String(
-              data.get("category") ?? "other",
-            ) as TrackerExpense["category"];
-            const nextExpense = {
-              id: editingExpense?.id ?? crypto.randomUUID(),
-              category,
-              amount,
-              note: String(data.get("note") ?? "").trim() || null,
-              date:
-                String(data.get("date") ?? "") || calendarDay(new Date()),
-              currency: expenseCurrency,
-            };
-            const saved = await commit(
-              {
-                ...item,
-                expenses: editingExpense
-                  ? item.expenses.map((row) =>
-                      row.id === editingExpense.id ? nextExpense : row,
-                    )
-                  : [nextExpense, ...item.expenses],
-              },
-              {
-                message: editingExpense ? "Expense updated." : "Expense added.",
-              },
-              "expense",
-              "expenses",
-            );
-            if (!saved) return;
-            if (editingExpense) cancelEditExpense();
-            else form.reset();
-          }}
-        >
-          <div className="flex items-end gap-2">
-          <Field id="expenseCategory" label="Category" className="min-w-0 flex-1">
-            <Select
-              id="expenseCategory"
-              name="category"
-              defaultValue={editingExpense?.category ?? "editor"}
-              options={[...EXPENSE_CATEGORY_OPTIONS]}
-              disabled={locked}
-              size="sm"
-              full
-            />
-          </Field>
-          <Field id="expenseAmount" label="Amount" className="min-w-0 flex-[1.15]">
-            <MoneyField
-              id="expenseAmount"
-              name="amount"
-              type="number"
-              step="0.01"
-              min="0"
-              required={!locked}
-              disabled={locked}
-              defaultValue={
-                editingExpense ? String(editingExpense.amount) : undefined
-              }
-              currency={expenseCurrency}
-              currencyOptions={currencyChoices(expenseCurrency)}
-              onCurrencyChange={setExpenseOverride}
-            />
-          </Field>
-          <Field id="expenseDate" label="Date" className="min-w-0 flex-1">
-            <DateField
-              id="expenseDate"
-              name="date"
-              defaultValue={
-                editingExpense ? toDateInput(editingExpense.date) : ""
-              }
-              disabled={locked}
-              size="sm"
-              full
-            />
-          </Field>
-          </div>
-          <div className="flex items-end gap-2">
-          <Field
-            id="expenseNote"
-            label="Note"
-            className="min-w-0 flex-1"
-          >
-            <TextField
-              id="expenseNote"
-              name="note"
-              defaultValue={editingExpense?.note ?? ""}
-              disabled={locked}
-              size="sm"
-              full
-            />
-          </Field>
-          {editingExpense ? (
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="h-10 shrink-0"
-              disabled={busy}
-              onClick={cancelEditExpense}
-            >
-              Cancel
-            </Button>
-          ) : null}
-          <Button
-            type="submit"
-            variant="secondary"
-            size="sm"
-            disabled={locked || busy}
-            aria-busy={saving === "expense"}
-            iconLeft={
-              saving === "expense" ? (
-                <CircleNotchIcon size={16} className="animate-spin" />
-              ) : undefined
-            }
-            className="h-10 shrink-0"
-          >
-            {saving === "expense"
-              ? "Saving…"
-              : editingExpense
-                ? "Update"
-                : "Add expense"}
-          </Button>
-          </div>
-        </form>
-      </Card>
-
-      {isPaid && item.deal ? (
-        <Card className="mb-5">
-          <Text variant="title" className="mb-2 text-base">
-            Profit for this item
-          </Text>
-          <Text variant="description">
-            Fee {money(fee)} − Expenses {money(totalExpenses)} ={" "}
-            <span
-              className={[
-                "font-display text-base font-bold",
-                fee - totalExpenses >= 0 ? "text-primary-hover" : "text-danger",
-              ].join(" ")}
-            >
-              {money(fee - totalExpenses)}
-            </span>
-          </Text>
+                className="h-10 shrink-0"
+              >
+                {saving === "expense"
+                  ? "Saving…"
+                  : editingExpense
+                    ? "Update"
+                    : "Add expense"}
+              </Button>
+            </div>
+          </form>
         </Card>
-      ) : null}
 
-      {item.ideaTitle ? (
-        <Card className="mb-5">
-          <Text variant="title" className="mb-2 text-base">
-            Created from idea
-          </Text>
-          <Text variant="description">
-            💡 {item.ideaTitle}{" "}
-            {locked ? (
-              <span className="text-sm font-medium text-muted">
-                (view in brain dump)
+        {isPaid && item.deal ? (
+          <Card className="mb-5">
+            <Text variant="title" className="mb-2 text-base">
+              Profit for this item
+            </Text>
+            <Text variant="description">
+              Fee {money(fee)} − Expenses {money(totalExpenses)} ={" "}
+              <span
+                className={[
+                  "font-display text-base font-bold",
+                  fee - totalExpenses >= 0 ? "text-primary-hover" : "text-danger",
+                ].join(" ")}
+              >
+                {money(fee - totalExpenses)}
               </span>
-            ) : (
-              <Button href="/home/ideas">(view in brain dump)</Button>
-            )}
-          </Text>
-        </Card>
-      ) : null}
+            </Text>
+          </Card>
+        ) : null}
 
-      <ConfirmModal
-        open={removeTarget !== null}
-        title={
-          removeTarget === "post"
-            ? "Delete this post"
-            : removeTarget?.kind === "deliverable"
-              ? "Remove this deliverable"
-              : "Remove this expense"
-        }
-        question={
-          removeTarget === "post"
-            ? `Are you sure you want to delete “${item.title}”?`
-            : removeTarget?.kind === "deliverable"
-              ? "Are you sure you want to remove this deliverable?"
-              : "Are you sure you want to remove this expense?"
-        }
-        confirmLabel={removeTarget === "post" ? "Delete" : "Remove"}
-        pendingLabel={removeTarget === "post" ? "Deleting…" : "Removing…"}
-        pending={removePending}
-        error={removeTarget === "post" ? saveError : null}
-        onClose={() => setRemoveTarget(null)}
-        onConfirm={() => void confirmRemove()}
-      />
+        {item.ideaTitle ? (
+          <Card className="mb-5">
+            <Text variant="title" className="mb-2 text-base">
+              Created from idea
+            </Text>
+            <Text variant="description">
+              💡 {item.ideaTitle}{" "}
+              {locked ? (
+                <span className="text-sm font-medium text-muted">
+                  (view in brain dump)
+                </span>
+              ) : (
+                <Button href="/home/ideas">(view in brain dump)</Button>
+              )}
+            </Text>
+          </Card>
+        ) : null}
+
+        <ConfirmModal
+          open={removeTarget !== null}
+          title={
+            removeTarget === "post"
+              ? "Delete this post"
+              : removeTarget?.kind === "deliverable"
+                ? "Remove this deliverable"
+                : "Remove this expense"
+          }
+          question={
+            removeTarget === "post"
+              ? `Are you sure you want to delete “${item.title}”?`
+              : removeTarget?.kind === "deliverable"
+                ? "Are you sure you want to remove this deliverable?"
+                : "Are you sure you want to remove this expense?"
+          }
+          confirmLabel={removeTarget === "post" ? "Delete" : "Remove"}
+          pendingLabel={removeTarget === "post" ? "Deleting…" : "Removing…"}
+          pending={removePending}
+          error={saveError}
+          onClose={() => setRemoveTarget(null)}
+          onConfirm={() => void confirmRemove()}
+        />
       </div>
       {activity ? (
         <aside className="mt-8 min-w-0 lg:col-start-2 lg:row-start-2 lg:row-span-2 lg:mt-0 lg:grid lg:grid-rows-subgrid">
