@@ -91,6 +91,18 @@ function readField(form: HTMLFormElement, name: string) {
   return "";
 }
 
+function leaveGuardState(state: unknown) {
+  if (state && typeof state === "object") {
+    return { ...state, caLeaveGuard: true };
+  }
+  return { caLeaveGuard: true };
+}
+
+function historyHasLeaveGuard() {
+  const state = window.history.state as { caLeaveGuard?: boolean } | null;
+  return Boolean(state?.caLeaveGuard);
+}
+
 function unsavedSentence(names: string[]) {
   const label =
     names.length <= 1
@@ -211,6 +223,11 @@ function ContentDetailEditor({
   const deliverableFormRef = useRef<HTMLFormElement>(null);
   const expenseFormRef = useRef<HTMLFormElement>(null);
   const allowLeaveRef = useRef(false);
+  const leaveBackRef = useRef(false);
+  const guardRef = useRef(false);
+  const pendingLeaveRef = useRef<string | null>(null);
+  const routerRef = useRef(router);
+  routerRef.current = router;
   const [leaveHref, setLeaveHref] = useState<string | null>(null);
   const [leaveSections, setLeaveSections] = useState<string[]>([]);
   const [leaveOpen, setLeaveOpen] = useState(false);
@@ -396,6 +413,7 @@ function ContentDetailEditor({
       }
       event.preventDefault();
       event.stopPropagation();
+      leaveBackRef.current = false;
       setLeaveSections(sections);
       setLeaveHref(`${url.pathname}${url.search}${url.hash}`);
       setLeaveOpen(true);
@@ -414,6 +432,82 @@ function ContentDetailEditor({
       window.removeEventListener("beforeunload", onBeforeUnload);
     };
   }, []);
+
+  useEffect(() => {
+    // Back cannot be cancelled once it has left this URL. A copy of this
+    // page sits above the real entry, so Back lands here and can be asked.
+    if (!historyHasLeaveGuard()) {
+      window.history.pushState(leaveGuardState(window.history.state), "", window.location.href);
+    }
+    guardRef.current = true;
+
+    function onPopState(event: PopStateEvent) {
+      const pending = pendingLeaveRef.current;
+      if (pending) {
+        pendingLeaveRef.current = null;
+        event.stopImmediatePropagation();
+        routerRef.current.push(pending);
+        return;
+      }
+      if (!guardRef.current || allowLeaveRef.current) return;
+      const sections = unsavedSectionsRef.current();
+      event.stopImmediatePropagation();
+      if (sections.length === 0) {
+        allowLeaveRef.current = true;
+        guardRef.current = false;
+        const here = `${window.location.pathname}${window.location.search}`;
+        window.setTimeout(() => {
+          window.history.back();
+          window.setTimeout(() => {
+            if (`${window.location.pathname}${window.location.search}` !== here) return;
+            allowLeaveRef.current = false;
+            guardRef.current = true;
+            if (!historyHasLeaveGuard()) {
+              window.history.pushState(
+                leaveGuardState(window.history.state),
+                "",
+                window.location.href,
+              );
+            }
+          }, 0);
+        }, 0);
+        return;
+      }
+      window.history.pushState(leaveGuardState(window.history.state), "", window.location.href);
+      leaveBackRef.current = true;
+      setLeaveSections(sections);
+      setLeaveHref(null);
+      setLeaveOpen(true);
+    }
+
+    window.addEventListener("popstate", onPopState, true);
+    return () => {
+      guardRef.current = false;
+      window.removeEventListener("popstate", onPopState, true);
+    };
+  }, []);
+
+  function closeLeavePrompt() {
+    leaveBackRef.current = false;
+    setLeaveOpen(false);
+    setLeaveHref(null);
+    setLeaveSections([]);
+  }
+
+  function leaveTo(href: string) {
+    allowLeaveRef.current = true;
+    guardRef.current = false;
+    leaveBackRef.current = false;
+    setLeaveOpen(false);
+    setLeaveHref(null);
+    setLeaveSections([]);
+    if (historyHasLeaveGuard()) {
+      pendingLeaveRef.current = href;
+      window.history.back();
+      return;
+    }
+    router.push(href);
+  }
 
   function enqueueSave(
     epoch: number,
@@ -570,7 +664,7 @@ function ContentDetailEditor({
       }
       setRemoveTarget(null);
       showToast("Content deleted.", "danger");
-      router.push(mode === "record" ? backHref : "/home/tracker");
+      leaveTo(mode === "record" ? backHref : "/home/tracker");
       return;
     }
     const removed =
@@ -1313,17 +1407,19 @@ function ContentDetailEditor({
           question={unsavedSentence(leaveSections)}
           confirmLabel="Leave"
           cancelLabel="Stay"
-          onClose={() => {
-            setLeaveOpen(false);
-            setLeaveHref(null);
-            setLeaveSections([]);
-          }}
+          onClose={closeLeavePrompt}
           onConfirm={() => {
             const href = leaveHref;
+            if (href) {
+              leaveTo(href);
+              return;
+            }
             allowLeaveRef.current = true;
+            guardRef.current = false;
+            leaveBackRef.current = false;
             setLeaveOpen(false);
-            setLeaveHref(null);
-            if (href) router.push(href);
+            setLeaveSections([]);
+            window.history.go(historyHasLeaveGuard() ? -2 : -1);
           }}
         />
         <ConfirmModal
