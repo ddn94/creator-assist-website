@@ -138,6 +138,8 @@ type ContentDetailViewProps = {
   dealLocked?: boolean;
   /** Agency edits on this item. Talent tracker pages pass this. */
   activity?: TalentActivityItem[];
+  /** Person's IANA timezone for activity times. */
+  timeZone?: string | null;
 };
 
 export function ContentDetailView({
@@ -149,6 +151,7 @@ export function ContentDetailView({
   mode = "talent",
   dealLocked = false,
   activity,
+  timeZone = null,
 }: ContentDetailViewProps) {
   return (
     <ContentDetailEditor
@@ -163,6 +166,7 @@ export function ContentDetailView({
       mode={mode}
       dealLocked={dealLocked}
       activity={activity}
+      timeZone={timeZone}
     />
   );
 }
@@ -176,6 +180,7 @@ function ContentDetailEditor({
   mode,
   dealLocked,
   activity,
+  timeZone,
 }: {
   initial: TrackerDetail;
   platformOptions: { value: string; label: string }[];
@@ -185,6 +190,7 @@ function ContentDetailEditor({
   mode: "talent" | "agency" | "record";
   dealLocked: boolean;
   activity?: TalentActivityItem[];
+  timeZone?: string | null;
 }) {
   const router = useRouter();
   const [item, setItem] = useState(initial);
@@ -276,8 +282,10 @@ function ContentDetailEditor({
     0,
   );
   const fee = visibleDeal?.feeAgreed ?? 0;
-  const dealStatus = visibleDeal ? computeDealStatus(visibleDeal) : null;
-  const dueDate = visibleDeal ? computeDueDate(visibleDeal) : null;
+  const dealStatus = visibleDeal
+    ? computeDealStatus(visibleDeal, new Date(), timeZone)
+    : null;
+  const dueDate = visibleDeal ? computeDueDate(visibleDeal, timeZone) : null;
   const deliverableSum = visibleDeal
     ? deliverablesTotal(visibleDeal.deliverables)
     : 0;
@@ -307,7 +315,8 @@ function ContentDetailEditor({
         draftType !== item.type ||
         readField(details, "brandName").trim() !== (item.brandName ?? "") ||
         readField(details, "stage") !== item.stage ||
-        (readField(details, "goLiveDate") || "") !== toDateInput(item.goLiveDate) ||
+        (readField(details, "goLiveDate") || "") !==
+          toDateInput(item.goLiveDate, timeZone) ||
         readField(details, "shotList") !== item.shotList ||
         readField(details, "notes") !== item.notes;
       if (detailsChanged) names.push("Details");
@@ -324,10 +333,11 @@ function ContentDetailEditor({
         (readField(deal, "paymentTerms") || "net_30") !==
           (saved?.paymentTerms ?? "net_30") ||
         (readField(deal, "dateDelivered") || "") !==
-          toDateInput(saved?.dateDelivered) ||
+          toDateInput(saved?.dateDelivered, timeZone) ||
         (readField(deal, "dateInvoiced") || "") !==
-          toDateInput(saved?.dateInvoiced) ||
-        (readField(deal, "datePaid") || "") !== toDateInput(saved?.datePaid) ||
+          toDateInput(saved?.dateInvoiced, timeZone) ||
+        (readField(deal, "datePaid") || "") !==
+          toDateInput(saved?.datePaid, timeZone) ||
         moneyCode(readField(deal, "currency"), savedCurrency) !== savedCurrency;
       if (dealChanged) names.push("Deal");
     }
@@ -363,7 +373,7 @@ function ContentDetailEditor({
         ? category !== editingExpense.category ||
           Number(amountRaw || 0) !== editingExpense.amount ||
           note !== (editingExpense.note ?? "").trim() ||
-          date !== toDateInput(editingExpense.date) ||
+          date !== toDateInput(editingExpense.date, timeZone) ||
           draftCurrency !== (editingExpense.currency?.trim() || savedCurrency)
         : category !== "editor" ||
           amountRaw !== "" ||
@@ -899,7 +909,7 @@ function ContentDetailEditor({
               <DateField
                 id="goLiveDate"
                 name="goLiveDate"
-                defaultValue={toDateInput(item.goLiveDate)}
+                defaultValue={toDateInput(item.goLiveDate, timeZone)}
                 disabled={locked}
                 size="sm"
                 full
@@ -995,7 +1005,7 @@ function ContentDetailEditor({
                 <DateField
                   id="dateDelivered"
                   name="dateDelivered"
-                  defaultValue={toDateInput(visibleDeal.dateDelivered)}
+                  defaultValue={toDateInput(visibleDeal.dateDelivered, timeZone)}
                   disabled={locked}
                   size="sm"
                   full
@@ -1005,7 +1015,7 @@ function ContentDetailEditor({
                 <DateField
                   id="dateInvoiced"
                   name="dateInvoiced"
-                  defaultValue={toDateInput(visibleDeal.dateInvoiced)}
+                  defaultValue={toDateInput(visibleDeal.dateInvoiced, timeZone)}
                   required={isAgency && !dealLocked}
                   disabled={dealLocked}
                   size="sm"
@@ -1016,7 +1026,7 @@ function ContentDetailEditor({
                 <DateField
                   id="datePaid"
                   name="datePaid"
-                  defaultValue={toDateInput(visibleDeal.datePaid)}
+                  defaultValue={toDateInput(visibleDeal.datePaid, timeZone)}
                   disabled={dealLocked}
                   size="sm"
                   full
@@ -1036,7 +1046,7 @@ function ContentDetailEditor({
                 <Text variant="caption" className="text-sm">
                   Due date:{" "}
                   <span className="font-semibold text-ink">
-                    {dueDate ? formatLiveDate(dueDate) : "—"}
+                    {dueDate ? formatLiveDate(dueDate, timeZone) : "—"}
                   </span>
                 </Text>
                 {invoiceError ? (
@@ -1316,7 +1326,9 @@ function ContentDetailEditor({
                   id="expenseDate"
                   name="date"
                   defaultValue={
-                    editingExpense ? toDateInput(editingExpense.date) : ""
+                    editingExpense
+                      ? toDateInput(editingExpense.date, timeZone)
+                      : ""
                   }
                   disabled={locked}
                   size="sm"
@@ -1448,7 +1460,11 @@ function ContentDetailEditor({
       </div>
       {activity ? (
         <aside className="mt-8 min-w-0 lg:col-start-2 lg:row-start-2 lg:row-span-2 lg:mt-0 lg:grid lg:grid-rows-subgrid">
-          <ActivityFeed items={activity} className="contents" />
+          <ActivityFeed
+            items={activity}
+            className="contents"
+            timeZone={timeZone}
+          />
         </aside>
       ) : null}
     </div>
