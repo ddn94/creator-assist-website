@@ -32,6 +32,7 @@ export function buildTalentRoster(
   records: TalentRecord[],
   rows: { content: TrackerDetail; talentId: string }[],
   avatars?: Map<string, LinkedTalentMeta>,
+  timeZone?: string | null,
 ): TalentItem[] {
   const byTalent = new Map<string, TrackerDetail[]>();
   for (const { content, talentId } of rows) {
@@ -42,7 +43,7 @@ export function buildTalentRoster(
 
   return records.map((record) => {
     const meta = avatars?.get(record.id) ?? null;
-    const base = toTalentItem(record, meta);
+    const base = toTalentItem(record, meta, timeZone);
     const items = byTalent.get(record.id);
     if (!items || items.length === 0) return base;
 
@@ -72,14 +73,16 @@ export function buildTalentDetailFromRecord(
   today = new Date(),
   avatar?: LinkedTalentMeta | null,
   activity: TalentActivityItem[] = [],
+  timeZone?: string | null,
 ): TalentDetail {
-  const base: TalentItem = toTalentItem(record, avatar);
+  const base: TalentItem = toTalentItem(record, avatar, timeZone);
   const currency = avatar
     ? avatar.currency || "USD"
     : record.currency || "USD";
+  const formatDate = (iso: string | null) => displayShortDate(iso, timeZone);
   const deals: TalentDeal[] = items.map((item) => {
     const fields = item.deal
-      ? paymentRowFields(item.deal, displayShortDate, today)
+      ? paymentRowFields(item.deal, formatDate, today, timeZone)
       : null;
     const payment = fields ? attentionPaymentStatus(fields.status) : null;
     return {
@@ -98,7 +101,7 @@ export function buildTalentDetailFromRecord(
 
   const withFields = items.flatMap((item) => {
     if (!item.deal) return [];
-    const fields = paymentRowFields(item.deal, displayShortDate, today);
+    const fields = paymentRowFields(item.deal, formatDate, today, timeZone);
     return [{ item, fields }];
   });
   const invoicing = withFields
@@ -110,15 +113,15 @@ export function buildTalentDetailFromRecord(
       if (a.fields.status !== b.fields.status) {
         return a.fields.status === "overdue" ? -1 : 1;
       }
-      const aDue = a.item.deal ? computeDueDate(a.item.deal) : null;
-      const bDue = b.item.deal ? computeDueDate(b.item.deal) : null;
+      const aDue = a.item.deal ? computeDueDate(a.item.deal, timeZone) : null;
+      const bDue = b.item.deal ? computeDueDate(b.item.deal, timeZone) : null;
       if (aDue && bDue && aDue !== bDue) return aDue < bDue ? -1 : 1;
       return 0;
     })
     .map(({ item, fields }): TalentInvoicing => {
       const deal = item.deal!;
       const fee = fmtMoney(deal.feeAgreed, moneyCode(deal.currency, currency));
-      const dueIso = computeDueDate(deal);
+      const dueIso = computeDueDate(deal, timeZone);
       return {
         contentId: item.id,
         dealTitle: item.title,
@@ -129,7 +132,7 @@ export function buildTalentDetailFromRecord(
         dueNote: fields.due
           ? `Due ${fields.due}${
               fields.status === "overdue" && dueIso
-                ? ` · ${daysBetween(dueIso, today)} days overdue`
+                ? ` · ${daysBetween(dueIso, today, timeZone)} days overdue`
                 : ""
             }`
           : "Not invoiced",

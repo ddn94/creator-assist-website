@@ -81,9 +81,15 @@ function overdueInRange(
   start: Date | null,
   end: Date | null,
   today: Date,
+  timeZone?: string | null,
 ): boolean {
-  if (!item.deal || computeDealStatus(item.deal, today) !== "overdue") return false;
-  return dateInPnlRange(computeDueDate(item.deal), start, end);
+  if (
+    !item.deal ||
+    computeDealStatus(item.deal, today, timeZone) !== "overdue"
+  ) {
+    return false;
+  }
+  return dateInPnlRange(computeDueDate(item.deal, timeZone), start, end);
 }
 
 export function buildTalentPnlRows(
@@ -92,6 +98,7 @@ export function buildTalentPnlRows(
   today = filter?.today ?? new Date(),
   currency = "USD",
   rates: RateBook = EMPTY_RATE_BOOK,
+  timeZone?: string | null,
 ): TalentPnlContentRow[] {
   const { start, end } = resolvePnlBounds(
     filter ? { ...filter, today } : undefined,
@@ -127,7 +134,9 @@ export function buildTalentPnlRows(
         feeRaw == null
           ? null
           : convertOnDate(feeRaw, code, home, rateDay(item.deal?.datePaid), rates);
-      const dealStatus = item.deal ? computeDealStatus(item.deal, today) : null;
+      const dealStatus = item.deal
+        ? computeDealStatus(item.deal, today, timeZone)
+        : null;
       const active =
         (!start && !end) ||
         (!!item.deal?.datePaid &&
@@ -187,8 +196,16 @@ function rowsInReportCurrency(
   filter: PnlDateFilter | undefined,
   currency: string,
   rates: RateBook,
+  timeZone?: string | null,
 ): TalentPnlContentRow[] {
-  return buildTalentPnlRows(items, filter, filter?.today, currency, rates);
+  return buildTalentPnlRows(
+    items,
+    filter,
+    filter?.today,
+    currency,
+    rates,
+    timeZone,
+  );
 }
 
 export function buildTalentPnlByBrand(
@@ -196,9 +213,10 @@ export function buildTalentPnlByBrand(
   filter?: PnlDateFilter,
   currency = "USD",
   rates: RateBook = EMPTY_RATE_BOOK,
+  timeZone?: string | null,
 ) {
   return breakdownBy(
-    rowsInReportCurrency(items, filter, currency, rates),
+    rowsInReportCurrency(items, filter, currency, rates, timeZone),
     (row) => row.brand,
   );
 }
@@ -208,9 +226,10 @@ export function buildTalentPnlByNiche(
   filter?: PnlDateFilter,
   currency = "USD",
   rates: RateBook = EMPTY_RATE_BOOK,
+  timeZone?: string | null,
 ) {
   return breakdownBy(
-    rowsInReportCurrency(items, filter, currency, rates),
+    rowsInReportCurrency(items, filter, currency, rates, timeZone),
     (row) => row.niche,
   );
 }
@@ -221,6 +240,7 @@ export function buildTalentPnlSummary(
   today = filter?.today ?? new Date(),
   currency = "USD",
   rates: RateBook = EMPTY_RATE_BOOK,
+  timeZone?: string | null,
 ): TalentPnlSummary {
   const { start, end } = resolvePnlBounds(
     filter ? { ...filter, today } : undefined,
@@ -261,7 +281,7 @@ export function buildTalentPnlSummary(
     );
   }, 0);
   const overdue = items.filter((item) =>
-    overdueInRange(item, start, end, today),
+    overdueInRange(item, start, end, today, timeZone),
   ).length;
   return { revenue, expenses, net: revenue - expenses, overdue, currency: home };
 }
@@ -380,6 +400,7 @@ export function buildAgencyPnlCurrencies(
   homeCurrency: string,
   filter?: PnlDateFilter,
   rates: RateBook = EMPTY_RATE_BOOK,
+  timeZone?: string | null,
 ): PnlCurrencySummary[] {
   const { start, end, today } = resolvePnlBounds(filter);
   const home = homeCurrency || "USD";
@@ -397,7 +418,7 @@ export function buildAgencyPnlCurrencies(
     }
     revenue += paid;
     expenses += cost;
-    if (overdueInRange(content, start, end, today)) overdue += 1;
+    if (overdueInRange(content, start, end, today, timeZone)) overdue += 1;
   }
 
   const net = revenue - expenses;

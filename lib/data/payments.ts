@@ -43,8 +43,9 @@ function paymentItemFromDeal(
     contentHref: string | null;
   },
   today?: Date,
+  timeZone?: string | null,
 ): PaymentItem {
-  const fields = paymentRowFields(deal, formatDate, today);
+  const fields = paymentRowFields(deal, formatDate, today, timeZone);
   return {
     id: content.id,
     content: content.title,
@@ -64,7 +65,9 @@ export function buildTalentPayments(
   items: TrackerDetail[],
   currency: string,
   today = new Date(),
+  timeZone?: string | null,
 ): PaymentItem[] {
+  const formatDate = (iso: string | null) => displayDate(iso, timeZone);
   return mapPaidDeals(
     items.map((content) => ({ content, currency })),
     ({ content, deal, currency: cur }) =>
@@ -73,13 +76,14 @@ export function buildTalentPayments(
         content,
         deal,
         cur,
-        displayDate,
+        formatDate,
         {
           talentName: null,
           talentId: null,
           contentHref: `/home/tracker/${content.id}?section=deal&from=payments`,
         },
         today,
+        timeZone,
       ),
   );
 }
@@ -93,20 +97,23 @@ export function buildAgencyPayments(
     recordStatus?: TalentStatus;
   }[],
   today = new Date(),
+  timeZone?: string | null,
 ): PaymentItem[] {
+  const formatDate = (iso: string | null) => displayShortDate(iso, timeZone);
   return mapPaidDeals(rows, ({ content, deal, currency, talentName, talentId }) =>
     paymentItemFromDeal(
       "agency",
       content,
       deal,
       currency,
-      displayShortDate,
+      formatDate,
       {
         talentName: talentName.split(" ")[0] ?? talentName,
         talentId,
         contentHref: null,
       },
       today,
+      timeZone,
     ),
   );
 }

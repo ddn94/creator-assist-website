@@ -1,3 +1,9 @@
+import {
+  calendarDay,
+  calendarDayInZone,
+  calendarDaysBetween,
+} from "@/lib/calendarDay";
+
 /**
  * Relative / friendly labels for roster "Last activity".
  * Examples: 5 mins ago, 2 hours ago, Yesterday, 3 days ago, Last Tuesday, 2 weeks ago, 1 month ago.
@@ -5,23 +11,18 @@
 export function formatRelativeActivity(
   iso: string,
   now = new Date(),
+  timeZone?: string | null,
 ): string {
   const then = new Date(iso);
   if (Number.isNaN(then.getTime())) return "—";
 
-  const startOfToday = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-  );
-  const startOfThen = new Date(
-    then.getFullYear(),
-    then.getMonth(),
-    then.getDate(),
-  );
-  const dayDiff = Math.round(
-    (startOfToday.getTime() - startOfThen.getTime()) / (1000 * 60 * 60 * 24),
-  );
+  const nowDay = timeZone
+    ? calendarDayInZone(now, timeZone)
+    : calendarDay(now);
+  const thenDay = timeZone
+    ? calendarDayInZone(then, timeZone)
+    : calendarDay(then);
+  const dayDiff = calendarDaysBetween(thenDay, nowDay);
 
   if (dayDiff <= 0) {
     const mins = Math.max(
@@ -36,7 +37,10 @@ export function formatRelativeActivity(
   if (dayDiff === 1) return "Yesterday";
   if (dayDiff < 7) return `${dayDiff} days ago`;
   if (dayDiff < 14) {
-    return `Last ${then.toLocaleDateString("en-US", { weekday: "long" })}`;
+    return `Last ${then.toLocaleDateString("en-US", {
+      weekday: "long",
+      ...(timeZone ? { timeZone } : {}),
+    })}`;
   }
   if (dayDiff < 45) {
     const weeks = Math.max(1, Math.round(dayDiff / 7));
@@ -50,14 +54,19 @@ export function formatRelativeActivity(
     day: "numeric",
     month: "short",
     year: "numeric",
+    ...(timeZone ? { timeZone } : {}),
   });
 }
 
-export function formatShortDayMonth(iso: string): string {
+export function formatShortDayMonth(
+  iso: string,
+  timeZone?: string | null,
+): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "—";
   return date.toLocaleDateString("en-GB", {
     day: "numeric",
     month: "short",
+    ...(timeZone ? { timeZone } : {}),
   });
 }
