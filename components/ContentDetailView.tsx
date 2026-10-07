@@ -65,6 +65,42 @@ function currencyChoices(code: string) {
   }));
 }
 
+function controlValue(field: Element) {
+  if (
+    field instanceof HTMLInputElement ||
+    field instanceof HTMLSelectElement ||
+    field instanceof HTMLTextAreaElement
+  ) {
+    return field.value;
+  }
+  return "";
+}
+
+function readField(form: HTMLFormElement, name: string) {
+  const field = form.elements.namedItem(name);
+  if (field instanceof RadioNodeList) {
+    // A dropdown's hidden input shares its name with the visible control's id,
+    // so the form hands back both. The named input holds the chosen value.
+    const named = [...field].find(
+      (element) =>
+        element instanceof HTMLInputElement && element.name === name,
+    );
+    return named ? controlValue(named) : "";
+  }
+  if (field instanceof Element) return controlValue(field);
+  return "";
+}
+
+function unsavedSentence(names: string[]) {
+  const label =
+    names.length <= 1
+      ? names[0] ?? "This section"
+      : names.length === 2
+        ? `${names[0]} and ${names[1]}`
+        : `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`;
+  return `${label} not saved. Leave this page anyway?`;
+}
+
 const EMPTY_DEAL: TrackerDeal = {
   feeAgreed: 0,
   paymentTerms: "net_30",
@@ -171,6 +207,14 @@ function ContentDetailEditor({
     null,
   );
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
+  const detailsFormRef = useRef<HTMLFormElement>(null);
+  const dealFormRef = useRef<HTMLFormElement>(null);
+  const deliverableFormRef = useRef<HTMLFormElement>(null);
+  const expenseFormRef = useRef<HTMLFormElement>(null);
+  const allowLeaveRef = useRef(false);
+  const [leaveHref, setLeaveHref] = useState<string | null>(null);
+  const [leaveSections, setLeaveSections] = useState<string[]>([]);
+  const [leaveOpen, setLeaveOpen] = useState(false);
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("section") !== "deal") {
@@ -227,6 +271,144 @@ function ContentDetailEditor({
     showToast("Save the type first.", "danger");
     return true;
   }
+
+  function unsavedSections() {
+    const names: string[] = [];
+    const details = detailsFormRef.current;
+    if (details && !locked) {
+      const type = readField(details, "type") || draftType;
+      const detailsChanged =
+        readField(details, "title") !== item.title ||
+        readField(details, "platform") !== item.platform ||
+        readField(details, "niche").trim() !== (item.niche ?? "") ||
+        type !== item.type ||
+        draftType !== item.type ||
+        readField(details, "brandName").trim() !== (item.brandName ?? "") ||
+        readField(details, "stage") !== item.stage ||
+        (readField(details, "goLiveDate") || "") !== toDateInput(item.goLiveDate) ||
+        readField(details, "shotList") !== item.shotList ||
+        readField(details, "notes") !== item.notes;
+      if (detailsChanged) names.push("Details");
+    }
+
+    const deal = dealFormRef.current;
+    if (deal && !dealLocked) {
+      const saved = item.deal;
+      const fee = Number(readField(deal, "feeAgreed") || 0);
+      const savedCurrency = saved?.currency?.trim() || currency;
+      const dealChanged =
+        !Number.isFinite(fee) ||
+        fee !== (saved?.feeAgreed ?? 0) ||
+        (readField(deal, "paymentTerms") || "net_30") !==
+          (saved?.paymentTerms ?? "net_30") ||
+        (readField(deal, "dateDelivered") || "") !==
+          toDateInput(saved?.dateDelivered) ||
+        (readField(deal, "dateInvoiced") || "") !==
+          toDateInput(saved?.dateInvoiced) ||
+        (readField(deal, "datePaid") || "") !== toDateInput(saved?.datePaid) ||
+        moneyCode(readField(deal, "currency"), savedCurrency) !== savedCurrency;
+      if (dealChanged) names.push("Deal");
+    }
+
+    const deliverable = deliverableFormRef.current;
+    if (deliverable && !locked) {
+      const type = readField(deliverable, "type") || "video";
+      const quantity = Number(readField(deliverable, "quantity") || 1);
+      const rateRaw = readField(deliverable, "rate").trim();
+      const savedCurrency = item.deal?.currency?.trim() || currency;
+      const draftCurrency = moneyCode(readField(deliverable, "currency"), savedCurrency);
+      const deliverableChanged = editingDeliverable
+        ? type !== editingDeliverable.type ||
+          quantity !== editingDeliverable.quantity ||
+          Number(rateRaw || 0) !== editingDeliverable.rate ||
+          draftCurrency !== savedCurrency
+        : type !== "video" ||
+          quantity !== 1 ||
+          rateRaw !== "" ||
+          draftCurrency !== savedCurrency;
+      if (deliverableChanged) names.push("Deliverables");
+    }
+
+    const expense = expenseFormRef.current;
+    if (expense && !locked) {
+      const category = readField(expense, "category") || "editor";
+      const amountRaw = readField(expense, "amount").trim();
+      const note = readField(expense, "note").trim();
+      const date = readField(expense, "date") || "";
+      const savedCurrency = item.deal?.currency?.trim() || currency;
+      const draftCurrency = moneyCode(readField(expense, "currency"), savedCurrency);
+      const expenseChanged = editingExpense
+        ? category !== editingExpense.category ||
+          Number(amountRaw || 0) !== editingExpense.amount ||
+          note !== (editingExpense.note ?? "").trim() ||
+          date !== toDateInput(editingExpense.date) ||
+          draftCurrency !== (editingExpense.currency?.trim() || savedCurrency)
+        : category !== "editor" ||
+          amountRaw !== "" ||
+          note !== "" ||
+          date !== "" ||
+          draftCurrency !== savedCurrency;
+      if (expenseChanged) names.push("Expenses");
+    }
+
+    return names;
+  }
+
+  const unsavedSectionsRef = useRef(unsavedSections);
+  unsavedSectionsRef.current = unsavedSections;
+
+  useEffect(() => {
+    function onClick(event: MouseEvent) {
+      const sections = unsavedSectionsRef.current();
+      if (allowLeaveRef.current || sections.length === 0) return;
+      if (event.defaultPrevented || event.button !== 0) return;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const anchor = target.closest("a");
+      if (!anchor) return;
+      const raw = anchor.getAttribute("href");
+      if (
+        !raw ||
+        raw.startsWith("#") ||
+        anchor.target === "_blank" ||
+        anchor.hasAttribute("download")
+      ) {
+        return;
+      }
+      let url: URL;
+      try {
+        url = new URL(anchor.href, window.location.href);
+      } catch {
+        return;
+      }
+      if (url.origin !== window.location.origin) return;
+      if (
+        url.pathname === window.location.pathname &&
+        url.search === window.location.search
+      ) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      setLeaveSections(sections);
+      setLeaveHref(`${url.pathname}${url.search}${url.hash}`);
+      setLeaveOpen(true);
+    }
+
+    function onBeforeUnload(event: BeforeUnloadEvent) {
+      if (allowLeaveRef.current || unsavedSectionsRef.current().length === 0) return;
+      event.preventDefault();
+      event.returnValue = "";
+    }
+
+    document.addEventListener("click", onClick, true);
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      document.removeEventListener("click", onClick, true);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+    };
+  }, []);
 
   async function commit(
     next: TrackerDetail,
@@ -492,6 +674,7 @@ function ContentDetailEditor({
             Details
           </Text>
           <form
+            ref={detailsFormRef}
             key={`details-${formGeneration.details}`}
             className="grid grid-cols-1 gap-3 md:grid-cols-2"
             onSubmit={(event) => {
@@ -667,6 +850,7 @@ function ContentDetailEditor({
             </div>
 
             <form
+              ref={dealFormRef}
               key={`deal-${formGeneration.deal}`}
               className="grid grid-cols-1 gap-3 md:grid-cols-3"
               onSubmit={handleDealSubmit}
@@ -792,6 +976,7 @@ function ContentDetailEditor({
                 </Text>
               ) : null}
               <form
+                ref={deliverableFormRef}
                 key={`deliverable-${formGeneration.deliverable}-${editingDeliverable?.id ?? "new"}`}
                 className="grid grid-cols-1 items-end gap-2 sm:grid-cols-2 md:grid-cols-[minmax(0,1fr)_5.5rem_minmax(13rem,1.4fr)_auto] md:gap-3"
                 onSubmit={async (event) => {
@@ -809,7 +994,6 @@ function ContentDetailEditor({
                     showToast("Enter a rate above zero.", "danger");
                     return;
                   }
-                  const form = event.currentTarget;
                   const nextDeliverable = {
                     id: editingDeliverable?.id ?? crypto.randomUUID(),
                     type,
@@ -843,7 +1027,12 @@ function ContentDetailEditor({
                   }, "deliverable", "deliverables");
                   if (!saved) return;
                   setEditingDeliverableId(null);
-                  form.reset();
+                  if (!editingDeliverable) {
+                    setFormGeneration((current) => ({
+                      ...current,
+                      deliverable: current.deliverable + 1,
+                    }));
+                  }
                 }}
               >
                 <Field id="deliverableType" label="Type" className="min-w-0">
@@ -950,6 +1139,7 @@ function ContentDetailEditor({
             currency={dealCurrency}
           />
           <form
+            ref={expenseFormRef}
             key={`expense-${formGeneration.expense}-${editingExpense?.id ?? "new"}`}
             className="flex flex-col gap-2"
             onSubmit={async (event) => {
@@ -961,7 +1151,6 @@ function ContentDetailEditor({
                 showToast("Enter an amount above zero.", "danger");
                 return;
               }
-              const form = event.currentTarget;
               const category = String(
                 data.get("category") ?? "other",
               ) as TrackerExpense["category"];
@@ -991,7 +1180,12 @@ function ContentDetailEditor({
               );
               if (!saved) return;
               if (editingExpense) cancelEditExpense();
-              else form.reset();
+              else {
+                setFormGeneration((current) => ({
+                  ...current,
+                  expense: current.expense + 1,
+                }));
+              }
             }}
           >
             <div className="flex flex-col gap-2 md:flex-row md:items-end">
@@ -1123,6 +1317,25 @@ function ContentDetailEditor({
           </Card>
         ) : null}
 
+        <ConfirmModal
+          open={leaveOpen}
+          title="Leave before saving?"
+          question={unsavedSentence(leaveSections)}
+          confirmLabel="Leave"
+          cancelLabel="Stay"
+          onClose={() => {
+            setLeaveOpen(false);
+            setLeaveHref(null);
+            setLeaveSections([]);
+          }}
+          onConfirm={() => {
+            const href = leaveHref;
+            allowLeaveRef.current = true;
+            setLeaveOpen(false);
+            setLeaveHref(null);
+            if (href) router.push(href);
+          }}
+        />
         <ConfirmModal
           open={removeTarget !== null}
           title={

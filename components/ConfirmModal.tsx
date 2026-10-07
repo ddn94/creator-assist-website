@@ -12,6 +12,7 @@ type ConfirmModalProps = {
   question: string;
   detail?: string;
   confirmLabel: string;
+  cancelLabel?: string;
   pendingLabel?: string;
   pending?: boolean;
   error?: string | null;
@@ -25,6 +26,7 @@ export function ConfirmModal({
   question,
   detail,
   confirmLabel,
+  cancelLabel = "Cancel",
   pendingLabel,
   pending = false,
   error = null,
@@ -48,7 +50,7 @@ export function ConfirmModal({
             disabled={pending}
             onClick={onClose}
           >
-            Cancel
+            {cancelLabel}
           </Button>
           <Button
             type="button"
