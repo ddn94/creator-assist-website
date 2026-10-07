@@ -152,6 +152,85 @@ export function moneyCode(
   return value || fallback;
 }
 
+/** One stored USD cross rate. `perUsd` is units of `currency` for 1 USD. */
+export type RatePoint = {
+  date: string;
+  perUsd: number;
+};
+
+/** Historical rates grouped by currency, each list sorted by date ascending. */
+export type RateBook = {
+  byCurrency: Record<string, RatePoint[]>;
+};
+
+export const EMPTY_RATE_BOOK: RateBook = { byCurrency: {} };
+
+/**
+ * Onboarding currency first, then every other code actually stored on a deal or expense.
+ */
+export function usedCurrencyCodes(
+  home: string,
+  items: {
+    deal?: { currency?: string | null } | null;
+    expenses?: { currency?: string | null }[];
+  }[],
+): string[] {
+  const first = moneyCode(home);
+  const rest = new Set<string>();
+  for (const item of items) {
+    const deal = item.deal?.currency?.trim().toUpperCase();
+    if (deal) rest.add(deal);
+    for (const expense of item.expenses ?? []) {
+      const code = expense.currency?.trim().toUpperCase();
+      if (code) rest.add(code);
+    }
+  }
+  rest.delete(first);
+  return [first, ...[...rest].sort()];
+}
+
+function staticPerUsd(code: string): number {
+  return PER_USD[code] ?? 1;
+}
+
+/**
+ * Latest stored rate on or before `date`. A later day's rate is never used.
+ * Missing history falls back to the static table in the caller.
+ */
+export function perUsdOn(
+  book: RateBook,
+  currency: string,
+  date: string,
+): number | null {
+  const code = moneyCode(currency);
+  if (code === "USD") return 1;
+  const rows = book.byCurrency[code];
+  if (!rows?.length) return null;
+  const day = date.slice(0, 10);
+  let found: number | null = null;
+  for (const row of rows) {
+    if (row.date <= day) found = row.perUsd;
+    else break;
+  }
+  return found;
+}
+
+/** Convert using both currencies' rates on the transaction date. */
+export function convertOnDate(
+  amount: number,
+  from: string,
+  to: string,
+  date: string,
+  book: RateBook = EMPTY_RATE_BOOK,
+): number {
+  const source = moneyCode(from);
+  const target = moneyCode(to);
+  if (source === target || !Number.isFinite(amount)) return amount;
+  const sourcePerUsd = perUsdOn(book, source, date) ?? staticPerUsd(source);
+  const targetPerUsd = perUsdOn(book, target, date) ?? staticPerUsd(target);
+  return (amount / sourcePerUsd) * targetPerUsd;
+}
+
 /** Sum amounts that share one code as-is. Mixed codes convert into the fallback. */
 export function totalInCurrency(
   parts: { amount: number; currency?: string | null }[],
