@@ -55,7 +55,7 @@ begin
     p_record,
     'Sample paid collab',
     'Instagram',
-    'Example',
+    'Lifestyle',
     'paid_collab',
     'Sample brand',
     case when p_owner is null then 'delivered' else 'concept' end,
@@ -134,12 +134,13 @@ begin
 
     if chosen_role = 'talent' then
       perform public.seed_example_collab(new.id, null, true);
-      insert into public.ideas (owner_id, title, body, status)
+      insert into public.ideas (owner_id, title, body, status, tags)
       values (
         new.id,
         'Sample idea',
         'Example idea. Turn it into content, or delete it.',
-        'idea'
+        'idea',
+        array['sample']
       );
     elsif chosen_role = 'agency' then
       insert into public.talent_records (
@@ -150,7 +151,7 @@ begin
         'Sample talent',
         'record',
         'Instagram',
-        'Example',
+        'Lifestyle',
         'Example person on your roster. Delete this when you add real talent.'
       )
       returning id into sample_record;
