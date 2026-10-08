@@ -134,8 +134,8 @@ export const inviteTalent = withSupabaseAuthAction(
     }
 
     revalidatePath(`/workspace/talent/${id}`);
-    revalidatePath("/home");
-    revalidatePath("/home/profile");
+    revalidatePath("/overview");
+    revalidatePath("/overview/profile");
     return {
       error: null,
       message:
@@ -195,8 +195,8 @@ export async function disconnectTalentLinkAction(
   }
 
   revalidateContent();
-  revalidatePath("/home");
-  revalidatePath("/home/profile");
+  revalidatePath("/overview");
+  revalidatePath("/overview/profile");
   revalidatePath(`/workspace/talent/${id}`);
   return { error: null };
 }
@@ -227,7 +227,7 @@ export async function respondConnectionRequestAction(
   }
 
   revalidateContent();
-  revalidatePath("/home");
-  revalidatePath("/home/profile");
+  revalidatePath("/overview");
+  revalidatePath("/overview/profile");
   return { error: null };
 }

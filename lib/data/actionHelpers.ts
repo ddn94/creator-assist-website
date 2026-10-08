@@ -8,11 +8,11 @@ export async function todayIso() {
 }
 
 export function revalidateContent(paths: string[] = []) {
-  revalidatePath("/home");
-  revalidatePath("/home/tracker");
-  revalidatePath("/home/payments");
-  revalidatePath("/home/pnl");
-  revalidatePath("/home/ideas");
+  revalidatePath("/overview");
+  revalidatePath("/overview/tracker");
+  revalidatePath("/overview/payments");
+  revalidatePath("/overview/pnl");
+  revalidatePath("/overview/ideas");
   revalidatePath("/workspace");
   revalidatePath("/workspace/payments");
   revalidatePath("/workspace/pnl");

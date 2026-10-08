@@ -100,7 +100,7 @@ export function TalentInviteCard({
       ) : null}
       <Text variant="description" className="mt-1">
         {reconnect
-          ? "They already have an account. Send a request. They answer it on Home, the first screen. You will see new content from the moment they accept, plus deals already on this card."
+          ? "They already have an account. Send a request. They answer it on Overview. You will see new content from the moment they accept, plus deals already on this card."
           : "Add their email. If they're already on Creator Assist, they'll get a connection request. If not, you'll get an invite code to send them."}
       </Text>
       <form action={action} className="mt-4 space-y-3">

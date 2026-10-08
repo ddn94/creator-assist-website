@@ -45,7 +45,7 @@ export function Navbar({
   userName,
   userEmail,
   avatarUrl,
-  profileHref = "/home/profile",
+  profileHref = "/overview/profile",
   hideMobileMenu = false,
 }: NavbarProps) {
   const routePath = usePathname();

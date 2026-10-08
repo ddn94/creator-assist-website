@@ -11,7 +11,7 @@ export default async function TalentProfilePage() {
     <AppFrame role="talent" profile={profile}>
       <AccountProfile
         profile={profile}
-        editHref="/home/profile/edit"
+        editHref="/overview/profile/edit"
         showAppLinks
         agencyLink={agencyLink}
       />

@@ -20,7 +20,7 @@ import { localToday, localTimeZone } from "@/lib/localToday";
 import { contentPlatformOptions } from "@/lib/platforms";
 import { tourStartPath } from "@/lib/tour";
 
-const HREFS = ["/home", "/home/tracker", "/home/ideas", "/home/payments", "/home/pnl"];
+const HREFS = ["/overview", "/overview/tracker", "/overview/ideas", "/overview/payments", "/overview/pnl"];
 
 async function TrackerPanel({ profile }: { profile: Profile }) {
   const items = await listMyContentItems();
@@ -139,15 +139,15 @@ function panel(href: string, content: ReactNode) {
 
 export async function TalentTourDeck({ profile }: { profile: Profile }) {
   return (
-    <TourChrome homeHref="/home" startHref={tourStartPath("talent")} hrefs={HREFS}>
+    <TourChrome homeHref="/overview" startHref={tourStartPath("talent")} hrefs={HREFS}>
       <TalentShell profile={profile}>
         <TourPanels
           slots={[
-            panel("/home/tracker", <TrackerPanel profile={profile} />),
-            panel("/home/ideas", <IdeasPanel profile={profile} />),
-            panel("/home/payments", <PaymentsPanel profile={profile} />),
-            panel("/home/pnl", <PnlPanel profile={profile} />),
-            panel("/home", <OverviewPanel profile={profile} />),
+            panel("/overview/tracker", <TrackerPanel profile={profile} />),
+            panel("/overview/ideas", <IdeasPanel profile={profile} />),
+            panel("/overview/payments", <PaymentsPanel profile={profile} />),
+            panel("/overview/pnl", <PnlPanel profile={profile} />),
+            panel("/overview", <OverviewPanel profile={profile} />),
           ]}
         />
       </TalentShell>

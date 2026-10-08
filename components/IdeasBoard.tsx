@@ -267,7 +267,7 @@ export function IdeasBoard({ ideas }: IdeasBoardProps) {
               showToast(
                 `Content added from your idea “${idea?.title ?? "Idea"}”.`,
               );
-              router.push(`/home/tracker/${result.id}`);
+              router.push(`/overview/tracker/${result.id}`);
             }}
           />
         ))}

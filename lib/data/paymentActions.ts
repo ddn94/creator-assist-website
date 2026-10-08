@@ -39,7 +39,7 @@ export async function markContentPaidAction(
     await recordContentChanges(supabase, profile, contentId, [
       `Marked "${title}" as paid`,
     ]);
-    revalidateContent([`/home/tracker/${contentId}`]);
+    revalidateContent([`/overview/tracker/${contentId}`]);
     return { error: null };
   } catch (error) {
     return {
@@ -78,7 +78,7 @@ export async function markContentInvoicedAction(
     await recordContentChanges(supabase, profile, contentId, [
       `Marked "${title}" as invoiced`,
     ]);
-    revalidateContent([`/home/tracker/${contentId}`]);
+    revalidateContent([`/overview/tracker/${contentId}`]);
     return { error: null };
   } catch (error) {
     return {
@@ -161,7 +161,7 @@ export async function updateContentInvoiceAction(
         timeZone,
       ),
     );
-    revalidateContent([`/home/tracker/${contentId}`]);
+    revalidateContent([`/overview/tracker/${contentId}`]);
     return { error: null };
   } catch (error) {
     return {

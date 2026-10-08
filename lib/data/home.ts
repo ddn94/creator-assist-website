@@ -97,7 +97,7 @@ export function buildContinueFeed(
     category: contentCategory(item.type),
     pill: item.type === "paid_collab" ? "Paid collab" : "Organic",
     meta: `${STAGE_LABELS[item.stage as Stage] ?? item.stage} · ${item.platform}`,
-    href: `/home/tracker/${item.id}`,
+    href: `/overview/tracker/${item.id}`,
   }));
 
   const ideaFeed = ideas
@@ -116,7 +116,7 @@ export function buildContinueFeed(
             ? `${idea.body.trim().slice(0, 48)}…`
             : idea.body.trim()
           : "No tags"),
-      href: "/home/ideas",
+      href: "/overview/ideas",
     }));
 
   return [...contentFeed, ...ideaFeed]

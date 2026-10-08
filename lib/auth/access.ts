@@ -7,7 +7,7 @@ export type AccessSubject = {
 };
 
 export function appHomePath(role: UserRole): string {
-  return role === "agency" ? "/workspace" : "/home";
+  return role === "agency" ? "/workspace" : "/overview";
 }
 
 export function onboardingPath(role: UserRole): string {
@@ -16,7 +16,7 @@ export function onboardingPath(role: UserRole): string {
 
 export function isAppPath(path: string): boolean {
   return (
-    path.startsWith("/home") ||
+    path.startsWith("/overview") ||
     path.startsWith("/workspace") ||
     path.startsWith("/onboarding") ||
     path.startsWith("/admin")
@@ -73,7 +73,7 @@ export function accessRedirect(
 
   const ownPrefix = appHomePath(subject.role);
   const wrongApp =
-    (path.startsWith("/home") && ownPrefix !== "/home") ||
+    (path.startsWith("/overview") && ownPrefix !== "/overview") ||
     (path.startsWith("/workspace") && ownPrefix !== "/workspace") ||
     path === "/onboarding" ||
     path.startsWith("/onboarding/");

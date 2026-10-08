@@ -89,7 +89,7 @@ export function TalentProfileForm({
     }
     if (!complete) {
       showToast("Profile saved.");
-      router.push("/home/profile");
+      router.push("/overview/profile");
       router.refresh();
     }
   }

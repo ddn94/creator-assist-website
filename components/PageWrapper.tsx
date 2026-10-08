@@ -28,7 +28,7 @@ export function PageWrapper({
   userName,
   userEmail,
   avatarUrl,
-  profileHref = "/home/profile",
+  profileHref = "/overview/profile",
   navItems,
   children,
 }: PageWrapperProps) {

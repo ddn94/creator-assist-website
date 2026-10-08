@@ -147,7 +147,7 @@ export function ContentDetailView({
   platformOptions,
   currency,
   rates = EMPTY_RATE_BOOK,
-  backHref = "/home/tracker",
+  backHref = "/overview/tracker",
   mode = "talent",
   dealLocked = false,
   activity,
@@ -674,7 +674,7 @@ function ContentDetailEditor({
       }
       setRemoveTarget(null);
       showToast("Content deleted.", "danger");
-      leaveTo(mode === "record" ? backHref : "/home/tracker");
+      leaveTo(mode === "record" ? backHref : "/overview/tracker");
       return;
     }
     const removed =
@@ -1407,7 +1407,7 @@ function ContentDetailEditor({
                   (view in brain dump)
                 </span>
               ) : (
-                <Button href="/home/ideas">(view in brain dump)</Button>
+                <Button href="/overview/ideas">(view in brain dump)</Button>
               )}
             </Text>
           </Card>

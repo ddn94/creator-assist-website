@@ -217,7 +217,7 @@ export async function addContentAction(payload: {
         `Added "${payload.title.trim()}"`,
       ]);
     }
-    revalidateContent([`/home/tracker/${data.id}`]);
+    revalidateContent([`/overview/tracker/${data.id}`]);
     return { id: data.id };
   } catch (error) {
     return {
@@ -244,7 +244,7 @@ export async function setContentStageAction(
     if (profile.role === "agency") query = query.is("owner_id", null);
     const { error } = await query;
     if (error) return { error: "Could not update stage." };
-    revalidateContent([`/home/tracker/${id}`]);
+    revalidateContent([`/overview/tracker/${id}`]);
     return { error: null };
   } catch (error) {
     return {
@@ -541,7 +541,7 @@ export async function upsertContentAction(
     // Marking the other pages stale can wait until this reply has gone out.
     await recordContentChanges(supabase, profile, contentId, summaries);
     after(() => {
-      revalidateContent([`/home/tracker/${contentId}`]);
+      revalidateContent([`/overview/tracker/${contentId}`]);
     });
     return { error: null };
   } catch (error) {

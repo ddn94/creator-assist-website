@@ -10,7 +10,7 @@ export default async function EditProfilePage() {
   return (
     <AppFrame role="talent" profile={profile}>
       <div className="mb-4">
-        <BackLink href="/home/profile" label="Back to profile" />
+        <BackLink href="/overview/profile" label="Back to profile" />
       </div>
       <TalentProfileForm
         mode="edit"

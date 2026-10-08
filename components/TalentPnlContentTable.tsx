@@ -70,7 +70,7 @@ export function TalentPnlContentTable({
               </Text>
             </div>
             <Link
-              href={`/home/tracker/${row.contentId}`}
+              href={`/overview/tracker/${row.contentId}`}
               className="mt-2 block font-display text-sm font-semibold text-ink hover:underline"
             >
               {row.title}
@@ -116,7 +116,7 @@ export function TalentPnlContentTable({
               >
                 <td className="px-4 py-3 whitespace-nowrap">
                   <Link
-                    href={`/home/tracker/${row.contentId}`}
+                    href={`/overview/tracker/${row.contentId}`}
                     className="font-display text-xs font-semibold text-ink hover:underline"
                   >
                     {row.title}

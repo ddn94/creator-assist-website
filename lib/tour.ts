@@ -16,41 +16,41 @@ export type TourStep = {
 const talentSteps: TourStep[] = [
   {
     id: "content",
-    href: "/home/tracker",
-    matches: (pathname) => pathname === "/home/tracker",
+    href: "/overview/tracker",
+    matches: (pathname) => pathname === "/overview/tracker",
     target: "tour-content",
     fallback: "tour-content-fallback",
-    tab: "/home/tracker",
+    tab: "/overview/tracker",
     title: "Content",
     body: "Every piece of content lives here. Add yours and move it from Concept to Go Live.",
   },
   {
     id: "idea",
-    href: "/home/ideas",
-    matches: (pathname) => pathname === "/home/ideas",
+    href: "/overview/ideas",
+    matches: (pathname) => pathname === "/overview/ideas",
     target: "tour-idea",
     fallback: "tour-idea-fallback",
-    tab: "/home/ideas",
+    tab: "/overview/ideas",
     title: "Ideas",
     body: "This is an idea. Dump hooks and half-formed thoughts here before they become content.",
   },
   {
     id: "payments",
-    href: "/home/payments",
-    matches: (pathname) => pathname === "/home/payments",
+    href: "/overview/payments",
+    matches: (pathname) => pathname === "/overview/payments",
     target: "tour-payments",
     fallback: "tour-payments-fallback",
-    tab: "/home/payments",
+    tab: "/overview/payments",
     title: "Payments",
     body: "Paid collabs show up here: what’s owed, what’s invoiced, and what’s been paid.",
   },
   {
     id: "pnl",
-    href: "/home/pnl",
-    matches: (pathname) => pathname === "/home/pnl",
+    href: "/overview/pnl",
+    matches: (pathname) => pathname === "/overview/pnl",
     target: "tour-pnl",
     fallback: "tour-pnl-fallback",
-    tab: "/home/pnl",
+    tab: "/overview/pnl",
     title: "P&L",
     body: "Your profit and loss: what came in, what went out, what’s left.",
   },
@@ -106,7 +106,7 @@ export function tourSteps(role: UserRole): TourStep[] {
 
 /** First tooltip page. New accounts land here instead of the overview. */
 export function tourStartPath(role: UserRole): string {
-  return tourSteps(role)[0].href ?? (role === "agency" ? "/workspace/talent" : "/home/tracker");
+  return tourSteps(role)[0].href ?? (role === "agency" ? "/workspace/talent" : "/overview/tracker");
 }
 
 export const TOUR_STEP_KEY = "ca-product-tour-step";

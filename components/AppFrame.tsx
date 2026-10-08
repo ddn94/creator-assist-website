@@ -41,7 +41,7 @@ export async function AppFrame({
       userName={displayName(resolved)}
       userEmail={resolved.email}
       avatarUrl={avatarPublicUrl(resolved.avatar_path, resolved.updated_at)}
-      profileHref={agency ? "/workspace/profile" : "/home/profile"}
+      profileHref={agency ? "/workspace/profile" : "/overview/profile"}
       navItems={withAdminNav(
         agency ? workspaceNav : talentNav,
         resolved.email,

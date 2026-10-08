@@ -250,7 +250,7 @@ export const changePassword = withSupabaseAuthAction(
     }
 
     await flashToast("Password updated.");
-    redirect(profile.role === "agency" ? "/workspace/profile" : "/home/profile");
+    redirect(profile.role === "agency" ? "/workspace/profile" : "/overview/profile");
   },
 );
 
@@ -281,7 +281,7 @@ export const updatePassword = withSupabaseAuthAction(
     if (error) return { error: error.message, message: null };
 
     const profile = await getProfile();
-    redirect(profile ? appHome(profile) : "/home");
+    redirect(profile ? appHome(profile) : "/overview");
   },
 );
 

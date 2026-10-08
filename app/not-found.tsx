@@ -60,7 +60,7 @@ export default async function NotFound() {
   return (
     <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-lg flex-col items-center justify-center px-4 py-8 sm:px-6">
       <NotFoundCard
-        homeHref={agency ? "/workspace" : profile ? "/home" : "/"}
+        homeHref={agency ? "/workspace" : profile ? "/overview" : "/"}
         homeLabel={profile ? "Back to overview" : "Back to home"}
         description={
           agency
