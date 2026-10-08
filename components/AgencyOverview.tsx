@@ -77,7 +77,7 @@ export function AgencyOverview({
             Needs attention
           </Text>
           {attention.length === 0 ? (
-            <EmptyPanel>Nothing needs attention.</EmptyPanel>
+            <EmptyPanel>All clear.</EmptyPanel>
           ) : (
             <NeedsAttentionList items={attention} payments={payments} />
           )}

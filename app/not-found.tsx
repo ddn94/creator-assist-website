@@ -1,25 +1,18 @@
-"use client";
-
 import Image from "next/image";
-import { usePathname } from "next/navigation";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
-import { PageWrapper } from "@/components/PageWrapper";
 import { Text } from "@/components/Text";
-import { talentNav } from "@/lib/home";
-import { workspaceNav } from "@/lib/workspace";
-
-function isArea(pathname: string, base: string) {
-  return pathname === base || pathname.startsWith(`${base}/`);
-}
+import { getProfile } from "@/lib/auth/session";
 
 function NotFoundCard({
   homeHref,
   homeLabel,
+  description,
   showSignIn,
 }: {
   homeHref: string;
   homeLabel: string;
+  description: string;
   showSignIn?: boolean;
 }) {
   return (
@@ -44,7 +37,7 @@ function NotFoundCard({
           Page not found
         </Text>
         <Text variant="description" className="mt-1.5">
-          That link doesn’t lead anywhere. Head back and keep creating.
+          {description}
         </Text>
         <Button href={homeHref} size="sm" full iconRight="→" className="mt-5 h-10">
           {homeLabel}
@@ -60,42 +53,22 @@ function NotFoundCard({
   );
 }
 
-export default function NotFound() {
-  const pathname = usePathname();
-  const inWorkspace = isArea(pathname, "/workspace");
-  const inTalent = isArea(pathname, "/home");
-
-  if (inWorkspace) {
-    return (
-      <PageWrapper
-        brand="Workspace"
-        userName="You"
-        navItems={workspaceNav}
-      >
-        <div className="flex min-h-[calc(100dvh-7rem)] flex-col items-center justify-center py-8">
-          <NotFoundCard homeHref="/workspace" homeLabel="Back to overview" />
-        </div>
-      </PageWrapper>
-    );
-  }
-
-  if (inTalent) {
-    return (
-      <PageWrapper
-        brand="Creator Assist"
-        userName="You"
-        navItems={talentNav}
-      >
-        <div className="flex min-h-[calc(100dvh-7rem)] flex-col items-center justify-center py-8">
-          <NotFoundCard homeHref="/home" homeLabel="Back to overview" />
-        </div>
-      </PageWrapper>
-    );
-  }
+export default async function NotFound() {
+  const profile = await getProfile();
+  const agency = profile?.role === "agency";
 
   return (
     <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-lg flex-col items-center justify-center px-4 py-8 sm:px-6">
-      <NotFoundCard homeHref="/" homeLabel="Back to home" showSignIn />
+      <NotFoundCard
+        homeHref={agency ? "/workspace" : profile ? "/home" : "/"}
+        homeLabel={profile ? "Back to overview" : "Back to home"}
+        description={
+          agency
+            ? "That link doesn’t lead anywhere. Head back to your workspace."
+            : "That link doesn’t lead anywhere. Head back and keep creating."
+        }
+        showSignIn={!profile}
+      />
     </div>
   );
 }

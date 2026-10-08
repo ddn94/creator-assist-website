@@ -73,7 +73,7 @@ export function AddTalentForm({ className = "" }: AddTalentFormProps) {
         <Field
           id="email"
           label="Email"
-          hint="Optional. Saving as a record stays private."
+          hint="Only needed to invite them. Until then, only you see this."
         >
           <TextField
             id="email"
@@ -150,10 +150,10 @@ export function AddTalentForm({ className = "" }: AddTalentFormProps) {
             Invite
           </SaveButton>
           <SaveButton status="record" variant="secondary" action={action}>
-            Save as a record
+            Save without inviting
           </SaveButton>
         <Text variant="caption" className="sm:ml-1">
-          You can invite a record later
+          You can invite them later
         </Text>
       </div>
     </form>

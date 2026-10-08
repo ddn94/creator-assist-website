@@ -238,7 +238,10 @@ export const changePassword = withSupabaseAuthAction(
       password: current,
     });
     if (signInError) {
-      return { error: "Current password is incorrect.", message: null };
+      return {
+        error: "That's not your current password. Try again.",
+        message: null,
+      };
     }
 
     const { error } = await supabase.auth.updateUser({ password });

@@ -65,7 +65,7 @@ const agencySteps: TourStep[] = [
     fallback: "tour-roster",
     tab: "/workspace/talent",
     title: "Talent",
-    body: "This is someone on your roster. You can track a record before they join.",
+    body: "Someone on your roster. You can track their deals before they join.",
   },
   {
     id: "deal",
@@ -76,7 +76,7 @@ const agencySteps: TourStep[] = [
     fallback: "tour-deal",
     tab: "/workspace/talent",
     title: "Deal",
-    body: "This is a deal logged for them. After they create an account, it shows up in theirs.",
+    body: "A deal you've logged for them. Once they join, it shows up on their side too.",
   },
   {
     id: "payments",

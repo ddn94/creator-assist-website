@@ -13,7 +13,7 @@ const FILTERS = [
   { id: "all", label: "All" },
   { id: "active", label: "Active" },
   { id: "invited", label: "Invited" },
-  { id: "record", label: "Record only" },
+  { id: "record", label: "Not invited" },
   { id: "disconnected", label: "Disconnected" },
   { id: "requested", label: "Requested" },
 ] as const;

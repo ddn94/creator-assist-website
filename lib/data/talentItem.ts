@@ -11,7 +11,7 @@ function statusLabel(status: TalentStatus) {
   if (status === "invited") return "Invited";
   if (status === "disconnected") return "Disconnected";
   if (status === "requested") return "Requested";
-  return "Record only";
+  return "Not invited";
 }
 
 function activityLabel(

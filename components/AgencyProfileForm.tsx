@@ -163,7 +163,7 @@ export function AgencyProfileForm({ mode, initial }: AgencyProfileFormProps) {
         Edit profile
       </Text>
       <Text variant="description" className="mt-1 mb-6">
-        This is your workspace profile, separate from sign-in.
+        Your workspace details.
       </Text>
       <Card className="p-5">
         <form

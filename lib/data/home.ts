@@ -168,7 +168,7 @@ export function buildAgencyOverviewMoney(
     received: fmtMoney(received, home),
     outstandingFooter: "Across live deals",
     overdueFooter: overdue > 0 ? "Needs follow-up" : "None overdue",
-    receivedFooter: "Paid this month",
+    receivedFooter: "Across all talent",
   };
 }
 

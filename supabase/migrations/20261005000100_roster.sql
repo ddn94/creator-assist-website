@@ -120,7 +120,7 @@ as $$
   limit 1;
 $$;
 
--- Save as a record never looks up an account. Invite does.
+-- Save without inviting never looks up an account. Invite does.
 create or replace function public.agency_add_talent(
   p_name text,
   p_email text,
