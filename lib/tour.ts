@@ -22,7 +22,7 @@ const talentSteps: TourStep[] = [
     fallback: "tour-content-fallback",
     tab: "/home/tracker",
     title: "Content",
-    body: "This is a piece of content. Add your own here and move it from Concept to Go Live.",
+    body: "Every piece of content lives here. Add yours and move it from Concept to Go Live.",
   },
   {
     id: "idea",
@@ -52,7 +52,7 @@ const talentSteps: TourStep[] = [
     fallback: "tour-pnl-fallback",
     tab: "/home/pnl",
     title: "P&L",
-    body: "This is profit and loss: revenue, expenses, and what’s left.",
+    body: "Your profit and loss: what came in, what went out, what’s left.",
   },
 ];
 

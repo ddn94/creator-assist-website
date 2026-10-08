@@ -58,7 +58,7 @@ export function ConnectionRequests({
           <Text variant="description" className="mt-1">
             {currentAgency
               ? `You’re connected to ${currentAgency}. Disconnect from them before you accept. Past deals stay with ${currentAgency}. ${request.agencyName} only sees posts you add after you accept.`
-              : "Wants to connect. They will see your deals and content you add after you accept. Older tracker items stay private."}
+              : "Wants to connect. Once you accept, they'll see the deals and content you add from then on. Anything older stays private."}
           </Text>
           <div className="mt-4 flex flex-wrap gap-2">
             <Button

@@ -17,7 +17,7 @@ export default async function ProfileComingSoonPage({
           {feature}
         </Text>
         <Text variant="description" className="mt-2">
-          Nothing here yet — this lives in a future version of Creator Assist.
+          Not here yet. It's on the way.
         </Text>
         <Button href="/home/profile" variant="primary" size="sm" className="mt-7">
           Back to profile

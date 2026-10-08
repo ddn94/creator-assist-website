@@ -59,7 +59,7 @@ begin
     'paid_collab',
     'Sample brand',
     case when p_owner is null then 'delivered' else 'concept' end,
-    'Example deal so Payments and P&L are not empty. Delete it anytime.',
+    'A sample collab so you can see how Payments and P&L work. Delete it anytime.',
     1000,
     money_code,
     'net_30',

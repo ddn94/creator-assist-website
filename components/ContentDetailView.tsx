@@ -1379,7 +1379,7 @@ function ContentDetailEditor({
         {isPaid && item.deal ? (
           <Card className="mb-5">
             <Text variant="title" className="mb-2 text-base">
-              Profit for this item
+              Profit on this collab
             </Text>
             <Text variant="description">
               Fee {money(fee)} − Expenses {money(totalExpenses)} ={" "}
