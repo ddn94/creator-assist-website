@@ -23,6 +23,7 @@ export default async function TalentPaymentsPage() {
     <AppFrame
       role="talent"
       title="Payment Tracker"
+      description="What’s owed, invoiced, and paid"
       action={<PaymentsOverdueBadge count={overdueCount} />}
     >
       <PaymentList mode="talent" items={items} />

@@ -25,7 +25,11 @@ export default async function TrackerPage({
   );
 
   return (
-    <AppFrame role="talent" title="Content Tracker">
+    <AppFrame
+      role="talent"
+      title="Content Tracker"
+      description="Concept to Go Live · every piece in one place"
+    >
       <Suspense fallback={null}>
         <ContentTracker
           items={items}

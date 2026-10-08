@@ -19,7 +19,7 @@ export default async function WorkspacePaymentsPage() {
   return (
     <AppFrame
       role="agency"
-      title="Payments"
+      title="Payment Tracker"
       description="Every deal across the roster · you set invoice dates and terms"
     >
       <PaymentList mode="agency" items={items} />

@@ -16,7 +16,7 @@ export default async function WorkspacePnlPage() {
   );
 
   return (
-    <AppFrame role="agency" title="P&L" description="Revenue, expenses, and profit across the roster">
+    <AppFrame role="agency" title="P&L Dashboard" description="Revenue, expenses, and profit across the roster">
       <PnlDashboard
         linkedRows={linkedRows}
         homeCurrency={homeCurrency}

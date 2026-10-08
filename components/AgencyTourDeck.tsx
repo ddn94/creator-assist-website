@@ -144,7 +144,7 @@ async function PaymentsPanel({ profile }: { profile: Profile }) {
     <AppFrame
       role="agency"
       profile={profile}
-      title="Payments"
+      title="Payment Tracker"
       description="Every deal across the roster · you set invoice dates and terms"
     >
       <PaymentList mode="agency" items={items} />
@@ -163,7 +163,7 @@ async function PnlPanel({ profile }: { profile: Profile }) {
     <AppFrame
       role="agency"
       profile={profile}
-      title="P&L"
+      title="P&L Dashboard"
       description="Revenue, expenses, and profit across the roster"
     >
       <PnlDashboard

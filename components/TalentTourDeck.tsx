@@ -30,7 +30,12 @@ async function TrackerPanel({ profile }: { profile: Profile }) {
     readPlatforms(asAnswers(profile.onboarding)).map((row) => row.platform),
   );
   return (
-    <AppFrame role="talent" profile={profile} title="Content Tracker">
+    <AppFrame
+      role="talent"
+      profile={profile}
+      title="Content Tracker"
+      description="Concept to Go Live · every piece in one place"
+    >
       <Suspense fallback={null}>
         <ContentTracker
           items={items}
@@ -71,6 +76,7 @@ async function PaymentsPanel({ profile }: { profile: Profile }) {
       role="talent"
       profile={profile}
       title="Payment Tracker"
+      description="What’s owed, invoiced, and paid"
       action={<PaymentsOverdueBadge count={overdueCount} />}
     >
       <PaymentList mode="talent" items={items} />
@@ -83,7 +89,12 @@ async function PnlPanel({ profile }: { profile: Profile }) {
   const allContent = await listMyContent();
   const money = await pnlMoneyContext(currency, allContent);
   return (
-    <AppFrame role="talent" profile={profile}>
+    <AppFrame
+      role="talent"
+      profile={profile}
+      title="P&L Dashboard"
+      description="Revenue, expenses, and profit"
+    >
       <TalentPnlDashboard
         allContent={allContent}
         currency={currency}
