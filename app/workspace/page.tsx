@@ -33,7 +33,7 @@ function talentFooter(items: TalentItem[]) {
   const record = items.filter((item) => item.status === "record").length;
   const disconnected = items.filter((item) => item.status === "disconnected").length;
   const requested = items.filter((item) => item.status === "requested").length;
-  const summary = `${active} active · ${invited} invited · ${record} record`;
+  const summary = `${active} active · ${invited} invited · ${record} not invited`;
   return [summary, disconnected ? `${disconnected} disconnected` : "", requested ? `${requested} requested` : ""]
     .filter(Boolean)
     .join(" · ");

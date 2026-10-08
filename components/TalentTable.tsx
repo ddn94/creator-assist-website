@@ -108,7 +108,7 @@ export function TalentTable({ items, className = "" }: TalentTableProps) {
           <div className="px-4 py-8 text-center">
             <Text variant="description">
               {items.length === 0
-                ? "No talent yet. Add a record, or invite someone onto Creator Assist."
+                ? "No talent yet. Add someone, or invite them onto Creator Assist."
                 : "No talent in this filter."}
             </Text>
           </div>

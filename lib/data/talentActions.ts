@@ -151,7 +151,7 @@ export async function deleteTalentRecordAction(
 ): Promise<{ error: string | null }> {
   const profile = await getProfile();
   if (!profile || profile.role !== "agency") {
-    return { error: "Only an agency can remove a record." };
+    return { error: "Only an agency can remove talent." };
   }
 
   const supabase = await createClient();
@@ -166,7 +166,7 @@ export async function deleteTalentRecordAction(
       return { error: "Only a card that has not been joined can be removed." };
     }
     if (message.includes("only an agency")) {
-      return { error: "Only an agency can remove a record." };
+      return { error: "Only an agency can remove talent." };
     }
     return { error: "Could not remove this talent." };
   }

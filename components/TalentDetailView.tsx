@@ -84,7 +84,7 @@ export function TalentDetailView({
           {canDelete ? (
             <button
               type="button"
-              aria-label="Delete record"
+              aria-label="Remove talent"
               title="Delete"
               onClick={askDelete}
               disabled={pending}

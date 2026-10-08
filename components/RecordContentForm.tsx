@@ -43,7 +43,7 @@ export function RecordContentForm({
               setError(result.error);
               return;
             }
-            showToast(`“${payload.title.trim()}” was added for this record.`);
+            showToast(`“${payload.title.trim()}” was added for them.`);
             router.refresh();
           });
         }}

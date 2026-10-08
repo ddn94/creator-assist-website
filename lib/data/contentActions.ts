@@ -121,7 +121,7 @@ export async function addContentForRecordAction(
   try {
     const profile = await getProfile();
     if (!profile || profile.role !== "agency") {
-      return { error: "Sign in as an agency to add content for a record." };
+      return { error: "Sign in as an agency to add content for talent." };
     }
     if (!payload.title.trim()) return { error: "Title is required." };
 
@@ -137,7 +137,9 @@ export async function addContentForRecordAction(
       record.status !== "record" ||
       record.linked_user_id
     ) {
-      return { error: "You can only add content for a record that has not been invited." };
+      return {
+        error: "You can only add content for someone who hasn't been invited yet.",
+      };
     }
 
     const isPaid = payload.type === "paid_collab";

@@ -89,8 +89,7 @@ export function AgencyOverview({
           </Text>
           {roster.length === 0 ? (
             <EmptyPanel>
-              No talent yet. Add a record, or invite someone onto Creator
-              Assist.
+              No talent yet. Add someone, or invite them onto Creator Assist.
             </EmptyPanel>
           ) : (
             <RosterList items={roster} />
