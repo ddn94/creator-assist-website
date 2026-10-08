@@ -108,7 +108,7 @@ export function TalentProfileForm({
           full
         />
       </Field>
-      <Field id="talent-profile-age" label="Age bracket">
+      <Field id="talent-profile-age" label="Age range">
         <Select
           id="talent-profile-age"
           name="ageBracket"
@@ -166,7 +166,7 @@ export function TalentProfileForm({
             Welcome to Creator Assist
           </Text>
           <Text variant="description" className="mt-2">
-            A couple of quick questions so the app fits your setup.
+            A couple of quick questions to get to know you.
           </Text>
           <OnboardingProgress step={step} className="mt-4" />
         </div>
@@ -206,8 +206,7 @@ export function TalentProfileForm({
               Step 2 of 2 — Your platforms
             </Text>
             <Text variant="description" className="mt-1">
-              Tick the platforms you post on and add your community size on
-              each.
+              Pick your platforms and add your community size.
             </Text>
             <form
               className="mt-4 space-y-3"

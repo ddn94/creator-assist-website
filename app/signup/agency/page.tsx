@@ -25,7 +25,7 @@ export default function AgencySignupPage() {
 
   return (
     <AuthScreen
-      title="Create an agency account"
+      title="Create your agency account"
       description="Manage your roster’s deals and invoicing in one place."
       aboveCard={<SignupTypeToggle active="agency" />}
       card={
@@ -60,7 +60,7 @@ export default function AgencySignupPage() {
                 name="workEmail"
                 type="email"
                 autoComplete="email"
-                placeholder="Email"
+                placeholder="you@example.com"
                 required
                 size="sm"
                 full
@@ -76,7 +76,7 @@ export default function AgencySignupPage() {
                 name="password"
                 type="password"
                 autoComplete="new-password"
-                placeholder="8+ chars"
+                placeholder="8+ characters"
                 minLength={8}
                 required
                 size="sm"
