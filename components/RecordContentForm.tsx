@@ -23,6 +23,7 @@ export function RecordContentForm({
   return (
     <div>
       <AddContentPanel
+        label="Add deal"
         platformOptions={platformOptions}
         onAdd={(payload) => {
           if (!payload.title.trim()) return;

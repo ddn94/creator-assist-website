@@ -207,7 +207,7 @@ export async function respondConnectionRequestAction(
 ): Promise<{ error: string | null }> {
   const profile = await getProfile();
   if (!profile || profile.role !== "talent") {
-    return { error: "Sign in as talent to answer this request." };
+    return { error: "Sign in as a creator to answer this request." };
   }
 
   const supabase = await createClient();

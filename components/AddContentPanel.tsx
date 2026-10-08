@@ -18,6 +18,7 @@ type PlatformOption = { value: string; label: string };
 type AddContentPanelProps = {
   defaultOpen?: boolean;
   platformOptions: PlatformOption[];
+  label?: string;
   onAdd?: (payload: {
     title: string;
     platform: string;
@@ -32,6 +33,7 @@ type AddContentPanelProps = {
 export function AddContentPanel({
   defaultOpen = false,
   platformOptions,
+  label = "Add content",
   onAdd,
 }: AddContentPanelProps) {
   const searchParams = useSearchParams();
@@ -60,7 +62,7 @@ export function AddContentPanel({
             <path d="M8 3v10M3 8h10" strokeLinecap="round" />
           </svg>
         </span>
-        <span className="flex-1">Add content</span>
+        <span className="flex-1">{label}</span>
         {open ? (
           <Button
             type="submit"

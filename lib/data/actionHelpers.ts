@@ -23,7 +23,7 @@ export function revalidateContent(paths: string[] = []) {
 export async function requireTalentId() {
   const profile = await getProfile();
   if (!profile || profile.role !== "talent") {
-    throw new Error("Sign in as talent to manage content.");
+    throw new Error("Sign in as a creator to manage content.");
   }
   return profile.id;
 }
