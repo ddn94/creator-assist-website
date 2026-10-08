@@ -134,8 +134,8 @@ export const inviteTalent = withSupabaseAuthAction(
     }
 
     revalidatePath(`/workspace/talent/${id}`);
-    revalidatePath("/home");
-    revalidatePath("/home/profile");
+    revalidatePath("/overview");
+    revalidatePath("/overview/profile");
     return {
       error: null,
       message:
@@ -151,7 +151,7 @@ export async function deleteTalentRecordAction(
 ): Promise<{ error: string | null }> {
   const profile = await getProfile();
   if (!profile || profile.role !== "agency") {
-    return { error: "Only an agency can remove a record." };
+    return { error: "Only an agency can remove talent." };
   }
 
   const supabase = await createClient();
@@ -166,7 +166,7 @@ export async function deleteTalentRecordAction(
       return { error: "Only a card that has not been joined can be removed." };
     }
     if (message.includes("only an agency")) {
-      return { error: "Only an agency can remove a record." };
+      return { error: "Only an agency can remove talent." };
     }
     return { error: "Could not remove this talent." };
   }
@@ -195,8 +195,8 @@ export async function disconnectTalentLinkAction(
   }
 
   revalidateContent();
-  revalidatePath("/home");
-  revalidatePath("/home/profile");
+  revalidatePath("/overview");
+  revalidatePath("/overview/profile");
   revalidatePath(`/workspace/talent/${id}`);
   return { error: null };
 }
@@ -207,7 +207,7 @@ export async function respondConnectionRequestAction(
 ): Promise<{ error: string | null }> {
   const profile = await getProfile();
   if (!profile || profile.role !== "talent") {
-    return { error: "Sign in as talent to answer this request." };
+    return { error: "Sign in as a creator to answer this request." };
   }
 
   const supabase = await createClient();
@@ -227,7 +227,7 @@ export async function respondConnectionRequestAction(
   }
 
   revalidateContent();
-  revalidatePath("/home");
-  revalidatePath("/home/profile");
+  revalidatePath("/overview");
+  revalidatePath("/overview/profile");
   return { error: null };
 }

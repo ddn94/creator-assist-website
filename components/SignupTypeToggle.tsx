@@ -5,7 +5,7 @@ import { Button } from "@/components/Button";
 export type SignupType = "talent" | "agency";
 
 const OPTIONS: { value: SignupType; label: string; href: string }[] = [
-  { value: "talent", label: "Talent", href: "/signup/talent" },
+  { value: "talent", label: "Creator", href: "/signup/talent" },
   { value: "agency", label: "Agency", href: "/signup/agency" },
 ];
 

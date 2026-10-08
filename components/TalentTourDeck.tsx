@@ -20,7 +20,7 @@ import { localToday, localTimeZone } from "@/lib/localToday";
 import { contentPlatformOptions } from "@/lib/platforms";
 import { tourStartPath } from "@/lib/tour";
 
-const HREFS = ["/home", "/home/tracker", "/home/ideas", "/home/payments", "/home/pnl"];
+const HREFS = ["/overview", "/overview/tracker", "/overview/ideas", "/overview/payments", "/overview/pnl"];
 
 async function TrackerPanel({ profile }: { profile: Profile }) {
   const items = await listMyContentItems();
@@ -30,7 +30,12 @@ async function TrackerPanel({ profile }: { profile: Profile }) {
     readPlatforms(asAnswers(profile.onboarding)).map((row) => row.platform),
   );
   return (
-    <AppFrame role="talent" profile={profile} title="Content Tracker">
+    <AppFrame
+      role="talent"
+      profile={profile}
+      title="Content Tracker"
+      description="Concept to Go Live · every piece in one place"
+    >
       <Suspense fallback={null}>
         <ContentTracker
           items={items}
@@ -71,6 +76,7 @@ async function PaymentsPanel({ profile }: { profile: Profile }) {
       role="talent"
       profile={profile}
       title="Payment Tracker"
+      description="What’s owed, invoiced, and paid"
       action={<PaymentsOverdueBadge count={overdueCount} />}
     >
       <PaymentList mode="talent" items={items} />
@@ -83,7 +89,12 @@ async function PnlPanel({ profile }: { profile: Profile }) {
   const allContent = await listMyContent();
   const money = await pnlMoneyContext(currency, allContent);
   return (
-    <AppFrame role="talent" profile={profile}>
+    <AppFrame
+      role="talent"
+      profile={profile}
+      title="P&L Dashboard"
+      description="Revenue, expenses, and profit"
+    >
       <TalentPnlDashboard
         allContent={allContent}
         currency={currency}
@@ -128,15 +139,15 @@ function panel(href: string, content: ReactNode) {
 
 export async function TalentTourDeck({ profile }: { profile: Profile }) {
   return (
-    <TourChrome homeHref="/home" startHref={tourStartPath("talent")} hrefs={HREFS}>
+    <TourChrome homeHref="/overview" startHref={tourStartPath("talent")} hrefs={HREFS}>
       <TalentShell profile={profile}>
         <TourPanels
           slots={[
-            panel("/home/tracker", <TrackerPanel profile={profile} />),
-            panel("/home/ideas", <IdeasPanel profile={profile} />),
-            panel("/home/payments", <PaymentsPanel profile={profile} />),
-            panel("/home/pnl", <PnlPanel profile={profile} />),
-            panel("/home", <OverviewPanel profile={profile} />),
+            panel("/overview/tracker", <TrackerPanel profile={profile} />),
+            panel("/overview/ideas", <IdeasPanel profile={profile} />),
+            panel("/overview/payments", <PaymentsPanel profile={profile} />),
+            panel("/overview/pnl", <PnlPanel profile={profile} />),
+            panel("/overview", <OverviewPanel profile={profile} />),
           ]}
         />
       </TalentShell>

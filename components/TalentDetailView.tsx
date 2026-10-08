@@ -84,7 +84,7 @@ export function TalentDetailView({
           {canDelete ? (
             <button
               type="button"
-              aria-label="Delete record"
+              aria-label="Remove talent"
               title="Delete"
               onClick={askDelete}
               disabled={pending}
@@ -154,9 +154,6 @@ export function TalentDetailView({
               timeZone={timeZone}
             />
           ) : null}
-          {talent.deals.length === 0 && talent.invoicing.length === 0 ? (
-            <Text variant="description">No deals yet for this talent.</Text>
-          ) : null}
         </div>
 
         <aside className="min-w-0">
@@ -166,14 +163,18 @@ export function TalentDetailView({
 
       {talent.status === "active" ? (
         <Text variant="caption">
-          Note: Only {talent.firstName} can add a new deal. You can still edit deals
-          you already logged.
+          {talent.firstName} adds new deals from their side. You can still edit
+          the ones you&apos;ve logged.
         </Text>
-      ) : talent.status === "invited" || talent.status === "requested" ? (
+      ) : talent.status === "requested" ? (
         <Text variant="caption">
-          Note: You can still edit deals you already logged. You can’t add another
-          while this {talent.status === "invited" ? "invite" : "request"} is
-          out.
+          You can still edit deals you&apos;ve logged. New ones unlock once they
+          accept.
+        </Text>
+      ) : talent.status === "invited" ? (
+        <Text variant="caption">
+          Note: You can still edit deals you already logged. You can&apos;t add
+          another while this invite is out.
         </Text>
       ) : null}
     </div>

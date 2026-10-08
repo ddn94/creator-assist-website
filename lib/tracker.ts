@@ -268,10 +268,7 @@ function daySpan(fromIso: string, to = new Date()): number {
 }
 
 function shortDayMonth(iso: string): string {
-  return new Date(`${iso.slice(0, 10)}T12:00:00`).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-  });
+  return formatLiveDate(iso);
 }
 
 /** Needs-attention line. The optimistic save uses this so it matches a refresh. */

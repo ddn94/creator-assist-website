@@ -26,13 +26,7 @@ export function displayShortDate(
   iso: string | null,
   timeZone?: string | null,
 ): string | null {
-  if (!iso) return null;
-  const day = toDateInput(iso, timeZone);
-  if (!day) return null;
-  return new Date(`${day}T12:00:00`).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-  });
+  return displayDate(iso, timeZone);
 }
 
 export function daysBetween(

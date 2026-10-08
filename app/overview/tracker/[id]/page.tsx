@@ -19,7 +19,7 @@ export default async function ContentDetailPage({
 }) {
   const { id } = await params;
   const { from } = await searchParams;
-  const backHref = from === "payments" ? "/home/payments" : "/home/tracker";
+  const backHref = from === "payments" ? "/overview/payments" : "/overview/tracker";
   const profile = await requireProfile("talent");
   const item = await getContentById(id);
   if (!item || item.creatorId !== profile.id) notFound();

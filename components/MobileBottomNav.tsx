@@ -36,16 +36,16 @@ type NavConfig = {
 const NAV: Record<MobileNavRole, NavConfig> = {
   talent: {
     left: [
-      { href: "/home", label: "Overview", Icon: HouseIcon, exact: true },
-      { href: "/home/ideas", label: "Ideas", Icon: LightbulbIcon },
+      { href: "/overview", label: "Overview", Icon: HouseIcon, exact: true },
+      { href: "/overview/ideas", label: "Ideas", Icon: LightbulbIcon },
     ],
     right: [
-      { href: "/home/payments", label: "Payments", Icon: CurrencyDollarIcon },
-      { href: "/home/pnl", label: "P&L", Icon: ChartBarIcon },
+      { href: "/overview/payments", label: "Payments", Icon: CurrencyDollarIcon },
+      { href: "/overview/pnl", label: "P&L", Icon: ChartBarIcon },
     ],
     center: {
       mode: "tab",
-      tab: { href: "/home/tracker", label: "Tracker", Icon: RowsIcon },
+      tab: { href: "/overview/tracker", label: "Tracker", Icon: RowsIcon },
     },
   },
   agency: {
@@ -79,7 +79,7 @@ export function mobileNavRole(
   }
   if (
     navItems.some(
-      (item) => item.href === "/home" || item.href.startsWith("/home/"),
+      (item) => item.href === "/overview" || item.href.startsWith("/overview/"),
     )
   ) {
     return "talent";

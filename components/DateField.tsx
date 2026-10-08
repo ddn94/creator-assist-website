@@ -67,9 +67,9 @@ function toDateOnly(date: Date): string {
 function formatDisplay(value: string): string {
   const date = parseDateOnly(value);
   if (!date) return "";
-  return date.toLocaleDateString("en-GB", {
-    day: "numeric",
+  return date.toLocaleDateString("en-US", {
     month: "short",
+    day: "numeric",
     year: "numeric",
   });
 }
@@ -252,7 +252,7 @@ export function DateField({
   }
 
   const cells = buildMonthCells(viewMonth);
-  const monthLabel = viewMonth.toLocaleDateString("en-GB", {
+  const monthLabel = viewMonth.toLocaleDateString("en-US", {
     month: "long",
     year: "numeric",
   });

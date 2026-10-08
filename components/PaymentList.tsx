@@ -159,7 +159,7 @@ export function PaymentList({ mode, items, className = "" }: PaymentListProps) {
 
   const emptyMessage =
     mode === "talent"
-      ? "No paid collabs yet. Create one in the Content Tracker with type “Paid collab”."
+      ? "No paid collabs yet. Create one in Tracker with type “Paid collab”."
       : "No payments in this filter.";
 
   const table = (

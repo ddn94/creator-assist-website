@@ -72,7 +72,7 @@ type ShellGateProps = AppShellProps & {
   back?: ReactNode;
 };
 
-/** Inside /home or /workspace the layout already drew the nav. Admin pages draw it here. */
+/** Inside /overview or /workspace the layout already drew the nav. Admin pages draw it here. */
 export function ShellGate({
   title,
   description,

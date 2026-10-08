@@ -50,9 +50,9 @@ export function formatRelativeActivity(
     const months = Math.max(1, Math.round(dayDiff / 30));
     return months === 1 ? "1 month ago" : `${months} months ago`;
   }
-  return then.toLocaleDateString("en-GB", {
-    day: "numeric",
+  return then.toLocaleDateString("en-US", {
     month: "short",
+    day: "numeric",
     year: "numeric",
     ...(timeZone ? { timeZone } : {}),
   });
@@ -64,9 +64,10 @@ export function formatShortDayMonth(
 ): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleDateString("en-GB", {
-    day: "numeric",
+  return date.toLocaleDateString("en-US", {
     month: "short",
+    day: "numeric",
+    year: "numeric",
     ...(timeZone ? { timeZone } : {}),
   });
 }

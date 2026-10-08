@@ -140,7 +140,7 @@ export async function turnIdeaIntoContentAction(
       return { error: "Could not turn this idea into a post." };
     }
 
-    revalidateContent([`/home/tracker/${created.id}`]);
+    revalidateContent([`/overview/tracker/${created.id}`]);
     return { id: created.id };
   } catch (error) {
     return {

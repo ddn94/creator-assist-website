@@ -2,11 +2,11 @@ import type { NavItem } from "@/components/Navbar";
 import type { Category } from "@/lib/ui";
 
 export const talentNav: NavItem[] = [
-  { href: "/home", label: "Overview" },
-  { href: "/home/tracker", label: "Tracker" },
-  { href: "/home/ideas", label: "Ideas" },
-  { href: "/home/payments", label: "Payments" },
-  { href: "/home/pnl", label: "P&L" },
+  { href: "/overview", label: "Overview" },
+  { href: "/overview/tracker", label: "Tracker" },
+  { href: "/overview/ideas", label: "Ideas" },
+  { href: "/overview/payments", label: "Payments" },
+  { href: "/overview/pnl", label: "P&L" },
 ];
 
 export type JumpTile = {
@@ -16,10 +16,10 @@ export type JumpTile = {
 };
 
 export const JUMP_TILES: JumpTile[] = [
-  { href: "/home/tracker", label: "Tracker", category: "organic" },
-  { href: "/home/ideas", label: "Ideas", category: "idea" },
-  { href: "/home/payments", label: "Payments", category: "payment" },
-  { href: "/home/pnl", label: "P&L", category: "paid" },
+  { href: "/overview/tracker", label: "Tracker", category: "organic" },
+  { href: "/overview/ideas", label: "Ideas", category: "idea" },
+  { href: "/overview/payments", label: "Payments", category: "payment" },
+  { href: "/overview/pnl", label: "P&L", category: "paid" },
 ];
 
 export function greeting(date = new Date()): string {

@@ -267,7 +267,7 @@ export function IdeasBoard({ ideas }: IdeasBoardProps) {
               showToast(
                 `Content added from your idea “${idea?.title ?? "Idea"}”.`,
               );
-              router.push(`/home/tracker/${result.id}`);
+              router.push(`/overview/tracker/${result.id}`);
             }}
           />
         ))}
@@ -276,7 +276,7 @@ export function IdeasBoard({ ideas }: IdeasBoardProps) {
             variant="caption"
             className="col-span-full py-8 text-center text-sm"
           >
-            No ideas match.
+            No ideas here yet.
           </Text>
         ) : null}
       </div>

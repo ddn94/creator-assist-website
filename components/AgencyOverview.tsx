@@ -77,7 +77,7 @@ export function AgencyOverview({
             Needs attention
           </Text>
           {attention.length === 0 ? (
-            <EmptyPanel>Nothing needs attention.</EmptyPanel>
+            <EmptyPanel>All clear.</EmptyPanel>
           ) : (
             <NeedsAttentionList items={attention} payments={payments} />
           )}
@@ -89,8 +89,7 @@ export function AgencyOverview({
           </Text>
           {roster.length === 0 ? (
             <EmptyPanel>
-              No talent yet. Add a record, or invite someone onto Creator
-              Assist.
+              No talent yet. Add someone, or invite them onto Creator Assist.
             </EmptyPanel>
           ) : (
             <RosterList items={roster} />

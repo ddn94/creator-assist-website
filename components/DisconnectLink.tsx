@@ -117,7 +117,7 @@ export function DisconnectLink({ recordId, name, side }: DisconnectLinkProps) {
     <>
       <SettingsRow
         title={`Disconnect from ${name}`}
-        description="Past deals stay with them. A new agency does not see them."
+        description="They keep the deals you've done together. A new agency won't see those."
         danger
         onClick={ask}
       />

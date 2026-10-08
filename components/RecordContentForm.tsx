@@ -23,6 +23,7 @@ export function RecordContentForm({
   return (
     <div>
       <AddContentPanel
+        label="Add deal"
         platformOptions={platformOptions}
         onAdd={(payload) => {
           if (!payload.title.trim()) return;
@@ -43,7 +44,7 @@ export function RecordContentForm({
               setError(result.error);
               return;
             }
-            showToast(`“${payload.title.trim()}” was added for this record.`);
+            showToast(`“${payload.title.trim()}” was added for them.`);
             router.refresh();
           });
         }}

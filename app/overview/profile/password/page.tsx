@@ -10,7 +10,7 @@ export default async function TalentPasswordPage() {
     <AppFrame role="talent" profile={profile}>
       <div className="mx-auto w-full max-w-xl">
         <div className="mb-4">
-          <BackLink href="/home/profile" label="Back to profile" />
+          <BackLink href="/overview/profile" label="Back to profile" />
         </div>
         <ChangePasswordForm />
       </div>

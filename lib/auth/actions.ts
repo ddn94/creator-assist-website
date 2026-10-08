@@ -39,12 +39,14 @@ function normalizeEmail(raw: string) {
 }
 
 function inviteError(kind: string, role: UserRole) {
-  if (kind === "used") return "That invite code has already been used.";
+  if (kind === "used") {
+    return "That invite code has already been used. Already signed up? Sign in.";
+  }
   if (kind === "email_mismatch") {
-    return "Use the email address this invite was issued for.";
+    return "Use the email your invite was sent to.";
   }
   if (kind === "talent" && role === "agency") {
-    return "This code is for a talent account. Switch to Talent and sign up there.";
+    return "This code is for a creator account. Switch to Creator to sign up.";
   }
   if (kind === "invalid") return "That invite code isn’t valid.";
   return null;
@@ -236,7 +238,10 @@ export const changePassword = withSupabaseAuthAction(
       password: current,
     });
     if (signInError) {
-      return { error: "Current password is incorrect.", message: null };
+      return {
+        error: "That's not your current password. Try again.",
+        message: null,
+      };
     }
 
     const { error } = await supabase.auth.updateUser({ password });
@@ -245,7 +250,7 @@ export const changePassword = withSupabaseAuthAction(
     }
 
     await flashToast("Password updated.");
-    redirect(profile.role === "agency" ? "/workspace/profile" : "/home/profile");
+    redirect(profile.role === "agency" ? "/workspace/profile" : "/overview/profile");
   },
 );
 
@@ -276,7 +281,7 @@ export const updatePassword = withSupabaseAuthAction(
     if (error) return { error: error.message, message: null };
 
     const profile = await getProfile();
-    redirect(profile ? appHome(profile) : "/home");
+    redirect(profile ? appHome(profile) : "/overview");
   },
 );
 

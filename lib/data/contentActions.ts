@@ -121,7 +121,7 @@ export async function addContentForRecordAction(
   try {
     const profile = await getProfile();
     if (!profile || profile.role !== "agency") {
-      return { error: "Sign in as an agency to add content for a record." };
+      return { error: "Sign in as an agency to add content for talent." };
     }
     if (!payload.title.trim()) return { error: "Title is required." };
 
@@ -137,7 +137,9 @@ export async function addContentForRecordAction(
       record.status !== "record" ||
       record.linked_user_id
     ) {
-      return { error: "You can only add content for a record that has not been invited." };
+      return {
+        error: "You can only add content for someone who hasn't been invited yet.",
+      };
     }
 
     const isPaid = payload.type === "paid_collab";
@@ -217,7 +219,7 @@ export async function addContentAction(payload: {
         `Added "${payload.title.trim()}"`,
       ]);
     }
-    revalidateContent([`/home/tracker/${data.id}`]);
+    revalidateContent([`/overview/tracker/${data.id}`]);
     return { id: data.id };
   } catch (error) {
     return {
@@ -244,7 +246,7 @@ export async function setContentStageAction(
     if (profile.role === "agency") query = query.is("owner_id", null);
     const { error } = await query;
     if (error) return { error: "Could not update stage." };
-    revalidateContent([`/home/tracker/${id}`]);
+    revalidateContent([`/overview/tracker/${id}`]);
     return { error: null };
   } catch (error) {
     return {
@@ -541,7 +543,7 @@ export async function upsertContentAction(
     // Marking the other pages stale can wait until this reply has gone out.
     await recordContentChanges(supabase, profile, contentId, summaries);
     after(() => {
-      revalidateContent([`/home/tracker/${contentId}`]);
+      revalidateContent([`/overview/tracker/${contentId}`]);
     });
     return { error: null };
   } catch (error) {

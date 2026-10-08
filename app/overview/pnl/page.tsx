@@ -13,7 +13,11 @@ export default async function TalentPnlPage() {
   const money = await pnlMoneyContext(currency, allContent);
 
   return (
-    <AppFrame role="talent">
+    <AppFrame
+      role="talent"
+      title="P&L Dashboard"
+      description="Revenue, expenses, and profit"
+    >
       <TalentPnlDashboard
         allContent={allContent}
         currency={currency}

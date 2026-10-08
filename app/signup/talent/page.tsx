@@ -25,7 +25,7 @@ export default function TalentSignupPage() {
 
   return (
     <AuthScreen
-      title="Create your talent account"
+      title="Create your account"
       description="Track deals, content, and payments in one place."
       aboveCard={<SignupTypeToggle active="talent" />}
       card={
@@ -74,7 +74,7 @@ export default function TalentSignupPage() {
                 name="password"
                 type="password"
                 autoComplete="new-password"
-                placeholder="8+ chars"
+                placeholder="8+ characters"
                 minLength={8}
                 required
                 size="sm"

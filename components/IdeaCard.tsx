@@ -78,7 +78,7 @@ export function IdeaCard({
         <div className="mt-auto flex items-center gap-2 pt-3">
           {idea.linkedContentItemId ? (
             <Button
-              href={`/home/tracker/${idea.linkedContentItemId}`}
+              href={`/overview/tracker/${idea.linkedContentItemId}`}
               variant="secondary"
               size="sm"
               className="h-10 border-0 bg-card"

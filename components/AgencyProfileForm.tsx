@@ -75,7 +75,7 @@ export function AgencyProfileForm({ mode, initial }: AgencyProfileFormProps) {
           full
         />
       </Field>
-      <Field id="agency-profile-name" label="Name">
+      <Field id="agency-profile-name" label="Your name">
         <TextField
           id="agency-profile-name"
           name="name"
@@ -121,7 +121,7 @@ export function AgencyProfileForm({ mode, initial }: AgencyProfileFormProps) {
             Welcome to Creator Assist
           </Text>
           <Text variant="description" className="mt-2">
-            A few details so the workspace fits your setup.
+            A few quick details to set up your workspace.
           </Text>
         </div>
 
@@ -163,7 +163,7 @@ export function AgencyProfileForm({ mode, initial }: AgencyProfileFormProps) {
         Edit profile
       </Text>
       <Text variant="description" className="mt-1 mb-6">
-        This is your workspace profile, separate from sign-in.
+        Your workspace details.
       </Text>
       <Card className="p-5">
         <form

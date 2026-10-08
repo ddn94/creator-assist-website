@@ -21,7 +21,7 @@ export function TalentShell({
       userName={displayName(profile)}
       userEmail={profile.email}
       avatarUrl={avatarPublicUrl(profile.avatar_path, profile.updated_at)}
-      profileHref="/home/profile"
+      profileHref="/overview/profile"
       navItems={withAdminNav(talentNav, profile.email)}
     >
       {children}

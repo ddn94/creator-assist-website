@@ -80,7 +80,7 @@ export function buildTalentPayments(
         {
           talentName: null,
           talentId: null,
-          contentHref: `/home/tracker/${content.id}?section=deal&from=payments`,
+          contentHref: `/overview/tracker/${content.id}?section=deal&from=payments`,
         },
         today,
         timeZone,

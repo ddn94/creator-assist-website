@@ -99,7 +99,7 @@ export function AccountProfile({
           href={
             profile.role === "agency"
               ? "/workspace/profile/password"
-              : "/home/profile/password"
+              : "/overview/profile/password"
           }
         />
         {agencyLink?.status === "active" ? (

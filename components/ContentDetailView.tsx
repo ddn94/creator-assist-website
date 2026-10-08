@@ -147,7 +147,7 @@ export function ContentDetailView({
   platformOptions,
   currency,
   rates = EMPTY_RATE_BOOK,
-  backHref = "/home/tracker",
+  backHref = "/overview/tracker",
   mode = "talent",
   dealLocked = false,
   activity,
@@ -316,7 +316,7 @@ function ContentDetailEditor({
         readField(details, "brandName").trim() !== (item.brandName ?? "") ||
         readField(details, "stage") !== item.stage ||
         (readField(details, "goLiveDate") || "") !==
-          toDateInput(item.goLiveDate, timeZone) ||
+        toDateInput(item.goLiveDate, timeZone) ||
         readField(details, "shotList") !== item.shotList ||
         readField(details, "notes") !== item.notes;
       if (detailsChanged) names.push("Details");
@@ -331,13 +331,13 @@ function ContentDetailEditor({
         !Number.isFinite(fee) ||
         fee !== (saved?.feeAgreed ?? 0) ||
         (readField(deal, "paymentTerms") || "net_30") !==
-          (saved?.paymentTerms ?? "net_30") ||
+        (saved?.paymentTerms ?? "net_30") ||
         (readField(deal, "dateDelivered") || "") !==
-          toDateInput(saved?.dateDelivered, timeZone) ||
+        toDateInput(saved?.dateDelivered, timeZone) ||
         (readField(deal, "dateInvoiced") || "") !==
-          toDateInput(saved?.dateInvoiced, timeZone) ||
+        toDateInput(saved?.dateInvoiced, timeZone) ||
         (readField(deal, "datePaid") || "") !==
-          toDateInput(saved?.datePaid, timeZone) ||
+        toDateInput(saved?.datePaid, timeZone) ||
         moneyCode(readField(deal, "currency"), savedCurrency) !== savedCurrency;
       if (dealChanged) names.push("Deal");
     }
@@ -351,13 +351,13 @@ function ContentDetailEditor({
       const draftCurrency = moneyCode(readField(deliverable, "currency"), savedCurrency);
       const deliverableChanged = editingDeliverable
         ? type !== editingDeliverable.type ||
-          quantity !== editingDeliverable.quantity ||
-          Number(rateRaw || 0) !== editingDeliverable.rate ||
-          draftCurrency !== savedCurrency
+        quantity !== editingDeliverable.quantity ||
+        Number(rateRaw || 0) !== editingDeliverable.rate ||
+        draftCurrency !== savedCurrency
         : type !== "video" ||
-          quantity !== 1 ||
-          rateRaw !== "" ||
-          draftCurrency !== savedCurrency;
+        quantity !== 1 ||
+        rateRaw !== "" ||
+        draftCurrency !== savedCurrency;
       if (deliverableChanged) names.push("Deliverables");
     }
 
@@ -371,15 +371,15 @@ function ContentDetailEditor({
       const draftCurrency = moneyCode(readField(expense, "currency"), savedCurrency);
       const expenseChanged = editingExpense
         ? category !== editingExpense.category ||
-          Number(amountRaw || 0) !== editingExpense.amount ||
-          note !== (editingExpense.note ?? "").trim() ||
-          date !== toDateInput(editingExpense.date, timeZone) ||
-          draftCurrency !== (editingExpense.currency?.trim() || savedCurrency)
+        Number(amountRaw || 0) !== editingExpense.amount ||
+        note !== (editingExpense.note ?? "").trim() ||
+        date !== toDateInput(editingExpense.date, timeZone) ||
+        draftCurrency !== (editingExpense.currency?.trim() || savedCurrency)
         : category !== "editor" ||
-          amountRaw !== "" ||
-          note !== "" ||
-          date !== "" ||
-          draftCurrency !== savedCurrency;
+        amountRaw !== "" ||
+        note !== "" ||
+        date !== "" ||
+        draftCurrency !== savedCurrency;
       if (expenseChanged) names.push("Expenses");
     }
 
@@ -674,7 +674,7 @@ function ContentDetailEditor({
       }
       setRemoveTarget(null);
       showToast("Content deleted.", "danger");
-      leaveTo(mode === "record" ? backHref : "/home/tracker");
+      leaveTo(mode === "record" ? backHref : "/overview/tracker");
       return;
     }
     const removed =
@@ -1379,7 +1379,7 @@ function ContentDetailEditor({
         {isPaid && item.deal ? (
           <Card className="mb-5">
             <Text variant="title" className="mb-2 text-base">
-              Profit for this item
+              Profit on this collab
             </Text>
             <Text variant="description">
               Fee {money(fee)} − Expenses {money(totalExpenses)} ={" "}
@@ -1407,7 +1407,7 @@ function ContentDetailEditor({
                   (view in brain dump)
                 </span>
               ) : (
-                <Button href="/home/ideas">(view in brain dump)</Button>
+                <Button href="/overview/ideas">(view in brain dump)</Button>
               )}
             </Text>
           </Card>

@@ -97,7 +97,7 @@ export function buildContinueFeed(
     category: contentCategory(item.type),
     pill: item.type === "paid_collab" ? "Paid collab" : "Organic",
     meta: `${STAGE_LABELS[item.stage as Stage] ?? item.stage} · ${item.platform}`,
-    href: `/home/tracker/${item.id}`,
+    href: `/overview/tracker/${item.id}`,
   }));
 
   const ideaFeed = ideas
@@ -109,8 +109,14 @@ export function buildContinueFeed(
       title: idea.title,
       category: "idea" as Category,
       pill: "Idea",
-      meta: idea.tags.slice(0, 2).join(" · ") || "Untitled notes",
-      href: "/home/ideas",
+      meta:
+        idea.tags.slice(0, 2).join(" · ") ||
+        (idea.body.trim()
+          ? idea.body.trim().length > 48
+            ? `${idea.body.trim().slice(0, 48)}…`
+            : idea.body.trim()
+          : "No tags"),
+      href: "/overview/ideas",
     }));
 
   return [...contentFeed, ...ideaFeed]
@@ -168,7 +174,7 @@ export function buildAgencyOverviewMoney(
     received: fmtMoney(received, home),
     outstandingFooter: "Across live deals",
     overdueFooter: overdue > 0 ? "Needs follow-up" : "None overdue",
-    receivedFooter: "Paid this month",
+    receivedFooter: "Across all talent",
   };
 }
 
@@ -197,7 +203,7 @@ export function buildAgencyAttention(
       dueIso: due,
       deliveredIso: content.deal.dateDelivered
         ? toDateInput(content.deal.dateDelivered, timeZone) ||
-          content.deal.dateDelivered
+        content.deal.dateDelivered
         : null,
       today,
     });

@@ -51,7 +51,7 @@ export function TrackerItemCard({
         </span>
       ) : (
         <Link
-          href={`/home/tracker/${item.id}`}
+          href={`/overview/tracker/${item.id}`}
           className="mt-2.5 block font-display text-sm font-bold leading-snug text-ink hover:underline sm:text-base"
         >
           {item.title}
