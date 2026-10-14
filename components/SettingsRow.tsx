@@ -9,6 +9,7 @@ type SettingsRowProps = {
   danger?: boolean;
   className?: string;
   onClick?: () => void;
+  submit?: boolean;
 };
 
 const rowClass =
@@ -21,6 +22,7 @@ export function SettingsRow({
   danger = false,
   className = "",
   onClick,
+  submit = false,
 }: SettingsRowProps) {
   const content = (
     <>
@@ -66,7 +68,7 @@ export function SettingsRow({
 
   return (
     <button
-      type="button"
+      type={submit ? "submit" : "button"}
       onClick={onClick}
       className={[classes, "cursor-pointer"].filter(Boolean).join(" ")}
     >

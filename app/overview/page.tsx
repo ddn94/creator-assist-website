@@ -1,0 +1,46 @@
+import { TalentOverview } from "@/components/TalentOverview";
+import { AppFrame } from "@/components/AppFrame";
+import { avatarPublicUrl } from "@/lib/auth/avatar";
+import { displayName } from "@/lib/auth/profileAnswers";
+import { requireProfile } from "@/lib/auth/session";
+import { listMyContent } from "@/lib/data/contentQueries";
+import { listMyIdeas } from "@/lib/data/ideaQueries";
+import { getMyAgencyLink, getMyConnectionRequests } from "@/lib/data/talentRecords";
+import {
+  buildContinueFeed,
+  buildOverviewStats,
+} from "@/lib/data/selectors";
+import { localToday, localTimeZone } from "@/lib/localToday";
+import { tourCoversPage } from "@/lib/tourGate";
+
+export default async function TalentHomePage() {
+  if (await tourCoversPage()) return null;
+  const profile = await requireProfile("talent");
+  const currency = profile.currency?.trim() || "USD";
+  const [content, ideas, agencyLink, connectionRequests, today, timeZone] =
+    await Promise.all([
+      listMyContent(),
+      listMyIdeas(),
+      getMyAgencyLink(),
+      getMyConnectionRequests(),
+      localToday(),
+      localTimeZone(),
+    ]);
+  const stats = buildOverviewStats(content, currency, today, timeZone);
+  const feed = buildContinueFeed(content, ideas);
+
+  return (
+    <AppFrame role="talent" profile={profile}>
+      <TalentOverview
+        userName={displayName(profile)}
+        avatarUrl={avatarPublicUrl(profile.avatar_path, profile.updated_at)}
+        stats={stats}
+        feed={feed}
+        agencyName={
+          agencyLink?.status === "active" ? agencyLink.agencyName : null
+        }
+        connectionRequests={connectionRequests}
+      />
+    </AppFrame>
+  );
+}

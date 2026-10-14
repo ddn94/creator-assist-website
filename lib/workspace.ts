@@ -6,10 +6,3 @@ export const workspaceNav: NavItem[] = [
   { href: "/workspace/payments", label: "Payments" },
   { href: "/workspace/pnl", label: "P&L" },
 ];
-
-export const workspaceShell = {
-  brand: "Bright Talent",
-  brandMeta: "Agency workspace",
-  userName: "Priya Raman",
-  userEmail: "priya@brighttalent.com",
-} as const;

@@ -1,17 +1,21 @@
 import { Text } from "@/components/Text";
-import { fmtMoney, type TalentPnlBreakdownRow } from "@/lib/talentPnl";
+import type { TalentPnlBreakdownRow } from "@/lib/pnl";
+import { fmtMoney } from "@/lib/tracker";
 
 type TalentPnlBreakdownListProps = {
   title: string;
   rows: TalentPnlBreakdownRow[];
+  currency?: string;
   className?: string;
 };
 
 export function TalentPnlBreakdownList({
   title,
   rows,
+  currency = "USD",
   className = "",
 }: TalentPnlBreakdownListProps) {
+  const money = (amount: number) => fmtMoney(amount, currency);
   if (rows.length === 0) return null;
 
   return (
@@ -38,7 +42,7 @@ export function TalentPnlBreakdownList({
               {row.name}
             </Text>
             <Text variant="caption" className="shrink-0 text-xs">
-              {fmtMoney(row.fee)} − {fmtMoney(row.expenses)}
+              {money(row.fee)} − {money(row.expenses)}
             </Text>
             <Text
               variant="caption"
@@ -47,7 +51,7 @@ export function TalentPnlBreakdownList({
                 row.profit >= 0 ? "text-primary-hover!" : "text-danger!",
               ].join(" ")}
             >
-              {fmtMoney(row.profit)}
+              {money(row.profit)}
             </Text>
           </li>
         ))}

@@ -38,6 +38,7 @@ export function TextField({
   iconLeft,
   iconRight,
   className = "",
+  spellCheck = false,
   ...props
 }: TextFieldProps) {
   const inset = iconInset[size];
@@ -47,7 +48,7 @@ export function TextField({
       <Icon className={inset.posLeft}>{iconLeft}</Icon>
       <input
         className={[
-          "min-w-0 rounded-input border border-border bg-card text-ink placeholder:text-placeholder focus:outline-none",
+          "min-w-0 rounded-input border border-border bg-card text-ink placeholder:text-placeholder focus:outline-none disabled:cursor-not-allowed disabled:opacity-60",
           controlSizes[size],
           fieldText[size],
           iconLeft ? inset.padLeft : "",
@@ -57,6 +58,7 @@ export function TextField({
         ]
           .filter(Boolean)
           .join(" ")}
+        spellCheck={spellCheck}
         {...props}
       />
       <Icon className={inset.posRight}>{iconRight}</Icon>

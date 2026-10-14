@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Urbanist, Geist_Mono } from "next/font/google";
+import { LocalDayCookie } from "@/components/LocalDayCookie";
+import { ToastHost } from "@/components/Toast";
 import "./globals.css";
 
 const inter = Inter({
@@ -35,6 +37,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
+      spellCheck={false}
       className={`${inter.variable} ${urbanist.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full font-sans bg-background text-ink">
@@ -43,7 +46,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <div className="absolute -left-20 top-1/3 size-40 rounded-full bg-payment min-[900px]:-bottom-24 min-[900px]:-left-24 min-[900px]:top-auto min-[900px]:size-72" />
           <div className="absolute -right-16 bottom-0 size-32 rounded-full bg-organic min-[900px]:-right-20 min-[900px]:size-72" />
         </div>
+        <LocalDayCookie />
         {children}
+        <ToastHost />
       </body>
     </html>
   );

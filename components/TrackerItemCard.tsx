@@ -9,22 +9,27 @@ import {
   contentPillLabel,
   formatLiveDate,
   nextStage,
+  revisionBackStage,
   type TrackerItem,
 } from "@/lib/tracker";
 
 type TrackerItemCardProps = {
   item: TrackerItem;
   onAdvance?: (id: string) => void;
-  onBackToEdited?: (id: string) => void;
+  onRevisionBack?: (id: string) => void;
+  tourAnchor?: boolean;
 };
 
 export function TrackerItemCard({
   item,
   onAdvance,
-  onBackToEdited,
+  onRevisionBack,
+  tourAnchor = false,
 }: TrackerItemCardProps) {
   const category = contentCategory(item.type);
+  const pending = item.id.startsWith("pending-");
   const advanceTo = nextStage(item.stage);
+  const backTo = revisionBackStage(item.stage);
   const meta = [
     item.platform,
     item.niche,
@@ -34,14 +39,24 @@ export function TrackerItemCard({
     .join(" · ");
 
   return (
-    <CategoryCard category={category} className="p-4">
+    <CategoryCard
+      category={category}
+      className="p-4"
+      tour={tourAnchor ? "tour-content" : undefined}
+    >
       <CategoryPill category={category}>{contentPillLabel(item.type)}</CategoryPill>
-      <Link
-        href={`/home/tracker/${item.id}`}
-        className="mt-2.5 block font-display text-sm font-bold leading-snug text-ink hover:underline sm:text-base"
-      >
-        {item.title}
-      </Link>
+      {pending ? (
+        <span className="mt-2.5 block font-display text-sm font-bold leading-snug text-ink sm:text-base">
+          {item.title}
+        </span>
+      ) : (
+        <Link
+          href={`/overview/tracker/${item.id}`}
+          className="mt-2.5 block font-display text-sm font-bold leading-snug text-ink hover:underline sm:text-base"
+        >
+          {item.title}
+        </Link>
+      )}
       <Text variant="caption" className="mt-1 text-sm">
         {meta}
       </Text>
@@ -62,13 +77,13 @@ export function TrackerItemCard({
           Move to {STAGE_LABELS[advanceTo]} →
         </Button>
       ) : null}
-      {item.stage === "delivered" ? (
+      {backTo ? (
         <button
           type="button"
-          onClick={() => onBackToEdited?.(item.id)}
+          onClick={() => onRevisionBack?.(item.id)}
           className="mt-1 w-full cursor-pointer py-2 text-center font-sans text-xs text-muted transition-colors hover:text-ink"
         >
-          Needs revisions? ← Back to Edited
+          Needs revisions? ← Back to {STAGE_LABELS[backTo]}
         </button>
       ) : null}
     </CategoryCard>

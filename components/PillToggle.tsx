@@ -38,7 +38,7 @@ export function PillToggle({
             aria-selected={active}
             onClick={() => onChange(item.id)}
             className={[
-              "flex-1 rounded-full px-4 py-2 font-display text-sm font-semibold transition-colors sm:flex-none sm:py-1.5",
+              "flex-1 rounded-full px-4 py-2 font-display text-sm font-semibold transition-colors sm:flex-none sm:py-1.5 cursor-pointer",
               active
                 ? "bg-primary text-on-primary"
                 : "text-ink hover:bg-background",

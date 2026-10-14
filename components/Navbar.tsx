@@ -3,12 +3,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useTourPath } from "@/components/TourStage";
 import { SignOutIcon, UserIcon } from "@phosphor-icons/react";
-import { resetMockDb } from "@/lib/mockStore";
+import { signOut } from "@/lib/auth/actions";
 import { Avatar } from "@/components/Avatar";
 import { Text } from "@/components/Text";
-import { useSelfProfile } from "@/lib/useMockDb";
 
 export type NavItem = {
   href: string;
@@ -21,6 +21,8 @@ type NavbarProps = {
   items: NavItem[];
   userName: string;
   userEmail?: string;
+  avatarUrl?: string | null;
+  profileHref?: string;
   /** When true, skip hamburger + drawer (bottom bar handles primary nav). */
   hideMobileMenu?: boolean;
 };
@@ -42,15 +44,22 @@ export function Navbar({
   items,
   userName,
   userEmail,
+  avatarUrl,
+  profileHref = "/overview/profile",
   hideMobileMenu = false,
 }: NavbarProps) {
-  const pathname = usePathname();
-  const liveProfile = useSelfProfile();
-  const isTalent = brand === "Creator Assist";
-  const displayName = isTalent ? liveProfile.name : userName;
-  const displayEmail = isTalent
-    ? (liveProfile.email ?? userEmail)
-    : userEmail;
+  const routePath = usePathname();
+  const tour = useTourPath();
+  const pathname = tour?.path ?? routePath;
+  const displayName = userName;
+
+  function openTourPage(event: ReactMouseEvent<HTMLAnchorElement>, href: string) {
+    if (!tour?.has(href)) return;
+    event.preventDefault();
+    tour.setPath(href);
+  }
+  const displayBrand = brand;
+  const displayEmail = userEmail;
   const [open, setOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -80,7 +89,11 @@ export function Navbar({
   return (
     <header className="relative border-b border-card-border bg-background/90 backdrop-blur-sm">
       <div className="mx-auto flex max-w-7xl items-center gap-3 px-3 py-3 sm:px-4 lg:px-5">
-        <Link href={items[0]?.href ?? "/"} className="flex min-w-0 items-center gap-2.5">
+        <Link
+          href={items[0]?.href ?? "/"}
+          onClick={(event) => openTourPage(event, items[0]?.href ?? "/")}
+          className="flex min-w-0 cursor-pointer items-center gap-2.5"
+        >
           <Image
             src="/icons/icon-192.png"
             alt=""
@@ -91,7 +104,7 @@ export function Navbar({
           />
           <span className="min-w-0">
             <Text variant="title" className="truncate text-sm sm:text-base">
-              {brand}
+              {displayBrand}
             </Text>
             {brandMeta ? (
               <Text variant="caption" className="truncate">
@@ -108,8 +121,10 @@ export function Navbar({
               <Link
                 key={item.href}
                 href={item.href}
+                data-tour-tab={item.href}
+                onClick={(event) => openTourPage(event, item.href)}
                 className={[
-                  "rounded-full px-3.5 py-2 font-display text-sm font-semibold transition-colors",
+                  "cursor-pointer rounded-full px-3.5 py-2 font-display text-sm font-semibold transition-colors",
                   active
                     ? "bg-card text-ink shadow-card"
                     : "text-muted hover:text-ink",
@@ -133,9 +148,9 @@ export function Navbar({
               aria-controls={userMenuId}
               aria-label="User menu"
               onClick={() => setUserMenuOpen((prev) => !prev)}
-              className="rounded-full outline-none"
+              className="cursor-pointer rounded-full outline-none"
             >
-              <Avatar name={displayName} size="sm" />
+              <Avatar name={displayName} size="sm" src={avatarUrl} />
             </button>
             {userMenuOpen ? (
               <div
@@ -144,7 +159,7 @@ export function Navbar({
                 className="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-xl border border-card-border bg-card shadow-card"
               >
                 <Link
-                  href="/home/profile"
+                  href={profileHref}
                   role="menuitem"
                   onClick={() => setUserMenuOpen(false)}
                   className="flex items-start gap-2 px-3 py-2.5 transition-colors hover:bg-background"
@@ -173,18 +188,16 @@ export function Navbar({
                   </div>
                 </Link>
                 <div className="border-t border-card-border" />
-                <Link
-                  href="/login"
-                  role="menuitem"
-                  onClick={() => {
-                    resetMockDb();
-                    setUserMenuOpen(false);
-                  }}
-                  className="flex items-center gap-2 px-3 py-2.5 text-xs font-medium text-ink transition-colors hover:bg-background"
-                >
-                  <SignOutIcon size={16} weight="regular" aria-hidden />
-                  Sign out
-                </Link>
+                <form action={signOut}>
+                  <button
+                    type="submit"
+                    role="menuitem"
+                    className="flex w-full cursor-pointer items-center gap-2 px-3 py-2.5 text-left text-xs font-medium text-ink transition-colors hover:bg-background"
+                  >
+                    <SignOutIcon size={16} weight="regular" aria-hidden />
+                    Sign out
+                  </button>
+                </form>
               </div>
             ) : null}
           </div>
@@ -213,7 +226,11 @@ export function Navbar({
                 <Link
                   key={item.href}
                   href={item.href}
-                  onClick={() => setOpen(false)}
+                  data-tour-tab={item.href}
+                  onClick={(event) => {
+                    openTourPage(event, item.href);
+                    setOpen(false);
+                  }}
                   className={[
                     "rounded-full px-3.5 py-2.5 font-display text-sm font-semibold",
                     active

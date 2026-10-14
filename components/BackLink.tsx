@@ -13,7 +13,7 @@ export function BackLink({ href, label, className = "" }: BackLinkProps) {
     <Link
       href={href}
       className={[
-        "inline-flex items-center gap-1.5 text-muted transition-colors hover:text-ink",
+        "inline-flex cursor-pointer items-center gap-1.5 text-muted transition-colors hover:text-ink",
         className,
       ]
         .filter(Boolean)

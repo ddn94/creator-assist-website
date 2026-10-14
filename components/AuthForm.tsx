@@ -1,26 +1,29 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { Button } from "@/components/Button";
+import { FormAlert } from "@/components/FormAlert";
 import { Text } from "@/components/Text";
 import { TextField } from "@/components/TextField";
-import { talentShell } from "@/lib/home";
+import { signIn } from "@/lib/auth/actions";
+import { EMPTY_AUTH_STATE } from "@/lib/auth/types";
 
-/** Prefill so UI demos land on the shared Fatima mock account. */
-const DUMMY_EMAIL = talentShell.userEmail;
-const DUMMY_PASSWORD = "demo-pass";
+function SignInButton() {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" size="md" full iconRight="→" className="h-10" disabled={pending}>
+      {pending ? "Signing in…" : "Sign in"}
+    </Button>
+  );
+}
 
-export default function AuthForm() {
-  const router = useRouter();
+export default function AuthForm({ notice }: { notice?: string | null }) {
+  const [state, action] = useActionState(signIn, EMPTY_AUTH_STATE);
 
   return (
-    <form
-      className="space-y-3.5"
-      onSubmit={(e) => {
-        e.preventDefault();
-        router.push("/home");
-      }}
-    >
+    <form className="space-y-3.5" action={action}>
+      <FormAlert error={notice} />
       <div className="space-y-1">
         <Text as="label" variant="label" htmlFor="email">
           Email
@@ -31,7 +34,7 @@ export default function AuthForm() {
           type="email"
           autoComplete="email"
           placeholder="you@example.com"
-          defaultValue={DUMMY_EMAIL}
+          required
           size="sm"
           full
         />
@@ -46,14 +49,13 @@ export default function AuthForm() {
           type="password"
           autoComplete="current-password"
           placeholder="Your password"
-          defaultValue={DUMMY_PASSWORD}
+          required
           size="sm"
           full
         />
       </div>
-      <Button type="submit" size="md" full iconRight="→" className="h-10">
-        Sign in
-      </Button>
+      <FormAlert error={state.error} />
+      <SignInButton />
     </form>
   );
 }

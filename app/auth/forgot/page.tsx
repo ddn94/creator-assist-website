@@ -1,44 +1,41 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { AuthScreen } from "@/components/AuthScreen";
 import { Button } from "@/components/Button";
+import { FormAlert } from "@/components/FormAlert";
 import { Text } from "@/components/Text";
 import { TextField } from "@/components/TextField";
-import { talentShell } from "@/lib/home";
+import { requestPasswordReset } from "@/lib/auth/actions";
+import { EMPTY_AUTH_STATE } from "@/lib/auth/types";
+
+function SendButton() {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" size="md" full iconRight="→" className="h-10" disabled={pending}>
+      {pending ? "Sending…" : "Send reset link"}
+    </Button>
+  );
+}
 
 export default function ForgotPasswordPage() {
-  const [sent, setSent] = useState(false);
-  const [email, setEmail] = useState<string>(talentShell.userEmail);
+  const [state, action] = useActionState(requestPasswordReset, EMPTY_AUTH_STATE);
 
   return (
     <AuthScreen
       title="Reset your password"
       description={
-        sent
+        state.message
           ? "If an account exists for that email, a reset link is on its way."
           : "Enter your email and we’ll send a reset link."
       }
       density="comfortable"
       card={
-        sent ? (
-          <div className="space-y-3.5 text-center">
-            <Text variant="description">
-              For this UI demo, continue to choose a new password.
-            </Text>
-            <Button href="/auth/reset" size="md" full iconRight="→" className="h-10">
-              Set new password
-            </Button>
-          </div>
+        state.message ? (
+          <FormAlert message={state.message} />
         ) : (
-          <form
-            className="space-y-3.5"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (!email.trim()) return;
-              setSent(true);
-            }}
-          >
+          <form className="space-y-3.5" action={action}>
             <div className="space-y-1">
               <Text as="label" variant="label" htmlFor="forgot-email">
                 Email
@@ -50,15 +47,12 @@ export default function ForgotPasswordPage() {
                 required
                 autoComplete="email"
                 placeholder="you@example.com"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
                 size="sm"
                 full
               />
             </div>
-            <Button type="submit" size="md" full iconRight="→" className="h-10">
-              Send reset link
-            </Button>
+            <FormAlert error={state.error} />
+            <SendButton />
           </form>
         )
       }

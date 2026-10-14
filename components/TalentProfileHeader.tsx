@@ -1,5 +1,4 @@
 import { Avatar } from "@/components/Avatar";
-import { Button } from "@/components/Button";
 import { StatusTag } from "@/components/StatusTag";
 import { Text } from "@/components/Text";
 import { talentStatusTone, type TalentDetail } from "@/lib/talent";
@@ -14,11 +13,15 @@ export function TalentProfileHeader({
   className = "",
 }: TalentProfileHeaderProps) {
   const meta = [
-    `${talent.community} community`,
+    talent.community ? `${talent.community} community` : "",
     talent.platformsFull,
     talent.niches,
     talent.location,
-  ].join(" · ");
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  const notes = talent.notes?.trim() || "";
 
   return (
     <div
@@ -30,7 +33,7 @@ export function TalentProfileHeader({
         .join(" ")}
     >
       <div className="flex min-w-0 items-start gap-3 sm:gap-4">
-        <Avatar name={talent.name} size="lg" />
+        <Avatar name={talent.name} size="lg" src={talent.avatarUrl} />
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <Text variant="heading" className="text-2xl sm:text-3xl">
@@ -44,11 +47,16 @@ export function TalentProfileHeader({
           <Text variant="caption" className="mt-1.5 leading-relaxed">
             {meta}
           </Text>
+          {notes ? (
+            <Text
+              variant="caption"
+              className="mt-1.5 whitespace-pre-wrap leading-relaxed"
+            >
+              {notes}
+            </Text>
+          ) : null}
         </div>
       </div>
-      <Button type="button" size="sm" variant="secondary" className="w-full sm:w-auto">
-        Message
-      </Button>
     </div>
   );
 }

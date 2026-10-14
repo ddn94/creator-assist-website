@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Avatar } from "@/components/Avatar";
 import { StatusTag, type StatusTagTone } from "@/components/StatusTag";
 import { Text } from "@/components/Text";
@@ -8,6 +9,8 @@ type RosterCardProps = {
   status: string;
   statusTone?: StatusTagTone;
   meta: string;
+  avatarUrl?: string | null;
+  href?: string;
   className?: string;
 };
 
@@ -17,19 +20,21 @@ export function RosterCard({
   status,
   statusTone = "record",
   meta,
+  avatarUrl = null,
+  href,
   className = "",
 }: RosterCardProps) {
-  return (
-    <div
-      className={[
-        "rounded-card border border-card-border bg-card p-4 shadow-card",
-        className,
-      ]
-        .filter(Boolean)
-        .join(" ")}
-    >
+  const classNames = [
+    "block rounded-card border border-card-border bg-card p-4 shadow-card",
+    href ? "cursor-pointer transition-colors hover:bg-background/60" : "",
+    className,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const body = (
       <div className="flex items-center gap-3">
-        <Avatar name={name} size="md" />
+        <Avatar name={name} size="md" src={avatarUrl} />
         <div className="min-w-0 flex-1 space-y-0.5">
           <div className="flex items-center justify-between gap-2">
             <Text variant="cardTitle" className="min-w-0 truncate text-sm">
@@ -47,6 +52,15 @@ export function RosterCard({
           </div>
         </div>
       </div>
-    </div>
   );
+
+  if (href) {
+    return (
+      <Link href={href} className={classNames}>
+        {body}
+      </Link>
+    );
+  }
+
+  return <div className={classNames}>{body}</div>;
 }

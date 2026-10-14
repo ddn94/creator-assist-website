@@ -1,4 +1,4 @@
-export type PnlRangeKind = "month" | "quarter" | "year" | "custom";
+export type PnlRangeKind = "all" | "last30" | "year" | "custom";
 
 export type PnlDateFilter = {
   range: PnlRangeKind;
@@ -7,30 +7,39 @@ export type PnlDateFilter = {
   today?: Date;
 };
 
+export const PNL_PERIODS = [
+  { id: "all" as const, label: "All time" },
+  { id: "last30" as const, label: "Last 30 days" },
+  { id: "year" as const, label: "This year" },
+  { id: "custom" as const, label: "Custom" },
+];
+
+export type PnlPeriod = (typeof PNL_PERIODS)[number]["id"];
+
 function parseDay(s: string | undefined, endOfDay = false): Date | null {
   if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
   return new Date(s + (endOfDay ? "T23:59:59.999" : "T00:00:00"));
 }
 
-/** Bounds match old /dashboard: month/quarter/year open-ended end; custom may be unbounded. */
+function toDay(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** Bounds for each top-level period; custom may be unbounded. */
 export function pnlBounds(
   range: PnlRangeKind,
   from?: string,
   to?: string,
   today = new Date(),
 ): { start: Date | null; end: Date | null } {
-  if (range === "month") {
-    return {
-      start: new Date(today.getFullYear(), today.getMonth(), 1),
-      end: null,
-    };
+  if (range === "all") {
+    return { start: null, end: null };
   }
-  if (range === "quarter") {
-    const q = Math.floor(today.getMonth() / 3);
-    return {
-      start: new Date(today.getFullYear(), q * 3, 1),
-      end: null,
-    };
+  if (range === "last30") {
+    const start = new Date(today);
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() - 30);
+    return { start, end: null };
   }
   if (range === "year") {
     return { start: new Date(today.getFullYear(), 0, 1), end: null };
@@ -69,3 +78,5 @@ export function resolvePnlBounds(filter?: PnlDateFilter): {
   );
   return { start, end, today };
 }
+
+export { toDay };

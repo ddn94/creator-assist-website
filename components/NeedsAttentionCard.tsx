@@ -56,15 +56,17 @@ export function NeedsAttentionCard({
             {detail}
           </Text>
         </div>
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          className="shrink-0 sm:order-4"
-          onClick={onOpen}
-        >
-          Open
-        </Button>
+        {onOpen ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            className="shrink-0 sm:order-4"
+            onClick={onOpen}
+          >
+            Open
+          </Button>
+        ) : null}
       </div>
     </div>
   );

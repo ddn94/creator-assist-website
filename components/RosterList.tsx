@@ -5,19 +5,28 @@ import { RosterCard } from "@/components/RosterCard";
 import type { StatusTagTone } from "@/components/StatusTag";
 
 export type RosterItem = {
+  id?: string;
   name: string;
   platforms: string;
   status: string;
   statusTone?: StatusTagTone;
   meta: string;
+  avatarUrl?: string | null;
 };
 
 export function RosterList({ items }: { items: RosterItem[] }) {
   return (
     <PaginatedList
       items={items}
-      getKey={(item) => item.name}
-      renderItem={(item) => <RosterCard {...item} />}
+      getKey={(item) => item.id ?? item.name}
+      renderItem={(item) => (
+        <RosterCard
+          {...item}
+          href={
+            item.id ? `/workspace/talent/${item.id}?from=overview` : undefined
+          }
+        />
+      )}
     />
   );
 }

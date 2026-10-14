@@ -1,48 +1,72 @@
 "use client";
 
 import { NeedsAttentionList } from "@/components/NeedsAttentionList";
-import { PageWrapper } from "@/components/PageWrapper";
-import { RosterList } from "@/components/RosterList";
+import { RosterList, type RosterItem } from "@/components/RosterList";
 import { StatCard } from "@/components/StatCard";
 import { Text } from "@/components/Text";
-import { AGENCY_ATTENTION } from "@/lib/talentMock";
-import { useAgencyOverviewData } from "@/lib/useMockDb";
-import { workspaceNav, workspaceShell } from "@/lib/workspace";
+import type { AttentionItem } from "@/lib/data/selectors";
+import type { PaymentItem } from "@/lib/payments";
 
-export function AgencyOverview() {
-  const { stats, roster } = useAgencyOverviewData();
+type AgencyMoneyStats = {
+  outstanding: string;
+  overdue: string;
+  received: string;
+  outstandingFooter: string;
+  overdueFooter: string;
+  receivedFooter: string;
+};
 
+type AgencyOverviewProps = {
+  talentCount: number;
+  talentFooter: string;
+  roster: RosterItem[];
+  moneyStats: AgencyMoneyStats;
+  attention: AttentionItem[];
+  payments: PaymentItem[];
+};
+
+function EmptyPanel({ children }: { children: string }) {
   return (
-    <PageWrapper
-      {...workspaceShell}
-      navItems={workspaceNav}
-      title="Overview"
-      description={stats.description}
-    >
+    <div className="rounded-card border border-card-border bg-card px-4 py-8 text-center shadow-card">
+      <Text variant="description">{children}</Text>
+    </div>
+  );
+}
+
+export function AgencyOverview({
+  talentCount,
+  talentFooter,
+  roster,
+  moneyStats,
+  attention,
+  payments,
+}: AgencyOverviewProps) {
+  return (
+    <>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Talent"
-          value={String(stats.talentCount)}
-          footer={stats.talentFooter}
+          value={String(talentCount)}
+          footer={talentFooter}
           tone="collab"
         />
         <StatCard
           label="Outstanding"
-          value={stats.outstanding}
-          footer={stats.outstandingFooter}
+          value={moneyStats.outstanding}
+          footer={moneyStats.outstandingFooter}
           tone="payment"
         />
         <StatCard
           label="Overdue"
-          value={stats.overdue}
-          footer={stats.overdueFooter}
+          value={moneyStats.overdue}
+          footer={moneyStats.overdueFooter}
           tone="organic"
           valueClassName="text-danger!"
         />
         <StatCard
           label="Received this month"
-          value={stats.received}
-          footer={stats.receivedFooter}
+          value={moneyStats.received}
+          footer={moneyStats.receivedFooter}
           tone="idea"
         />
       </div>
@@ -52,16 +76,26 @@ export function AgencyOverview() {
           <Text variant="title" className="mb-3 text-lg">
             Needs attention
           </Text>
-          <NeedsAttentionList items={AGENCY_ATTENTION} />
+          {attention.length === 0 ? (
+            <EmptyPanel>All clear.</EmptyPanel>
+          ) : (
+            <NeedsAttentionList items={attention} payments={payments} />
+          )}
         </section>
 
         <section className="min-w-0">
           <Text variant="title" className="mb-3 text-lg">
             Roster
           </Text>
-          <RosterList items={roster} />
+          {roster.length === 0 ? (
+            <EmptyPanel>
+              No talent yet. Add someone, or invite them onto Creator Assist.
+            </EmptyPanel>
+          ) : (
+            <RosterList items={roster} />
+          )}
         </section>
       </div>
-    </PageWrapper>
+    </>
   );
 }

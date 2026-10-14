@@ -1,34 +1,28 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { Button } from "@/components/Button";
+import { FormAlert } from "@/components/FormAlert";
 import { Text } from "@/components/Text";
 import { TextField } from "@/components/TextField";
+import { updatePassword } from "@/lib/auth/actions";
+import { EMPTY_AUTH_STATE } from "@/lib/auth/types";
+
+function SaveButton() {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" size="md" full iconRight="→" className="h-10" disabled={pending}>
+      {pending ? "Saving…" : "Save new password"}
+    </Button>
+  );
+}
 
 export function ResetPasswordForm() {
-  const router = useRouter();
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [state, action] = useActionState(updatePassword, EMPTY_AUTH_STATE);
 
   return (
-    <form
-      className="space-y-3.5"
-      onSubmit={(event) => {
-        event.preventDefault();
-        setError(null);
-        if (password.length < 8) {
-          setError("Use at least 8 characters.");
-          return;
-        }
-        if (password !== confirm) {
-          setError("Passwords don’t match.");
-          return;
-        }
-        router.push("/login");
-      }}
-    >
+    <form className="space-y-3.5" action={action}>
       <div className="space-y-1">
         <Text as="label" variant="label" htmlFor="new-password">
           New password
@@ -41,8 +35,6 @@ export function ResetPasswordForm() {
           minLength={8}
           autoComplete="new-password"
           placeholder="8+ characters"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
           size="sm"
           full
         />
@@ -59,23 +51,12 @@ export function ResetPasswordForm() {
           minLength={8}
           autoComplete="new-password"
           placeholder="Same again"
-          value={confirm}
-          onChange={(event) => setConfirm(event.target.value)}
           size="sm"
           full
         />
       </div>
-      {error ? (
-        <Text
-          variant="caption"
-          className="rounded-input bg-organic px-3.5 py-2.5 text-sm text-danger"
-        >
-          {error}
-        </Text>
-      ) : null}
-      <Button type="submit" size="md" full iconRight="→" className="h-10">
-        Save new password
-      </Button>
+      <FormAlert error={state.error} />
+      <SaveButton />
     </form>
   );
 }

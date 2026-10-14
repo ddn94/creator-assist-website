@@ -1,59 +1,89 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   BuildingsIcon,
-  CalendarBlankIcon,
   CurrencyGbpIcon,
   GlobeIcon,
   InfoIcon,
 } from "@phosphor-icons/react";
 import { Avatar } from "@/components/Avatar";
 import { Button } from "@/components/Button";
+import { DateField } from "@/components/DateField";
 import { Field } from "@/components/Field";
 import { Modal } from "@/components/Modal";
 import { Select } from "@/components/Select";
 import { Text } from "@/components/Text";
-import { TextField } from "@/components/TextField";
-import { updateContentInvoice } from "@/lib/mockStore";
 import type { PaymentItem } from "@/lib/payments";
+import { toDateInput } from "@/lib/timestamps";
 import {
   PAYMENT_TERM_OPTIONS,
   type PaymentTerms,
 } from "@/lib/tracker";
 
+type InvoicePatch = {
+  dateInvoiced: string;
+  paymentTerms: PaymentTerms;
+  datePaid: string | null;
+};
+
 type PaymentEditModalProps = {
   payment: PaymentItem | null;
   open: boolean;
+  error?: string | null;
   onClose: () => void;
+  onSave: (patch: InvoicePatch) => void;
 };
 
 export function PaymentEditModal({
   payment,
   open,
+  error,
   onClose,
+  onSave,
 }: PaymentEditModalProps) {
-  const [invoiced, setInvoiced] = useState("");
-  const [terms, setTerms] = useState<PaymentTerms>("net_30");
+  return (
+    <PaymentEditForm
+      key={
+        payment
+          ? `${payment.id}:${payment.dateInvoicedIso}:${payment.datePaidIso}:${payment.paymentTerms}`
+          : "closed"
+      }
+      payment={payment}
+      open={open}
+      error={error}
+      onClose={onClose}
+      onSave={onSave}
+    />
+  );
+}
 
-  useEffect(() => {
-    if (!payment || !open) return;
-    setInvoiced(payment.dateInvoicedIso ?? "");
-    setTerms(
-      (payment.paymentTerms as PaymentTerms | null) ?? "net_30",
-    );
-  }, [payment, open]);
+function PaymentEditForm({
+  payment,
+  open,
+  error,
+  onClose,
+  onSave,
+}: PaymentEditModalProps) {
+  const [invoiced, setInvoiced] = useState(
+    toDateInput(payment?.dateInvoicedIso),
+  );
+  const [terms, setTerms] = useState<PaymentTerms>(
+    payment?.paymentTerms ?? "net_30",
+  );
+  const [paid, setPaid] = useState(toDateInput(payment?.datePaidIso));
 
   if (!payment) return null;
 
   function save() {
     if (!payment) return;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(invoiced)) return;
-    updateContentInvoice(payment.id, {
+    if (paid && !/^\d{4}-\d{2}-\d{2}$/.test(paid)) return;
+    onSave({
       dateInvoiced: invoiced,
       paymentTerms: terms,
+      datePaid: paid || null,
     });
-    onClose();
   }
 
   return (
@@ -61,7 +91,7 @@ export function PaymentEditModal({
       open={open}
       onClose={onClose}
       title="Edit payment details"
-      description="Update the invoice date and payment terms for this deal."
+      description="Update the invoice date, payment terms, and paid date for this deal."
       footer={
         <>
           <Button
@@ -87,12 +117,19 @@ export function PaymentEditModal({
       }
     >
       <div className="space-y-4">
+        {error ? (
+          <Text variant="caption" className="text-danger!">
+            {error}
+          </Text>
+        ) : null}
         <div className="flex items-start gap-3 rounded-xl bg-background px-3 py-3">
-          <Avatar name={payment.talentName} size="sm" />
+          <Avatar name={payment.talentName ?? payment.content} size="sm" />
           <div className="min-w-0 flex-1">
-            <Text variant="cardTitle">{payment.talentName}</Text>
+            <Text variant="cardTitle">
+              {payment.talentName ?? payment.content}
+            </Text>
             <Text variant="caption" className="mt-0.5 truncate text-ink">
-              {payment.content}
+              {payment.talentName ? payment.content : payment.brand}
             </Text>
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
               <span className="inline-flex items-center gap-1 text-muted">
@@ -123,14 +160,12 @@ export function PaymentEditModal({
             label="Invoice date"
             hint="The date the invoice was issued to the brand."
           >
-            <TextField
+            <DateField
               id="invoice-date"
-              type="date"
               size="sm"
               full
               value={invoiced}
-              onChange={(event) => setInvoiced(event.target.value)}
-              iconLeft={<CalendarBlankIcon size={16} weight="bold" />}
+              onChange={setInvoiced}
             />
           </Field>
 
@@ -149,6 +184,21 @@ export function PaymentEditModal({
               placeholder="Select terms"
             />
           </Field>
+
+          <Field
+            id="date-paid"
+            label="Date paid"
+            hint="Leave blank if the brand has not paid yet."
+            className="sm:col-span-2"
+          >
+            <DateField
+              id="date-paid"
+              size="sm"
+              full
+              value={paid}
+              onChange={setPaid}
+            />
+          </Field>
         </div>
 
         <div className="flex items-start gap-2 rounded-xl bg-payment px-3 py-2.5">
@@ -159,8 +209,8 @@ export function PaymentEditModal({
             aria-hidden
           />
           <Text variant="caption" className="leading-relaxed text-ink">
-            Status is calculated from delivery date, invoice date and payment
-            terms.
+            Status is calculated from the delivery date, invoice date, payment
+            terms, and paid date.
           </Text>
         </div>
       </div>

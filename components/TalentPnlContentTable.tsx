@@ -5,10 +5,10 @@ import { Text } from "@/components/Text";
 import {
   contentTypeCategory,
   contentTypeLabel,
-  fmtMoney,
-  paymentStatusTone,
   type TalentPnlContentRow,
-} from "@/lib/talentPnl";
+} from "@/lib/pnl";
+import { paymentStatusTone } from "@/lib/payments";
+import { fmtMoney } from "@/lib/tracker";
 
 const COLUMNS = [
   "Content",
@@ -22,13 +22,17 @@ const COLUMNS = [
 
 type TalentPnlContentTableProps = {
   rows: TalentPnlContentRow[];
+  currency?: string;
   className?: string;
 };
 
 export function TalentPnlContentTable({
   rows,
+  currency = "USD",
   className = "",
 }: TalentPnlContentTableProps) {
+  const money = (amount: number, code?: string) =>
+    fmtMoney(amount, code || currency);
   return (
     <section
       className={[
@@ -62,18 +66,18 @@ export function TalentPnlContentTable({
                   row.profit >= 0 ? "text-primary-hover" : "text-danger",
                 ].join(" ")}
               >
-                {fmtMoney(row.profit)}
+                {money(row.profit, row.currency)}
               </Text>
             </div>
             <Link
-              href={`/home/tracker/${row.contentId}`}
+              href={`/overview/tracker/${row.contentId}`}
               className="mt-2 block font-display text-sm font-semibold text-ink hover:underline"
             >
               {row.title}
             </Link>
             <Text variant="caption" className="mt-1 text-xs">
-              {row.fee != null ? `Fee ${fmtMoney(row.fee)}` : "No fee"} · Expenses{" "}
-              {fmtMoney(row.expenses)}
+              {row.fee != null ? `Fee ${money(row.fee, row.currency)}` : "No fee"} · Expenses{" "}
+              {money(row.expenses, row.currency)}
             </Text>
           </div>
         ))}
@@ -112,7 +116,7 @@ export function TalentPnlContentTable({
               >
                 <td className="px-4 py-3 whitespace-nowrap">
                   <Link
-                    href={`/home/tracker/${row.contentId}`}
+                    href={`/overview/tracker/${row.contentId}`}
                     className="font-display text-xs font-semibold text-ink hover:underline"
                   >
                     {row.title}
@@ -130,7 +134,7 @@ export function TalentPnlContentTable({
                 </td>
                 <td className="px-3 py-3 whitespace-nowrap">
                   {row.paymentStatus && row.paymentLabel ? (
-                    row.paymentStatus === "notInvoiced" ? (
+                    row.paymentStatus === "not_invoiced" ? (
                       <Text variant="caption" className="text-xs">
                         {row.paymentLabel}
                       </Text>
@@ -148,12 +152,12 @@ export function TalentPnlContentTable({
                 </td>
                 <td className="px-3 py-3 text-right whitespace-nowrap">
                   <Text variant="caption" className="text-xs text-ink">
-                    {row.fee != null ? fmtMoney(row.fee) : "—"}
+                    {row.fee != null ? money(row.fee, row.currency) : "—"}
                   </Text>
                 </td>
                 <td className="px-3 py-3 text-right whitespace-nowrap">
                   <Text variant="caption" className="text-xs text-ink">
-                    {fmtMoney(row.expenses)}
+                    {money(row.expenses, row.currency)}
                   </Text>
                 </td>
                 <td className="px-4 py-3 text-right whitespace-nowrap">
@@ -166,7 +170,7 @@ export function TalentPnlContentTable({
                         : "text-danger!",
                     ].join(" ")}
                   >
-                    {fmtMoney(row.profit)}
+                    {money(row.profit, row.currency)}
                   </Text>
                 </td>
               </tr>

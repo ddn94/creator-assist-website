@@ -1,48 +1,101 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AddContentPanel } from "@/components/AddContentPanel";
+import { showToast } from "@/components/Toast";
 import { FilterPills } from "@/components/FilterPills";
+import { FormAlert } from "@/components/FormAlert";
 import { Text } from "@/components/Text";
 import { TrackerItemCard } from "@/components/TrackerItemCard";
-import { addContent, setContentStage } from "@/lib/mockStore";
-import { useTrackerItems } from "@/lib/useMockDb";
+import {
+  addContentAction,
+  setContentStageAction,
+} from "@/lib/data/actions";
 import {
   STAGES,
   STAGE_LABELS,
   nextStage,
+  revisionBackStage,
   type ContentType,
   type Stage,
+  type TrackerItem,
 } from "@/lib/tracker";
+import { DEFAULT_PLATFORM } from "@/lib/platforms";
+
+type ContentTrackerProps = {
+  items: TrackerItem[];
+  platformOptions: { value: string; label: string }[];
+  defaultAddOpen?: boolean;
+  initialStage?: Stage;
+  tourItemId?: string;
+};
 
 export function ContentTracker({
+  items,
+  platformOptions,
   defaultAddOpen = false,
-}: {
-  defaultAddOpen?: boolean;
-}) {
-  const items = useTrackerItems();
-  const [activeStage, setActiveStage] = useState<Stage>("concept");
+  initialStage,
+  tourItemId,
+}: ContentTrackerProps) {
+  const router = useRouter();
+  const [activeStage, setActiveStage] = useState<Stage>(initialStage ?? "concept");
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const serverKey = items.map((item) => `${item.id}:${item.stage}`).join("|");
+  const [draft, setDraft] = useState<{
+    key: string;
+    rows: TrackerItem[];
+  } | null>(null);
+  const rows = draft?.key === serverKey ? draft.rows : items;
+  const rowsRef = useRef(rows);
+  rowsRef.current = rows;
 
   const counts = useMemo(() => {
     const map = Object.fromEntries(STAGES.map((stage) => [stage, 0])) as Record<
       Stage,
       number
     >;
-    for (const item of items) map[item.stage] += 1;
+    for (const item of rows) map[item.stage] += 1;
     return map;
-  }, [items]);
+  }, [rows]);
 
-  const activeItems = items.filter((item) => item.stage === activeStage);
+  const activeItems = rows.filter((item) => item.stage === activeStage);
 
-  function advance(id: string) {
-    const item = items.find((row) => row.id === id);
-    if (!item) return;
-    const stage = nextStage(item.stage);
-    if (stage) setContentStage(id, stage);
+  function showRows(next: TrackerItem[]) {
+    rowsRef.current = next;
+    setDraft({ key: serverKey, rows: next });
   }
 
-  function backToEdited(id: string) {
-    setContentStage(id, "edited");
+  function moveStage(id: string, stage: Stage) {
+    const current = rowsRef.current;
+    const item = current.find((row) => row.id === id);
+    if (!item || item.stage === stage) return;
+    const previous = current;
+    setSaveError(null);
+    showRows(current.map((row) => (row.id === id ? { ...row, stage } : row)));
+    if (id.startsWith("pending-")) return;
+    void setContentStageAction(id, stage).then((result) => {
+      if (result.error) {
+        showRows(previous);
+        setSaveError(result.error);
+        return;
+      }
+      router.refresh();
+    });
+  }
+
+  function advance(id: string) {
+    const item = rows.find((row) => row.id === id);
+    if (!item) return;
+    const stage = nextStage(item.stage);
+    if (stage) moveStage(id, stage);
+  }
+
+  function revisionBack(id: string) {
+    const item = rows.find((row) => row.id === id);
+    if (!item) return;
+    const stage = revisionBackStage(item.stage);
+    if (stage) moveStage(id, stage);
   }
 
   function addItem(payload: {
@@ -52,24 +105,78 @@ export function ContentTracker({
     type: string;
     brandName: string;
     goLiveDate: string;
+    notes: string;
   }) {
     if (!payload.title) return;
     const type: ContentType =
       payload.type === "paid_collab" ? "paid_collab" : "organic";
-    addContent({
+    const tempId = `pending-${crypto.randomUUID()}`;
+    const optimistic: TrackerItem = {
+      id: tempId,
       title: payload.title,
-      platform: payload.platform || "Instagram",
+      platform: payload.platform || DEFAULT_PLATFORM,
       niche: payload.niche || null,
       type,
       brandName: type === "paid_collab" ? payload.brandName || null : null,
+      stage: "concept",
       goLiveDate: payload.goLiveDate || null,
-    });
+    };
+    const previous = rows;
+    setSaveError(null);
+    showRows([optimistic, ...rows]);
     setActiveStage("concept");
+    void addContentAction({
+      title: optimistic.title,
+      platform: optimistic.platform,
+      niche: optimistic.niche,
+      type,
+      brandName: optimistic.brandName,
+      goLiveDate: optimistic.goLiveDate,
+      notes: payload.notes,
+    }).then((result) => {
+      if ("error" in result) {
+        showRows(previous);
+        setSaveError(result.error);
+        return;
+      }
+      const latest = rowsRef.current;
+      const pendingRow = latest.find((row) => row.id === tempId);
+      const stage = pendingRow?.stage ?? "concept";
+      const next = latest.map((row) =>
+        row.id === tempId ? { ...row, id: result.id } : row,
+      );
+      showRows(next);
+      showToast(`Your content “${optimistic.title}” was added.`);
+      if (stage === "concept") {
+        router.refresh();
+        return;
+      }
+      void setContentStageAction(result.id, stage).then((stageResult) => {
+        if (stageResult.error) {
+          showRows(
+            next.map((row) =>
+              row.id === result.id ? { ...row, stage: "concept" } : row,
+            ),
+          );
+          setSaveError(stageResult.error);
+        }
+        router.refresh();
+      });
+    });
   }
 
   return (
     <div>
-      <AddContentPanel defaultOpen={defaultAddOpen} onAdd={addItem} />
+      <AddContentPanel
+        defaultOpen={defaultAddOpen}
+        platformOptions={platformOptions}
+        onAdd={addItem}
+      />
+      {saveError ? (
+        <div className="mb-4">
+          <FormAlert error={saveError} />
+        </div>
+      ) : null}
 
       <div className="md:hidden">
         <FilterPills
@@ -82,13 +189,14 @@ export function ContentTracker({
             count: counts[stage] || undefined,
           }))}
         />
-        <div className="mt-3 space-y-3">
+        <div className="mt-3 space-y-3" data-tour="tour-content-fallback">
           {activeItems.map((item) => (
             <TrackerItemCard
               key={item.id}
               item={item}
               onAdvance={advance}
-              onBackToEdited={backToEdited}
+              onRevisionBack={revisionBack}
+              tourAnchor={item.id === tourItemId}
             />
           ))}
           {activeItems.length === 0 ? (
@@ -99,9 +207,12 @@ export function ContentTracker({
         </div>
       </div>
 
-      <div className="hidden gap-3 overflow-x-auto pb-4 md:flex">
+      <div
+        className="hidden gap-3 overflow-x-auto pb-4 md:flex"
+        data-tour="tour-content-fallback"
+      >
         {STAGES.map((stage) => {
-          const colItems = items.filter((item) => item.stage === stage);
+          const colItems = rows.filter((item) => item.stage === stage);
           return (
             <div
               key={stage}
@@ -119,7 +230,8 @@ export function ContentTracker({
                     key={item.id}
                     item={item}
                     onAdvance={advance}
-                    onBackToEdited={backToEdited}
+                    onRevisionBack={revisionBack}
+                    tourAnchor={item.id === tourItemId}
                   />
                 ))}
                 {colItems.length === 0 ? (

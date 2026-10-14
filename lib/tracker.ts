@@ -1,4 +1,11 @@
 import type { StatusTagTone } from "@/components/StatusTag";
+import {
+  addCalendarDays,
+  calendarDay,
+  calendarDayInZone,
+  calendarDaysBetween,
+} from "@/lib/calendarDay";
+import { toDateInput } from "@/lib/timestamps";
 import type { Category } from "@/lib/ui";
 
 export const STAGES = [
@@ -23,12 +30,6 @@ export const STAGE_OPTIONS = STAGES.map((stage) => ({
   value: stage,
   label: STAGE_LABELS[stage],
 }));
-
-export const PLATFORM_OPTIONS = [
-  { value: "Instagram", label: "Instagram" },
-  { value: "TikTok", label: "TikTok" },
-  { value: "YouTube", label: "YouTube" },
-] as const;
 
 export const CONTENT_TYPE_OPTIONS = [
   { value: "organic", label: "Organic" },
@@ -120,6 +121,8 @@ export type TrackerExpense = {
   amount: number;
   note: string | null;
   date: string;
+  /** Currency this cost was saved in. A later country change does not rewrite it. */
+  currency?: string | null;
 };
 
 export type TrackerDeal = {
@@ -129,6 +132,8 @@ export type TrackerDeal = {
   dateInvoiced: string | null;
   datePaid: string | null;
   deliverables: TrackerDeliverable[];
+  /** Currency this fee was saved in. A later country change does not rewrite it. */
+  currency?: string | null;
 };
 
 export type TrackerDetail = TrackerItem & {
@@ -137,9 +142,17 @@ export type TrackerDetail = TrackerItem & {
   deal: TrackerDeal | null;
   expenses: TrackerExpense[];
   ideaTitle: string | null;
+  createdAt: string;
   updatedAt: string;
-  /** Owner in the shared mock DB */
+  /** Full timestamps. Date-only createdAt/updatedAt stay for day comparisons. */
+  createdAtIso?: string;
+  updatedAtIso?: string;
+  /** Profile that owns the item. Empty until a record's content is claimed. */
   creatorId: string;
+  /** Agency roster row this item was logged against, when there is one. */
+  talentRecordId?: string | null;
+  /** Logged by the agency on a private card. Both sides can keep editing it. */
+  agencyCreated?: boolean;
 };
 
 export function contentCategory(type: ContentType): Category {
@@ -156,8 +169,41 @@ export function nextStage(stage: Stage): Stage | null {
   return STAGES[index + 1];
 }
 
-export function formatLiveDate(isoDate: string): string {
-  const date = new Date(`${isoDate}T12:00:00`);
+/**
+ * Revision loop: Edited ↔ Filmed ↔ Delivered only.
+ * Concept is forward-only; Go Live is final.
+ */
+export function revisionBackStage(stage: Stage): Stage | null {
+  if (stage === "edited") return "filmed";
+  if (stage === "delivered") return "edited";
+  return null;
+}
+
+/** Stage choices allowed from the current stage (tracker detail select). */
+export function stageOptionsFor(stage: Stage) {
+  const allowed: Stage[] =
+    stage === "concept"
+      ? ["concept", "filmed"]
+      : stage === "filmed"
+        ? ["filmed", "edited"]
+        : stage === "edited"
+          ? ["filmed", "edited", "delivered"]
+          : stage === "delivered"
+            ? ["edited", "delivered", "go_live"]
+            : ["go_live"];
+  return allowed.map((value) => ({
+    value,
+    label: STAGE_LABELS[value],
+  }));
+}
+
+export function formatLiveDate(
+  isoDate: string,
+  timeZone?: string | null,
+): string {
+  const day = toDateInput(isoDate, timeZone);
+  if (!day) return "—";
+  const date = new Date(`${day}T12:00:00`);
   return date.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -165,14 +211,19 @@ export function formatLiveDate(isoDate: string): string {
   });
 }
 
-export function fmtMoney(amount: number): string {
-  return (
-    "$" +
-    amount.toLocaleString("en-US", {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    })
-  );
+export function fmtMoney(amount: number, currency = "USD"): string {
+  const code = currency || "USD";
+  const whole = Math.round(amount * 100) % 100 === 0;
+  try {
+    return new Intl.NumberFormat("en", {
+      style: "currency",
+      currency: code,
+      minimumFractionDigits: whole ? 0 : 2,
+      maximumFractionDigits: whole ? 0 : 2,
+    }).format(amount);
+  } catch {
+    return `${code} ${amount}`;
+  }
 }
 
 export function deliverablesTotal(
@@ -181,14 +232,17 @@ export function deliverablesTotal(
   return deliverables.reduce((sum, item) => sum + item.quantity * item.rate, 0);
 }
 
-export function computeDueDate(deal: {
-  paymentTerms: PaymentTerms;
-  dateInvoiced: string | null;
-}): string | null {
+export function computeDueDate(
+  deal: {
+    paymentTerms: PaymentTerms;
+    dateInvoiced: string | null;
+  },
+  timeZone?: string | null,
+): string | null {
   if (!deal.dateInvoiced) return null;
-  const due = new Date(`${deal.dateInvoiced}T12:00:00`);
-  due.setDate(due.getDate() + (TERM_DAYS[deal.paymentTerms] ?? 30));
-  return due.toISOString().slice(0, 10);
+  const invoicedDay = toDateInput(deal.dateInvoiced, timeZone);
+  if (!invoicedDay) return null;
+  return addCalendarDays(invoicedDay, TERM_DAYS[deal.paymentTerms] ?? 30);
 }
 
 export function computeDealStatus(
@@ -198,13 +252,50 @@ export function computeDealStatus(
     datePaid: string | null;
   },
   today = new Date(),
+  timeZone?: string | null,
 ): DealStatus {
   if (deal.datePaid) return "paid";
-  const due = computeDueDate(deal);
+  const due = computeDueDate(deal, timeZone);
   if (!due) return "not_invoiced";
-  const dueDate = new Date(`${due}T12:00:00`);
-  const todayDate = new Date(
-    `${today.toISOString().slice(0, 10)}T12:00:00`,
-  );
-  return todayDate > dueDate ? "overdue" : "awaiting_payment";
+  const todayDay = timeZone
+    ? calendarDayInZone(today, timeZone)
+    : calendarDay(today);
+  return todayDay > due ? "overdue" : "awaiting_payment";
+}
+
+function daySpan(fromIso: string, to = new Date()): number {
+  return calendarDaysBetween(fromIso.slice(0, 10), calendarDay(to));
+}
+
+function shortDayMonth(iso: string): string {
+  return formatLiveDate(iso);
+}
+
+/** Needs-attention line. The optimistic save uses this so it matches a refresh. */
+export function attentionDetail(
+  status: DealStatus,
+  options: {
+    dueIso?: string | null;
+    deliveredIso?: string | null;
+    deliveredLabel?: string | null;
+    today?: Date;
+  } = {},
+): string | null {
+  const today = options.today ?? new Date();
+  const dueIso = options.dueIso ?? null;
+  if (status === "overdue" && dueIso) {
+    return `${daySpan(dueIso, today)} days overdue`;
+  }
+  if (status === "awaiting_payment" && dueIso) {
+    const days = -daySpan(dueIso, today);
+    return days >= 0 ? `Due in ${days} days` : `Due ${shortDayMonth(dueIso)}`;
+  }
+  if (status === "not_invoiced") {
+    const label = options.deliveredIso
+      ? shortDayMonth(options.deliveredIso)
+      : options.deliveredLabel;
+    if (!label) return null;
+    return `Delivered ${label} · Not invoiced`;
+  }
+  return null;
 }

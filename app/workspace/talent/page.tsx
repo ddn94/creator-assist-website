@@ -1,14 +1,30 @@
 import { PlusIcon } from "@phosphor-icons/react/dist/ssr";
 import { Button } from "@/components/Button";
-import { PageWrapper } from "@/components/PageWrapper";
+import { AppFrame } from "@/components/AppFrame";
 import { TalentTable } from "@/components/TalentTable";
-import { workspaceNav, workspaceShell } from "@/lib/workspace";
+import { requireProfile } from "@/lib/auth/session";
+import { listTalentRecords } from "@/lib/data/talentRecords";
+import { getLinkedTalentAvatars } from "@/lib/data/linkedTalent";
+import { listAgencyLinkedContent } from "@/lib/data/contentQueries";
+import { buildTalentRoster } from "@/lib/data/selectors";
+import { localTimeZone } from "@/lib/localToday";
+import { tourCoversPage } from "@/lib/tourGate";
 
-export default function WorkspaceTalentPage() {
+export default async function WorkspaceTalentPage() {
+  if (await tourCoversPage()) return null;
+  const profile = await requireProfile("agency");
+  const [records, linked, avatars, timeZone] = await Promise.all([
+    listTalentRecords(),
+    listAgencyLinkedContent(),
+    getLinkedTalentAvatars(profile.id),
+    localTimeZone(),
+  ]);
+  const items = buildTalentRoster(records, linked, avatars, timeZone);
+
   return (
-    <PageWrapper
-      {...workspaceShell}
-      navItems={workspaceNav}
+    <AppFrame
+      role="agency"
+      profile={profile}
       title="Talent"
       description="Everyone you manage, on or off Creator Assist"
       action={
@@ -23,7 +39,7 @@ export default function WorkspaceTalentPage() {
         </Button>
       }
     >
-      <TalentTable />
-    </PageWrapper>
+      <TalentTable items={items} />
+    </AppFrame>
   );
 }
