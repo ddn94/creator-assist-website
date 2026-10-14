@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Hide the Next.js "N" badge in the corner during local development.
+  devIndicators: false,
   experimental: {
     // Keep recently visited tabs in the browser so switching back is instant;
     // a quiet refresh on focus updates them in the background.
