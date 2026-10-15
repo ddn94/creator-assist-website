@@ -3,6 +3,7 @@ import { after, NextResponse, type NextRequest } from "next/server";
 import {
   accessRedirect,
   isAppPath,
+  isSigningInPath,
   type AccessSubject,
 } from "@/lib/auth/access";
 import {
@@ -89,8 +90,17 @@ export async function updateSession(request: NextRequest) {
     return applyGate(supabaseResponse);
   }
 
+  // Session JWT can outlive a deleted account. Stale gate cookies then bounce
+  // /login → /overview → /login. Drop the session when the profile is gone.
+  async function signOutMissingProfile() {
+    await supabase.auth.signOut();
+    gateWrite = "clear";
+  }
+
   let gate = decodeGate(request.cookies.get(GATE_COOKIE)?.value);
-  if (!gate || gate.sub !== userId) {
+  const gateStale = !gate || gate.sub !== userId;
+  // Always re-check on sign-in pages so a deleted account cannot loop home.
+  if (gateStale || isSigningInPath(path)) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("role, onboarding_completed_at")
@@ -98,8 +108,8 @@ export async function updateSession(request: NextRequest) {
       .maybeSingle();
 
     if (!profile) {
-      if (request.cookies.get(GATE_COOKIE)) gateWrite = "clear";
-      if (isAppPath(path)) return redirectTo("/login", "?error=profile");
+      await signOutMissingProfile();
+      if (isAppPath(path)) return redirectTo("/login");
       return applyGate(supabaseResponse);
     }
 
@@ -110,6 +120,13 @@ export async function updateSession(request: NextRequest) {
       exp: 0,
     };
     gateWrite = gate;
+  }
+
+  // After a non-stale gate or a profile refresh, gate is always set.
+  if (!gate) {
+    await signOutMissingProfile();
+    if (isAppPath(path)) return redirectTo("/login");
+    return applyGate(supabaseResponse);
   }
 
   const subject: AccessSubject = {

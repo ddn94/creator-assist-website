@@ -14,6 +14,7 @@ import type {
 } from "@/lib/data/selectors";
 import type { ConnectionRequest } from "@/lib/data/talentRecords";
 import { JUMP_TILES, greeting } from "@/lib/home";
+import { categoryHoverBorder } from "@/lib/ui";
 
 type TalentOverviewProps = {
   userName: string;
@@ -90,7 +91,10 @@ export function TalentOverview({
           <Link key={tile.href} href={tile.href} className="block">
             <CategoryCard
               category={tile.category}
-              className="flex items-center justify-center py-6 font-display text-sm font-bold transition-opacity hover:opacity-80 md:text-base"
+              className={[
+                "flex items-center justify-center py-6 font-display text-sm font-bold shadow-none transition-[transform,box-shadow,border-color] duration-150 hover:-translate-y-0.5 hover:shadow-card md:text-base",
+                categoryHoverBorder[tile.category],
+              ].join(" ")}
             >
               {tile.label}
             </CategoryCard>

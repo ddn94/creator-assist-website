@@ -20,6 +20,7 @@ import {
 import type { AuthFormState, UserRole } from "@/lib/auth/types";
 import { avatarObjectPath } from "@/lib/auth/avatar";
 import { hasSupabaseEnv, withSupabaseAuthAction, supabaseSetupError } from "@/lib/supabase/env";
+import { createServiceClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { flashToast } from "@/lib/toastFlash";
 
@@ -406,4 +407,39 @@ export async function clearAvatar(): Promise<{ error: string | null }> {
   await supabase.storage.from("avatars").remove([avatarObjectPath(profile.id)]);
   revalidatePath("/", "layout");
   return { error: null };
+}
+
+/**
+ * Deletes the auth user. Handoff (disconnect, keep creator deals, clear
+ * requests) runs in a BEFORE DELETE trigger on profiles in the same DB
+ * transaction — so a failed delete leaves the account untouched.
+ * Avatar storage is removed only after auth delete succeeds.
+ */
+export async function deleteOwnAccount(): Promise<{ error: string | null }> {
+  if (!hasSupabaseEnv()) return supabaseSetupError();
+  const profile = await getProfile();
+  if (!profile) return { error: "Sign in to delete your account." };
+
+  let admin;
+  try {
+    admin = createServiceClient();
+  } catch {
+    return {
+      error:
+        "Account deletion is not configured. Add SUPABASE_SERVICE_ROLE_KEY.",
+    };
+  }
+
+  const { error: deleteError } = await admin.auth.admin.deleteUser(profile.id);
+  if (deleteError) {
+    return { error: "Could not delete your account. Try again." };
+  }
+
+  await admin.storage.from("avatars").remove([avatarObjectPath(profile.id)]);
+
+  const jar = await cookies();
+  jar.set(GATE_COOKIE, "", { ...gateCookieOptions, maxAge: 0 });
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+  redirect("/login");
 }

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { Card } from "@/components/Card";
 import { Text } from "@/components/Text";
 
@@ -17,18 +18,16 @@ type AuthScreenProps = {
 function DefaultLogo({ density }: { density: "compact" | "comfortable" }) {
   const comfortable = density === "comfortable";
   return (
-    <Image
-      src="/icons/icon-192.png"
-      alt=""
-      width={comfortable ? 64 : 56}
-      height={comfortable ? 64 : 56}
-      className={
-        comfortable
-          ? "mx-auto size-12 rounded-2xl"
-          : "mx-auto size-11 rounded-2xl"
-      }
-      priority
-    />
+    <Link href="/" aria-label="Creator Assist home" className="mx-auto inline-flex">
+      <Image
+        src="/icons/icon-192.png"
+        alt=""
+        width={comfortable ? 64 : 56}
+        height={comfortable ? 64 : 56}
+        className={comfortable ? "size-12 rounded-2xl" : "size-11 rounded-2xl"}
+        priority
+      />
+    </Link>
   );
 }
 

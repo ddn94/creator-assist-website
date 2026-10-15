@@ -52,12 +52,10 @@ export const getProfile = cache(async function getProfile(): Promise<Profile | n
 /** Load profile or bail — access rules live in accessRedirect. */
 export async function requireProfile(role: UserRole) {
   const profile = await getProfile();
-  const to = accessRedirect(
-    profile ? subjectFromProfile(profile) : null,
-    { kind: "app", role },
-  );
+  if (!profile) redirect("/login");
+  const to = accessRedirect(subjectFromProfile(profile), { kind: "app", role });
   if (to) redirect(to);
-  return profile!;
+  return profile;
 }
 
 export async function requireOnboarding(role: UserRole) {

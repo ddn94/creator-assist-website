@@ -57,7 +57,7 @@ export default async function AgencyTalentContentPage({
             ? `/workspace/talent/${talentId}?from=overview`
             : `/workspace/talent/${talentId}`
         }
-        mode={item.agencyCreated || !item.creatorId ? "record" : "agency"}
+        mode={item.agencyCreated ? "record" : "agency"}
       />
     </AppFrame>
   );

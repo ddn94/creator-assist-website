@@ -21,11 +21,15 @@
   --color-danger: #d9695a;
 
   --color-organic: #fce8e1;
+  --color-organic-border: #f0d2c6;
   --color-organic-pill: #f2a48c;
   --color-idea: #fdf1dc;
+  --color-idea-border: #f3e0b8;
   --color-idea-pill: #f6cb77;
   --color-collab: #e4eee9;
+  --color-collab-border: #cddfd4;
   --color-payment: #edeefb;
+  --color-payment-border: #d8dcf0;
   --color-payment-pill: #abb0e8;
 
   --text-xxs: 0.625rem;
