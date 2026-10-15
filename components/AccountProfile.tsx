@@ -1,4 +1,5 @@
 import { CategoryPill } from "@/components/CategoryPill";
+import { DeleteAccountLink } from "@/components/DeleteAccountLink";
 import { DisconnectLink } from "@/components/DisconnectLink";
 import { ProfilePhoto } from "@/components/ProfilePhoto";
 import { SettingsRow } from "@/components/SettingsRow";
@@ -109,6 +110,7 @@ export function AccountProfile({
             side="talent"
           />
         ) : null}
+        <DeleteAccountLink role={profile.role} />
       </div>
 
       {showAppLinks ? (
