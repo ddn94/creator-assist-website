@@ -11,16 +11,23 @@ import type { UserRole } from "@/lib/auth/types";
 
 type DeleteAccountLinkProps = {
   role: UserRole;
+  /** Talent only: show agency-keep copy when currently connected. */
+  connectedToAgency?: boolean;
 };
 
-export function DeleteAccountLink({ role }: DeleteAccountLinkProps) {
+export function DeleteAccountLink({
+  role,
+  connectedToAgency = false,
+}: DeleteAccountLinkProps) {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const agency = role === "agency";
   const detail = agency
     ? "Your workspace and roster are removed. Creators keep their accounts, and any deals already on their side — including ones you logged that they claimed — plus the recent-change history on those deals."
-    : "Your account, content, ideas, and photo are removed. If you work with an agency, they keep a copy of the deals you did together — marked as yours, not as theirs.";
+    : connectedToAgency
+      ? "Your account, content, ideas, and photo are removed. Your agency will keep a copy of the deals you did together."
+      : "Your account, content, ideas, and photo are removed.";
 
   function ask() {
     if (pending) return;

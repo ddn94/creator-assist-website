@@ -110,7 +110,10 @@ export function AccountProfile({
             side="talent"
           />
         ) : null}
-        <DeleteAccountLink role={profile.role} />
+        <DeleteAccountLink
+          role={profile.role}
+          connectedToAgency={agencyLink?.status === "active"}
+        />
       </div>
 
       {showAppLinks ? (
