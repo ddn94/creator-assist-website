@@ -26,7 +26,7 @@ export function TalentShell({
     >
       {children}
       {profile.onboarding.productTour === "pending" ? (
-        <ProductTour role="talent" />
+        <ProductTour role="talent" userId={profile.id} />
       ) : null}
     </AppShell>
   );
@@ -51,7 +51,7 @@ export function WorkspaceShell({
     >
       {children}
       {profile.onboarding.productTour === "pending" ? (
-        <ProductTour role="agency" />
+        <ProductTour role="agency" userId={profile.id} />
       ) : null}
     </AppShell>
   );

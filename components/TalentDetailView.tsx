@@ -49,10 +49,11 @@ export function TalentDetailView({
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const canDelete =
-    !joined &&
-    (talent.status === "record" ||
-      talent.status === "invited" ||
-      talent.status === "requested");
+    talent.status === "disconnected" ||
+    (!joined &&
+      (talent.status === "record" ||
+        talent.status === "invited" ||
+        talent.status === "requested"));
   const canDisconnect = talent.status === "active";
 
   function askDelete() {
@@ -103,11 +104,13 @@ export function TalentDetailView({
           title={`Remove ${talent.name}`}
           question={`Are you sure you want to remove ${talent.name}?`}
           detail={
-            talent.status === "invited"
-              ? "This cancels the invite code and deletes this card and every deal logged on it."
-              : talent.status === "requested"
-                ? "This cancels the connection request and deletes this card and every deal logged on it."
-                : "This deletes the private card and every deal logged on it."
+            talent.status === "disconnected"
+              ? "This removes them from your roster and deletes your copies of shared deals."
+              : talent.status === "invited"
+                ? "This cancels the invite code and deletes this card and every deal logged on it."
+                : talent.status === "requested"
+                  ? "This cancels the connection request and deletes this card and every deal logged on it."
+                  : "This deletes the private card and every deal logged on it."
           }
           confirmLabel="Remove"
           pendingLabel="Removing…"

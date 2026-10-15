@@ -114,3 +114,34 @@ export const TOUR_HREF_KEY = "ca-product-tour-href";
 export const TOUR_CLOSED_KEY = "ca-product-tour-closed";
 /** Route to open for real once the tour UI has already switched. */
 export const TOUR_HANDOFF_KEY = "ca-product-tour-handoff";
+
+const TOUR_STORAGE_KEYS = [
+  TOUR_STEP_KEY,
+  TOUR_HREF_KEY,
+  TOUR_CLOSED_KEY,
+  TOUR_HANDOFF_KEY,
+] as const;
+
+/** Scope tour flags to the signed-in profile so another account's Skip/Done
+ *  (or a leftover handoff to `/workspace/talent`) cannot hide or auto-finish
+ *  a brand-new agency tour. */
+export function tourStorageKey(base: string, userId: string): string {
+  return `${base}:${userId}`;
+}
+
+/** Drop legacy unscoped keys and any keys belonging to a different user. */
+export function clearForeignTourStorage(userId: string): void {
+  for (const base of TOUR_STORAGE_KEYS) {
+    sessionStorage.removeItem(base);
+  }
+  const keep = new Set(TOUR_STORAGE_KEYS.map((base) => tourStorageKey(base, userId)));
+  const drop: string[] = [];
+  for (let i = 0; i < sessionStorage.length; i += 1) {
+    const key = sessionStorage.key(i);
+    if (!key) continue;
+    if (TOUR_STORAGE_KEYS.some((base) => key.startsWith(`${base}:`)) && !keep.has(key)) {
+      drop.push(key);
+    }
+  }
+  for (const key of drop) sessionStorage.removeItem(key);
+}

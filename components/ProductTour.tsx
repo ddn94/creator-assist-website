@@ -14,7 +14,9 @@ import {
   TOUR_HANDOFF_KEY,
   TOUR_HREF_KEY,
   TOUR_STEP_KEY,
+  clearForeignTourStorage,
   tourSteps,
+  tourStorageKey,
 } from "@/lib/tour";
 
 type Box = {
@@ -98,51 +100,68 @@ function boxFrom(node: HTMLElement): Box {
   };
 }
 
-export function ProductTour({ role }: { role: UserRole }) {
+export function ProductTour({
+  role,
+  userId,
+}: {
+  role: UserRole;
+  userId: string;
+}) {
   const router = useRouter();
   const livePathname = usePathname();
   const tour = useTourPath();
   const pathname = tour?.path ?? livePathname;
   const steps = tourSteps(role);
+  const stepKey = tourStorageKey(TOUR_STEP_KEY, userId);
+  const hrefKey = tourStorageKey(TOUR_HREF_KEY, userId);
+  const closedKey = tourStorageKey(TOUR_CLOSED_KEY, userId);
+  const handoffKey = tourStorageKey(TOUR_HANDOFF_KEY, userId);
   const [index, setIndex] = useState(0);
   const [ready, setReady] = useState(false);
   const [frame, setFrame] = useState<Frame | null>(null);
   const [closed, setClosed] = useState(false);
 
   useEffect(() => {
-    if (sessionStorage.getItem(TOUR_CLOSED_KEY) === "1") {
+    clearForeignTourStorage(userId);
+    // Only treat closed as "user finished this tour" for this profile.
+    // A leftover global handoff used to auto-complete agency tours on
+    // `/workspace/talent` before any tooltip appeared.
+    if (sessionStorage.getItem(closedKey) === "1") {
       setClosed(true);
+      setReady(true);
       return;
     }
-    const saved = Number(sessionStorage.getItem(TOUR_STEP_KEY));
+    const saved = Number(sessionStorage.getItem(stepKey));
     if (Number.isInteger(saved) && saved >= 0 && saved < steps.length) {
       setIndex(saved);
     }
     setReady(true);
-  }, [steps.length]);
+  }, [closedKey, stepKey, steps.length, userId]);
 
   const step = steps[index];
 
   useEffect(() => {
-    const dest = sessionStorage.getItem(TOUR_HANDOFF_KEY);
+    // Handoff only after Skip/Done set `closed`. Never complete from a
+    // stale key left by another account on the same start path.
+    if (!closed) return;
+    const dest = sessionStorage.getItem(handoffKey);
     if (!dest || dest !== livePathname) return;
-    sessionStorage.removeItem(TOUR_HANDOFF_KEY);
+    sessionStorage.removeItem(handoffKey);
     void completeProductTour();
-  }, [livePathname]);
+  }, [closed, handoffKey, livePathname]);
 
   useEffect(() => {
     if (!ready || closed || !step) return;
     if (step.matches(pathname)) return;
-    const href =
-      step.href ?? sessionStorage.getItem(TOUR_HREF_KEY);
+    const href = step.href ?? sessionStorage.getItem(hrefKey);
     if (!href) {
       setIndex(0);
-      sessionStorage.setItem(TOUR_STEP_KEY, "0");
+      sessionStorage.setItem(stepKey, "0");
       return;
     }
     if (tour) tour.setPath(href);
     else router.replace(href);
-  }, [ready, closed, step, pathname, tour, router]);
+  }, [ready, closed, step, pathname, tour, router, hrefKey, stepKey]);
 
   const measure = useCallback(
     (shouldScroll: boolean) => {
@@ -216,19 +235,19 @@ export function ProductTour({ role }: { role: UserRole }) {
 
   const finish = useCallback((goHome = false) => {
     setClosed(true);
-    sessionStorage.setItem(TOUR_CLOSED_KEY, "1");
-    sessionStorage.removeItem(TOUR_STEP_KEY);
-    sessionStorage.removeItem(TOUR_HREF_KEY);
+    sessionStorage.setItem(closedKey, "1");
+    sessionStorage.removeItem(stepKey);
+    sessionStorage.removeItem(hrefKey);
     const dest = goHome ? appHomePath(role) : (tour?.path ?? livePathname);
     if (tour?.has(dest)) tour.setPath(dest);
     if (livePathname === dest) {
-      sessionStorage.removeItem(TOUR_HANDOFF_KEY);
+      sessionStorage.removeItem(handoffKey);
       void completeProductTour();
       return;
     }
-    sessionStorage.setItem(TOUR_HANDOFF_KEY, dest);
+    sessionStorage.setItem(handoffKey, dest);
     router.replace(dest);
-  }, [livePathname, role, router, tour]);
+  }, [closedKey, handoffKey, hrefKey, livePathname, role, router, stepKey, tour]);
 
   function next() {
     if (!step) return;
@@ -238,9 +257,9 @@ export function ProductTour({ role }: { role: UserRole }) {
     }
     const node = findVisible(step.target);
     const linked = node?.getAttribute("data-tour-href");
-    if (linked) sessionStorage.setItem(TOUR_HREF_KEY, linked);
+    if (linked) sessionStorage.setItem(hrefKey, linked);
     const nextIndex = index + 1;
-    sessionStorage.setItem(TOUR_STEP_KEY, String(nextIndex));
+    sessionStorage.setItem(stepKey, String(nextIndex));
     const following = steps[nextIndex];
     const href = following?.href ?? linked;
     if (href) {

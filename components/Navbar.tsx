@@ -127,7 +127,7 @@ export function Navbar({
                   "cursor-pointer rounded-full px-3.5 py-2 font-display text-sm font-semibold transition-colors",
                   active
                     ? "bg-card text-ink shadow-card"
-                    : "text-muted hover:text-ink",
+                    : "text-muted hover:bg-card hover:text-ink hover:shadow-card",
                 ].join(" ")}
               >
                 {item.label}
@@ -232,10 +232,10 @@ export function Navbar({
                     setOpen(false);
                   }}
                   className={[
-                    "rounded-full px-3.5 py-2.5 font-display text-sm font-semibold",
+                    "rounded-full px-3.5 py-2.5 font-display text-sm font-semibold transition-colors",
                     active
                       ? "bg-card text-ink shadow-card"
-                      : "text-muted hover:text-ink",
+                      : "text-muted hover:bg-card hover:text-ink hover:shadow-card",
                   ].join(" ")}
                 >
                   {item.label}

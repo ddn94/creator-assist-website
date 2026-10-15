@@ -163,7 +163,10 @@ export async function deleteTalentRecordAction(
       message.includes("only a record") ||
       message.includes("not been joined")
     ) {
-      return { error: "Only a card that has not been joined can be removed." };
+      return {
+        error:
+          "Only a private card, invite, request, or disconnected card can be removed.",
+      };
     }
     if (message.includes("only an agency")) {
       return { error: "Only an agency can remove talent." };
