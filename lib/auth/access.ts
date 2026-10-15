@@ -23,7 +23,7 @@ export function isAppPath(path: string): boolean {
   );
 }
 
-function isSigningInPath(path: string): boolean {
+export function isSigningInPath(path: string): boolean {
   return path === "/" || path === "/login" || path.startsWith("/signup");
 }
 
